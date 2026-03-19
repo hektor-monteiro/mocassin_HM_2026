@@ -239,7 +239,7 @@ fr1Ryd = 3.28984e15         # frequency at 1 Ryd [Hz]
 
 #particle_radius_microns = 0.913033009 # Example: 0.1 microns
 particle_radius_microns = 0.438697994 # Example: 0.1 microns
-particle_radius_microns = 1. # Example: 0.1 microns
+#particle_radius_microns = 1. # Example: 0.1 microns
 
 
 nuMax = 15.
@@ -253,6 +253,8 @@ sizeParam=2.0*3.14159265*particle_radius_microns/(2.9979250e14/(nuArray*fr1Ryd) 
 sizeParam[sizeParam>100]=np.float64(100)
 
 file_path = '/home/hmonteiro/Downloads/mocassin-rw_changes_2023/dustData/sil-dlee.nk'
+file_path = '/home/hmonteiro/Google Drive/work/PN/software/mocassin_HM_2025/dustData/new_dust_files/forsterite_p1.nk'
+
 wavelengths_micron = []
 n_values = []
 k_values = []
@@ -404,26 +406,27 @@ sizeParam[sizeParam>100]=100
 
 plt.figure()
 # plt.plot(2.9979250e14/mocdata[:,1]/fr1Ryd, mocdata[:,2], label='Moc Qext')
-# plt.plot(2.9979250e14/mocdata[:,1]/fr1Ryd, mocdata[:,3], label='Moc Qsca')
+#plt.plot(2.9979250e14/mocdata[:,1]/fr1Ryd, mocdata[:,3], label='Moc Qsca')
 
-plt.plot((2.9979250e14/(nuArray*fr1Ryd)),bhmie_qext_list,'C0-',label='Mie Qext',alpha=0.5)
-plt.plot((2.9979250e14/(nuArray*fr1Ryd)),bhmie_qsca_list,'C1-',label='Mie Qsca',alpha=0.5)
+plt.plot((2.9979250e14/(nuArray*fr1Ryd)),bhmie_qext_list,'C0-',label='Mie Qext',alpha=0.9)
+#plt.plot((2.9979250e14/(nuArray*fr1Ryd)),bhmie_qsca_list,'C1-',label='Mie Qsca',alpha=0.5)
 
 # mie_qext_list = np.array(mie_qsca_list) + np.array(mie_qabs_list)
 # plt.plot((2.9979250e14/(nuArray*fr1Ryd)),ray_qext_list,'-',label='Ray. Qext')
 # plt.plot((2.9979250e14/(nuArray*fr1Ryd)),ray_qsca_list,'-',label='Ray Qsca')
 
 rayl_qext_list = np.array(rayl_qsca_list) + np.array(rayl_qabs_list)
-plt.plot((2.9979250e14/(nuArray*fr1Ryd)),rayl_qext_list,'C0:',label='Rayl. Qext')
-plt.plot((2.9979250e14/(nuArray*fr1Ryd)),rayl_qsca_list,'C1:',label='Rayl. Qsca')
+plt.plot((2.9979250e14/(nuArray*fr1Ryd)),rayl_qext_list,'C2:',label='Rayl. Qext',alpha=0.5)
+#plt.plot((2.9979250e14/(nuArray*fr1Ryd)),rayl_qsca_list,'C1:',label='Rayl. Qsca')
 
 cde_qext_list = np.array(cde_qsca_list) + np.array(cde_qabs_list)
-plt.plot((2.9979250e14/(nuArray*fr1Ryd)),cde_qext_list,'C0--',label='CDE Qext')
-plt.plot((2.9979250e14/(nuArray*fr1Ryd)),cde_qsca_list,'C1--',label='CDE Qsca')
-plt.plot((2.9979250e14/(nuArray*fr1Ryd)),cde_qabs_list,'C1--',label='CDE Qabs')
+plt.plot((2.9979250e14/(nuArray*fr1Ryd)),cde_qext_list,'C1',label='CDE Qext')
+#plt.plot((2.9979250e14/(nuArray*fr1Ryd)),cde_qsca_list,'C1--',label='CDE Qsca')
+#plt.plot((2.9979250e14/(nuArray*fr1Ryd)),cde_qabs_list,'C1--',label='CDE Qabs')
 
-plt.plot((2.9979250e14/(nuArray*fr1Ryd)),sizeParam,'-',label='x')
-plt.axhspan(0, 1, color='gray', alpha=0.3, label='x < 1')
+# plt.plot((2.9979250e14/(nuArray*fr1Ryd)),sizeParam,'C3-',label='x',alpha=0.5)
+plt.axvspan((2.9979250e14/(nuArray[sizeParam<=1][-1]*fr1Ryd)), 
+            (2.9979250e14/(nuArray*fr1Ryd)).max(), color='gray', alpha=0.3, label=r'$2 \pi a / \lambda < 1$')
 plt.yscale('log') 
 plt.xscale('log')
 plt.xlim(0.01,1e3)

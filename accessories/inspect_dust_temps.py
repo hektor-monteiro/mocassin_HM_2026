@@ -91,7 +91,7 @@ dV = np.reshape(data[:,3],(nx,ny,nz))
 ############################################################
 #%%
 
-ndust, temps = read_dust_grid('output/dustGrid.out',20,2)
+ndust, temps = read_dust_grid('output/dustGrid.out',35,2)
 
 # nx,ny,nz = 15, 15, 21
 # nx,ny,nz = 39, 39, 51
@@ -102,7 +102,7 @@ Ndust = np.reshape(np.array(ndust),(nx,ny,nz))
 # [:,1:,1] - silicates
 # [:,1:,2] - PaH
 
-species = 1
+species = 2
 
 aux=np.mean(np.array(temps)[:,1:,species],axis=1,where=np.array(temps)[:,1:,species] > 0.)
 avg_Tdust = np.reshape(aux,(nx,ny,nz))

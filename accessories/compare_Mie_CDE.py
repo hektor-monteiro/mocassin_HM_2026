@@ -12,10 +12,10 @@ import cmath # For complex mathematical operations like log
 
 # --- Configuration ---
 # IMPORTANT: Replace 'your_nk_file.txt' with the actual path to your N/K data file.
-#FILE_PATH = '/home/hmonteiro/Downloads/mocassin-rw_changes_2023/dustData/forst-cryst-perp1-kyoto-uvx.nk'
-FILE_PATH = '/home/hmonteiro/Google Drive/work/PN/software/mocassin_HM_2025/dustData/h20_crystalline.nk'
+FILE_PATH = '/home/hmonteiro/Downloads/mocassin-rw_changes_2023/dustData/forst-cryst-perp1-kyoto-uvx.nk'
+# FILE_PATH = '/home/hmonteiro/Google Drive/work/PN/software/mocassin_HM_2025/dustData/h20_crystalline.nk'
 # IMPORTANT: Adjust the particle radius (in microns) as needed for your analysis.
-PARTICLE_RADIUS_MICRONS = 50.1 # Example: 0.1 microns
+PARTICLE_RADIUS_MICRONS = 1. # Example: 0.1 microns
 
 # --- Constants ---
 PI = cmath.pi # Use cmath.pi for consistency with complex numbers
