@@ -81,8 +81,6 @@ See `man/mocassin.1` for a complete list of keywords that can be configured in t
 | Quartz | SiO₂ | 0.01–0.5 | 2.65 | 1200–1300 | SiO₂ | 60.08 | 20.0 | ~0.33 (4.5 eV) |
 | Enstatite | MgSiO₃ | 0.1–1.0 | 3.2 | 1350–1400 | MgSiO₃ | 100.4 | 25.1 | ~0.37 (5 eV) |
 
-Of course! Here's the **LaTeX version** of the table, formatted for use in an article or report (e.g., with `booktabs` for better spacing). Following the table, I’ve included **references and sources** for each set of values where applicable.
-
 ### References & Sources
 
 Here are sources used to compile the physical parameters (need to double check these):
