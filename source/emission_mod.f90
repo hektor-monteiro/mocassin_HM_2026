@@ -27,21 +27,16 @@ module emission_mod
         logical,save :: lgFloc=.true.                !
     contains
 
-    ! this is the subroutine to drive the calculation
+! this is the subroutine to drive the calculation
     ! of the emission spectrum at the given cell
     subroutine emissionDriver(grids, ix, iy, iz, ig)
         implicit none
 
         integer, intent(in) :: ix, iy, iz, ig  ! pointers to this cell
-
-
         type(grid_type), intent(inout) :: grids(*) ! the cartesian grid
 
         ! local variables
-
-        integer :: err                       ! allocation error status
         integer :: i                         ! counters
-
         real    :: dV                        ! volume element
 
         double precision :: gammaHI(nbins)          ! HI fb+ff emission coefficient [e-40 erg*cm^3/s/Hz]
@@ -54,7 +49,7 @@ module emission_mod
         double precision :: twoPhotHeI(nbins)       ! HeI 2photon emission coefficient [e-40 erg*cm^3/s/Hz]
         double precision :: twoPhotHeII(nbins)      ! HeII 2photon emission coefficient [e-40 erg*cm^3/s/Hz]
 
-    ! units are [e-40erg/cm^3/s/Hz]
+        ! units are [e-40erg/cm^3/s/Hz]
         double precision :: emissionHI(nbins)                     ! HI continuum emission coefficient
         double precision :: emissionHeI(nbins)                    ! HeI continuum emission coefficient
         double precision :: emissionHeII(nbins)                   ! HeII continuum emission coefficient
@@ -63,6 +58,8 @@ module emission_mod
         if (grids(iG)%active(ix, iy, iz)<=0) return
 
         cellPUsed = grids(iG)%active(ix, iy, iz)
+        abFileUsed = grids(iG)%abFileIndex(ix,iy,iz)
+
         if (lgMultiDustChemistry) then
            nspE = grids(iG)%dustAbunIndex(cellPUsed)
         else
@@ -77,7 +74,6 @@ module emission_mod
         ! find the physical properties of this cell
         ionDenUsed= grids(iG)%ionDen(cellPUsed, :, :)
 
-        abFileUsed= grids(iG)%abFileIndex(ix,iy,iz)
         NeUsed    = grids(iG)%Ne(cellPUsed)
         TeUsed    = grids(iG)%Te(cellPUsed)
         sqrTeUsed = sqrt(TeUsed)
@@ -105,26 +101,22 @@ module emission_mod
         ffCoeff1       = 0.
         ffCoeff2       = 0.
 
-        ! calculates the H, He and heavy ions f-b and f-f emission
-        ! coefficients
+        ! calculates the H, He and heavy ions f-b and f-f emission coefficients
         call fb_ff()
 
-        ! calculate two photon emission coefficients for HI, HeI and
-        ! HeII
+        ! calculate two photon emission coefficients for HI, HeI and HeII
         call twoPhoton()
 
         ! calculate the total emission coefficients for H and He
-
         emissionHI = (gammaHI + twoPhotHI) * grids(iG)&
-                 &%elemAbun(grids(iG)%abFileIndex(ix,iy,iz), 1) * ionDenUsed(elementXref(1),2)*NeUsed &
+                 &%elemAbun(abFileUsed, 1) * ionDenUsed(elementXref(1),2)*NeUsed &
                  &+ gammaHeavies*NeUsed
         emissionHeI = (gammaHeI + twoPhotHeI ) * grids(iG)&
-                 &%elemAbun(grids(iG)%abFileIndex(ix,iy,iz),2) * ionDenUsed(elementXref(2),2)*NeUsed
+                 &%elemAbun(abFileUsed,2) * ionDenUsed(elementXref(2),2)*NeUsed
         emissionHeII= (gammaHeII + twoPhotHeII ) * grids(iG)&
-                 &%elemAbun(grids(iG)%abFileIndex(ix,iy,iz),2) * ionDenUsed(elementXref(2),3)*NeUsed
+                 &%elemAbun(abFileUsed,2) * ionDenUsed(elementXref(2),3)*NeUsed
 
         ! zero out near zero contributions
-
         where (emissionHI < 1.e-15 ) emissionHI = 0.
         where (emissionHeI < 1.e-15 ) emissionHeI = 0.
         where (emissionHeII < 1.e-15 ) emissionHeII = 0.
@@ -140,7 +132,7 @@ module emission_mod
              & (emissionHI(BjumpP-1)+emissionHeI(BjumpP-1)&
              &+emissionHeII(BjumpP-1)) *&
              & cRyd*cRyd*nuArray(BjumpP-1)*nuArray(BjumpP-1)*1.e-8/c)&
-             & *grids(iG)%Hden(grids(iG)%active(ix,iy,iz))*dV)
+             & *grids(iG)%Hden(cellPUsed)*dV)
 
         ! calculate the emission due to HI and HeI recombination lines
         call RecLinesEmission()
@@ -167,20 +159,15 @@ module emission_mod
 
       subroutine initResLinePackets()
         implicit none
-
         real                :: lineIntensity
-
         integer             :: iRes, imul, n, ai
 
         species: do n = 1, nSpeciesPart(nspE)
            do ai = 1, nSizes
-           
               if (grainRadius(ai) >= componentMinRadius(nspE, n) .and. grainRadius(ai) <= componentMaxRadius(nspE, n)) then
-
                  if (grids(iG)%Tdust(n,ai,cellPUsed)>0. .and. &
                       & grids(iG)%Tdust(n,ai,cellPUsed)<TdustSublime(dustComPoint(nspE)-1+n)) exit species
               endif
-
            end do
         end do species
 
@@ -194,118 +181,66 @@ module emission_mod
         lineIntensity=0.
         do iRes = 1, nResLines
            do imul = 1, resLine(iRes)%nmul
-
               if (resLine(iRes)%elem==1) then
                  if ( resLine(iRes)%ion == 1 .and. resLine(iRes)%moclow(imul)==1 &
                       & .and. resLine(iRes)%mochigh(imul)==2 ) then
-
                     ! fits to Storey and Hummer MNRAS 272(1995)41
                     lineIntensity = lineIntensity+10**(-0.897*log10(TeUsed) + 5.05)* &
-                         & grids(iG)%elemAbun(grids(iG)%abFileIndex(ix,iy,iz),1)*ionDenUsed(elementXref(1),2)*&
-                         &  NeUsed*grids(iG)%Hden(grids(iG)%active(ix,iy,iz))*dV*&
-                         & (1.-grids(iG)%fEscapeResPhotons(grids(iG)%active(ix,iy,iz), iRes))
-
+                         & grids(iG)%elemAbun(abFileUsed,1)*ionDenUsed(elementXref(1),2)*&
+                         &  NeUsed*grids(iG)%Hden(cellPUsed)*dV*&
+                         & (1.-grids(iG)%fEscapeResPhotons(cellPUsed, iRes))
                  else
-
                     print*, "! initResLinePackets: [warning] only dust heating &
                          &from H Lyman alpha and resonance lines from heavy &
                          &elements is implemented in this version. &
                          &Please contact B. Ercolano -1-", ires
-
                  end if
               else if (resLine(iRes)%elem>2) then
-
                  lineIntensity = lineIntensity+&
                       &real(forbiddenLines(resLine(iRes)%elem,resLine(iRes)%ion,&
                       &resLine(iRes)%moclow(imul),resLine(iRes)%mochigh(imul))*&
-                      & grids(iG)%Hden(grids(iG)%active(ix,iy,iz))*dV*&
-                      & (1.-grids(iG)%fEscapeResPhotons(grids(iG)%active(ix,iy,iz), iRes)))
-
+                      & grids(iG)%Hden(cellPUsed)*dV*&
+                      & (1.-grids(iG)%fEscapeResPhotons(cellPUsed, iRes)))
               else
-
                  print*, "! initResLinePackets: [warning] only dust heating from &
                       &H Lyman alpha and resonance lines from heavy &
                       &elements is implemented in this version. &
                       &Please contact B. Ercolano -2-", ires
-
-
               end if
-
            end do
         end do
 
         ! calculate number of dust emitted extra packets to be transfered from this location
-        ! NOTE :1.e-16 from 1.e45 (from dV) * 1.e-36 (from Lstar) * 1.e-25 (from local forlines)
-        grids(iG)%resLinePackets(grids(iG)%active(ix,iy,iz)) = nint(lineIntensity*1.e-16/(Lstar(1)/Nphotons(1)))
+        grids(iG)%resLinePackets(cellPUsed) = nint(lineIntensity*1.e-16/(Lstar(1)/Nphotons(1)))
 
       end subroutine initResLinePackets
 
-
-
-      ! this subroutine calculates the H, He and heavy ions f-b and f-f
-      ! emission coefficients
-      ! - it can only be called by emission driver -
+      ! this subroutine calculates the H, He and heavy ions f-b and f-f emission coefficients
       subroutine fb_ff()
         implicit none
 
-        ! local variables
-
-        logical            :: lgTeOut         ! is Te out of range of
-        ! available f-b coeffs
-
+        logical            :: lgTeOut         ! is Te out of range of available f-b coeffs
         integer            :: elem, ion       ! counters
-        integer            :: g0,&            ! stat weight of (elem, nElec) ground state
-             & g1             ! stat weight of (elem, nElec-1) ground state
-        integer            :: HIPnuP, &       ! pointer to the H IP in nuArray
-             & HeIPnuP,&                      ! pointer to the HeI IP in nuArray
-             & HeIIPnuP,&                     ! pointer to the HeII IP in nuArray
-             & highNuP,&                      ! pointer to the hi en of the current ion in nuArray
-             & IPnuP                          ! pointer to the IP of the current ion in nuArray
-        integer            :: i, j            ! counters
-        integer            :: iup, ilow       ! counters
-        integer            :: nElec           ! number of electrons in the ion
-        integer            :: nTemp           ! =1 if 5000K<Te<10000K, =2 if 10000K<Te<20000K
-        integer            :: outShell        ! outer shell number (1 for k-shell)
-        integer            :: xSecP           ! pointer to phot x sec of ion M in xSecArray
+        integer            :: g0, g1          ! stat weights
+        integer            :: HIPnuP, HeIPnuP, HeIIPnuP, highNuP, IPnuP
+        integer            :: i, j, iup, ilow, nElec, nTemp, outShell, xSecP
+        real, dimension(3) :: statW
 
+        double precision   :: aFit, factor, expFactor, constant
+        double precision   :: phXSecHI, phXSecHeI, phXSecHeII, phXSecM
+        double precision   :: inv_Te_sqrTe    ! Hoisted invariant
 
-        real, dimension(3)              :: statW      ! g0/g1 for HI, HeI and HeII
-
-        double precision                :: aFit, &    ! general calculations factors
-             & factor, &
-             & expFactor
-        double precision                :: constant   ! general calculation constant
-        double precision                :: phXSecHI,& ! phot x sec for HI
-             & phXSecHeI,&                            ! phot x sec for HeI
-             & phXSecHeII,&                           ! phot x sec for HeII
-             & phXSecM                                ! phot x sec for ion M
-        real, allocatable :: logGammaHIloc(:), logGammaHeIloc(:), logGammaHeIIloc(:)
-                                                      ! gamma [e-40 erg/Hz] for HI, HeI and HeII
-
-        allocate (logGammaHIloc(nlimGammaHI), stat=err)
-        if (err /= 0) then
-            print*, "! fb_ff: can't allocate array memory"
-            stop
-        end if
-        allocate (logGammaHeIloc(nlimGammaHeI), stat=err)
-        if (err /= 0) then
-            print*, "! fb_ff: can't allocate array memory"
-            stop
-        end if
-        allocate (logGammaHeIIloc(nlimGammaHeII), stat=err)
-        if (err /= 0) then
-            print*, "! fb_ff: can't allocate array memory"
-            stop
-        end if
+        ! Automatic arrays replace dynamic memory allocations
+        real :: logGammaHIloc(nlimGammaHI)
+        real :: logGammaHeIloc(nlimGammaHeI)
+        real :: logGammaHeIIloc(nlimGammaHeII)
 
         logGammaHIloc = 0.
         logGammaHeIloc = 0.
         logGammaHeIIloc = 0.
 
-        ! interpolate the coefficients in Temperature (linear in log-log)
-
         ! check what coefficients are needed for the local electron Temperature
-        lgTeOut = .false. ! (re)initialize out of range Te flag
+        lgTeOut = .false.
         if (TeUsed <= tkGamma(1)) then
             lgTeOut = .true.
             logGammaHIloc = logGammaHI(1,:)
@@ -318,287 +253,161 @@ module emission_mod
             logGammaHeIIloc = logGammaHeII(ntkGamma,:)
          else
             call locate (tkGamma, TeUsed, nTemp)
-
             factor = log10(TeUsed/tkGamma(nTemp))
             do i = 1, nlimGammaHI
                aFit = (logGammaHI(nTemp+1,i)-logGammaHI(nTemp,i))/ &
                     & log10(tkGamma(ntemp+1)/tkGamma(ntemp))
                logGammaHIloc(i) = logGammaHI(nTemp,i) + real(aFit * factor)
             end do
-
             do i = 1, nlimGammaHeI
                aFit = (logGammaHeI(nTemp+1,i)-logGammaHeI(nTemp,i))/ &
-                    & log10(tkGamma(ntemp+1)/tkGamma(ntemp))
+                     & log10(tkGamma(ntemp+1)/tkGamma(ntemp))
                logGammaHeIloc(i) = logGammaHeI(nTemp,i) + real(aFit * factor)
-
             end do
-
             do i = 1, nlimGammaHeII
                aFit = (logGammaHeII(nTemp+1,i)-logGammaHeII(nTemp,i))/ &
-                    & log10(tkGamma(ntemp+1)/tkGamma(ntemp))
+                     & log10(tkGamma(ntemp+1)/tkGamma(ntemp))
                logGammaHeIIloc(i) = logGammaHeII(nTemp,i) + real(aFit * factor)
-
             end do
         end if
 
-
         ! calculate f-b and f-f emissivity of HI, HeI and HeII
-        ! interpolate between the edges in nu, for the HI, HeI and
-        ! HeII series
-
-        ! calculate gammaHI (nu<1.Ryd)
         do i = 1, nlimGammaHI/2
             iup  = HINuEdgeP(2*i)
             ilow = HINuEdgeP(2*i - 1)
-
             if (iup == ilow) then
-                print*, "! fb_ff: frequency grid too course - divide&
-                     & by zero                          [nu]",&
-                     & nuArray(iup)
+                print*, "! fb_ff: frequency grid too course - divide by zero", nuArray(iup)
                 stop
             end if
-            aFit = (logGammaHIloc(2*i)-logGammaHIloc(2*i - 1)) /&
-                 & (nuArray(iup) - nuArray(ilow))
-            ! carry out interpolation between edges
+            aFit = (logGammaHIloc(2*i)-logGammaHIloc(2*i - 1)) / (nuArray(iup) - nuArray(ilow))
             do j = ilow, iup-1
-                gammaHI(j) = logGammaHIloc(2*i)+aFit* (nuArray(j)&
-                     &-nuArray(iup))
+                gammaHI(j) = logGammaHIloc(2*i)+aFit* (nuArray(j)-nuArray(iup))
                 gammaHI(j) = 10.**gammaHI(j)
             end do
         end do
 
-        ! calculate gammaHeI (nu<0.799Ryd)
-        ! note that we are not going all the way up to 1.8ryd.. can be changed
-
         do i = 1, nlimGammaHeI/2
             iup  = HeINuEdgeP(2*i)
             ilow = HeINuEdgeP(2*i - 1)
-
             if (iup == ilow) then
-                print*, "! fb_ff: frequency grid too course - divide&
-                     & by zero                          [nu]",&
-                     & nuArray(iup)
+                print*, "! fb_ff: frequency grid too course - divide by zero", nuArray(iup)
                 stop
             end if
-            aFit = (logGammaHeIloc(2*i)-logGammaHeIloc(2*i - 1)) /&
-                 & (nuArray(iup) - nuArray(ilow))
-            ! carry out interpolation between edges
+            aFit = (logGammaHeIloc(2*i)-logGammaHeIloc(2*i - 1)) / (nuArray(iup) - nuArray(ilow))
             do j = ilow, iup-1
-                gammaHeI(j) = logGammaHeIloc(2*i)+aFit* (nuArray(j)&
-                     &-nuArray(iup))
+                gammaHeI(j) = logGammaHeIloc(2*i)+aFit* (nuArray(j)-nuArray(iup))
                 gammaHeI(j) = 10.**gammaHeI(j)
-
-
             end do
         end do
-
-
-        ! calculate gammaHeII (nu<4.0Ryd)
 
         do i = 1, nlimGammaHeII/2
             iup  = HeIINuEdgeP(2*i)
             ilow = HeIINuEdgeP(2*i - 1)
-
-
             if (iup == ilow) then
-                print*, "! fb_ff: frequency grid too course - divide&
-                     & by zero                          [nu]",&
-                     & nuArray(iup)
+                print*, "! fb_ff: frequency grid too course - divide by zero", nuArray(iup)
                 stop
             end if
-
-            aFit = (logGammaHeIIloc(2*i)-logGammaHeIIloc(2*i - 1)) /&
-                 & (nuArray(iup) - nuArray(ilow))
-            ! carry out interpolation between edges
+            aFit = (logGammaHeIIloc(2*i)-logGammaHeIIloc(2*i - 1)) / (nuArray(iup) - nuArray(ilow))
             do j = ilow, iup-1
-
-                gammaHeII(j) = logGammaHeIIloc(2*i)+aFit* (nuArray(j)&
-                     &-nuArray(iup))
+                gammaHeII(j) = logGammaHeIIloc(2*i)+aFit* (nuArray(j)-nuArray(iup))
                 gammaHeII(j) = 10.**gammaHeII(j)
-
-
             end do
         end do
 
-        ! calculate f-b emission for HI  (nu > 1.), for HeI (nu > 1.8 Ryd)
-        ! and for HeII (nu > 4.0 Ryd) by means of Milne relation
-        ! - note the ff contribution will then need to be added separately
-        ! so set up the free free coefficients
         call free_free()
 
-        constant = 4.9874105e-6 ! Ryd*Ryd*(h^2/(2*Pi*Me*K))**(3/2) [cm*K^(3/2)]
+        constant = 4.9874105e-6 
         HIPnuP   = HlevNuP(1)
         HeIPnuP = HeIlevNuP(1)
         HeIIPnuP = HeIIlevNuP(1)
         statW = (/2., 0.5, 2./)
-        do i = HIPnuP, nbins
-            factor = (nuArray(i)*nuArray(i)*nuArray(i)) / (TeUsed*sqrTeUsed)
-            expFactor = exp(dble( (-nuArray(i) + nuArray(HIPnuP)) * hcRyd_k / TeUsed))
+        inv_Te_sqrTe = 1.0d0 / (TeUsed*sqrTeUsed) ! Hoisted
 
+        do i = HIPnuP, nbins
+            factor = (nuArray(i)*nuArray(i)*nuArray(i)) * inv_Te_sqrTe
+            expFactor = exp(dble( (-nuArray(i) + nuArray(HIPnuP)) * hcRyd_k / TeUsed))
             phXSecHI =  xSecArray(i-HIPnuP+1+HlevXSecP(1)-1)
-            gammaHI(i) = fourPi * phXSecHI * statW(1) * hcRyd * constant*&
-&                          factor * expFactor * 1.e20 *1.e20
-            ! add the free free contribution
+            gammaHI(i) = fourPi * phXSecHI * statW(1) * hcRyd * constant* factor * expFactor * 1.d40
             gammaHI(i) = gammaHI(i)+ffCoeff1(i)
-            ! calculate gammaHeI
-!            if (i >= HeIPnuP) then
+
             if (i >= HeINuEdgeP(nlimGammaHeI) ) then
                 expFactor = exp(dble( (-nuArray(i) + nuArray(HeIPnuP)) * hcRyd_k / TeUsed))
                 phXSecHeI = xSecArray(i-HeIPnuP+1+HeISingXSecP(1)-1)
-
-                gammaHeI(i) = fourPi * phXSecHeI * statW(2) * hcRyd * constant*&
-&                          factor * expFactor * 1.e20 *1.e20
-                ! add the free free contribution
+                gammaHeI(i) = fourPi * phXSecHeI * statW(2) * hcRyd * constant* factor * expFactor * 1.d40
                 gammaHeI(i) = gammaHeI(i) + ffCoeff1(i)
                 if (i >= HeIINuEdgeP(nlimGammaHeII)) then
                     expFactor  = exp(dble( (-nuArray(i) + nuArray(HeIIPnuP)) * hcRyd_k / TeUsed))
                     phXSecHeII = xSecArray(i-HeIIPnuP+1+HeIIXSecP(1)-1)
-                    gammaHeII(i) = fourPi * phXSecHeII * statW(3) * hcRyd * constant*&
-&                              factor * expFactor * 1.e20 *1.e20
-                    ! add the free free contribution
+                    gammaHeII(i) = fourPi * phXSecHeII * statW(3) * hcRyd * constant* factor * expFactor * 1.d40
                     gammaHeII(i) = gammaHeII(i) + ffCoeff2(i)
                 end if
             end if
         end do
 
-        ! calculate gammaHeavies
         do i = 1, nbins
-           ! only elemnts up to z=19 calculated.. for now (problem with statistical
-           ! weights for z>19. Contribution from elements wih Z > 19 generally small.
            do elem = 3, 19
-
                 do ion = 1, nstages-1
-                    ! check if this element is present in the nebula
                     if (.not.lgElementOn(elem)) exit
-
                     if (ion > elem) exit
-
-                    ! find the number of electron in this ion
                     nElec = elem - ion +1
-
-                    ! find the outer shell number and stat weights
                     call getOuterShell(elem, nElec, outShell, g0, g1)
-
-                    ! get pointer to this ion's high energy limit in nuArray
                     highNuP = elementP(elem, ion, outShell, 2)
                     if ( highNuP > nbins ) then
-                        print*, "! fb_ff: high frequency limit beyond grid limit. Increase&
-&                             frequency grid, or switch element off [nuMax,elem,&
-&                             ion]", nuMax,elem,ion
+                        print*, "! fb_ff: high frequency limit beyond grid limit.", nuMax,elem,ion
                         stop
                     end if
-
-                    ! get pointer to this ion's IP in nuArray
                     IPnuP = elementP(elem, ion, outShell, 1)
-                    ! check IP within frequency range
                     if ( IPnuP > nbins ) then
-                        print*, "! fb_ff: IP frequency beyond grid limit. Increase&
-&                             frequency grid, or switch element off [nuMax,elem,&
-&                             ion]", nuMax,elem,ion
+                        print*, "! fb_ff: IP frequency beyond grid limit.", nuMax,elem,ion
                         stop
                     end if
-
-                    ! check IP of atom against current energy
                     if ( (i >= IPnuP) .and. (i < highNuP) ) then
-
-                        ! get pointer to phot xSec of this ion in xSecArray
                         xSecP = elementP(elem, ion, outShell, 3)
-
-                        ! get phot xSec of this ion at this energy
                         phXSecM = xSecArray(i+xSecP-IPnuP+1-1)
-
-                        ! sum up the coefficients
                         expFactor = exp( dble((-nuArray(i)+nuArray(IPnuP)) * hcRyd_k / TeUsed))
-
                         gammaHeavies(i) = gammaHeavies(i) + &
 &                                  expFactor * phXSecM * (real(g0)/real(g1)) * &
-&                                  ionDenUsed(elementXref(elem), ion+1) * grids(iG)%elemAbun(grids(iG)%abFileIndex(ix,iy,iz),elem)
-
+&                                  ionDenUsed(elementXref(elem), ion+1) * grids(iG)%elemAbun(abFileUsed,elem)
                     end if
-                    end do
                 end do
-            factor = nuArray(i)*nuArray(i)*nuArray(i) / (TeUsed*sqrTeUsed)
-            gammaHeavies(i) = gammaHeavies(i) * fourPi * constant *&
-&                                hcRyd * factor * 1.e20 * 1.e20
-
+            end do
+            factor = (nuArray(i)*nuArray(i)*nuArray(i)) * inv_Te_sqrTe
+            gammaHeavies(i) = gammaHeavies(i) * fourPi * constant * hcRyd * factor * 1.d40
         end do
 
     end subroutine fb_ff
 
     subroutine twoPhoton()
         implicit none
-
-        ! local variables
-        integer                 :: i      ! counter
-
-        ! calculate the two photon emission due to HI and HeII
-        ! (use the hydrogenic ions function)
+        integer :: i
         do i = 1, nbins
             twoPhotHI(i) = hydro2phot(nuArray(i), 1)
             twoPhotHeII(i) = hydro2phot(nuArray(i), 2)
         end do
-
-        ! calculate the two photon emission due to HeI
         call HeI2photSub()
     end subroutine twoPhoton
 
-
-    ! this function calculates the two photon emission coefficient
-    ! for Hydrogenic ions. See Nussbaumer and Schmutz, A&A 138(1984)495
     function hydro2phot(nu, Z)
         implicit none
+        double precision    :: hydro2phot
+        real, intent(in)    :: nu
+        integer, intent(in) :: Z
+        real                :: alphaEffH22S, alphaEffHeII21S
+        real, parameter     :: A22S12S=8.23, A2qH = 8.2249
+        real                :: A2qZ, Ay, factor, gNu, nu0, Q22S22P, y
 
-        double precision                :: hydro2phot   ! emission coeff for 2-phot cont [e-40 erg/cm^3/s/Hz]
-                                            ! for the hydrogenic ion [e-40 erg*cm^3/s/Hz]
-        real, intent(in)    :: nu           ! frequency [Ryd]
-
-        integer, intent(in) :: Z            ! nuclear charge
-
-        ! local variables
-        real                :: alphaEffH22S ! effective recombination coefficient
-                                            ! to the 22S state of HI [e-13 cm^3/s]
-        real                :: alphaEffHeII21S ! effective recombination coefficient
-                                            ! to the 21S state of HeII [e-13 cm^3/s]
-        real, parameter     :: A22S12S=8.23 ! Einstein A of forbibben LyAlpha [1/s]
-        real, parameter     :: A2qH = 8.2249! total hydrogen 2s->1s 2 photon
-                                            ! transition probability [1/s]
-        real                :: A2qZ         ! total Z-ion 2s->1s 2 photon
-                                            ! transition probability [1/s]
-        real                :: Ay           ! transition probability (nu-dependent)
-        real                :: factor       ! general interpolation factor
-        real                :: gNu          ! spec distribution of 2phot emission
-                                            ! [e-27 erg/Hz]
-        real                :: nu0          ! frequencyof the 2s->1s transition
-        real                :: Q22S22P      ! collisional transitional rates
-                                            ! for HI 22S-22P
-        real                :: y            ! nu/nu0 where nu0is the frequency
-                                            ! of the 2s->1s transition
-        ! select the hydrogenic ion
         select case(Z)
-        ! for HI
         case (1)
-            ! nu [Ryd] of 2s->1s transition (=1215.7 A)
             nu0 = 0.7496
             y = nu/nu0
-
-            ! check for nu >= nu0
             if (nu >= nu0 ) then
                 hydro2phot = 0.
                 return
             end if
-
-            ! for alphaEffH22S see Pengelly, MNRAS, 127(1964)145
             alphaEffH22S = 0.8368*((TeUsed*1.e-4)**(-0.723))
-
-            Ay = 202.0*(y*(1-y)*(1-(4*y*(1-y))**0.8) + &
-&                 0.88*((y*(1-y))**1.53)*(4*y*(1-y))**0.8)
-
+            Ay = 202.0*(y*(1-y)*(1-(4*y*(1-y))**0.8) + 0.88*((y*(1-y))**1.53)*(4*y*(1-y))**0.8)
             gNu = hPlanck*y*Ay/A2qH
             gNu = gNu*1e27
-
-            ! calculate the collisional transitional rates for HI 22S-22P
-            ! interpolate over temperature the value given in table 4.10
-            ! from Osterbrock
             if (TeUsed <= 10000.) then
                 Q22S22P = 5.31e-4
             else if (TeUsed >= 20000.) then
@@ -607,23 +416,14 @@ module emission_mod
                 factor = log10(4.71e-4/5.31e-4) / log10(2.)
                 Q22S22P = 10**( log10(5.31e-4) + factor*log10(TeUsed/10000.) )
             end if
-
             hydro2phot = alphaEffH22s*gNu / (1.+(NeUsed*Q22S22P)/A22S12S)
-
-        case (2) ! HeII
-            !  nu [Ryd] of 2s->1s transition (=303.8 A)
+        case (2) 
             nu0 = 3.00
             y = nu/nu0
-
-            ! check for nu >= nu0
             if (nu >= nu0 ) then
                 hydro2phot = 0.
                 return
             end if
-
-            ! for alphaEffHeII21S see Storey & Hummer, MNRAS, 272(1995)41
-            ! the values used are for Ne = 100 cm^-3; however alphaEffHeII21S is not
-            ! very sensitive to density.. only interpolate over temperature
             if (TeUsed <= 5000.) then
                 alphaEffHeII21S = 6.161
             else if (TeUsed >= 30000.) then
@@ -638,177 +438,90 @@ module emission_mod
                 factor = log10(2.035/3.189) / log10(2.)
                 alphaEffHeII21S = 10**( log10(3.189) + factor*log10(TeUsed/15000.) )
             end if
-
             Ay = (Z**6)*0.9994667*202.0*(y*(1-y)*(1-(4*y*(1-y))**0.8) + &
 &                 0.88*((y*(1-y))**1.53)*(4*y*(1-y))**0.8)
-
             A2qZ = 8.226*Z**6
-
             gNu = hPlanck*y*Ay/A2qZ
             gNu = gNu*1e27
-
-            ! collisional de-excitation of the 22S of HeII is negligible
-
-            ! caalculate the 2 photon emission
             hydro2phot = alphaEffHeII21s*gNu
-
-
         end select
-
     end function hydro2phot
 
     subroutine HeI2photSub()
         implicit none
+        integer             :: i, j
+        real, parameter     :: A21S11S=51.3, nu0=1.514
+        real                :: alphaEff21SHeI, Ay, fit1, fit2, y
 
-        ! local variables
-        integer             :: i, j          ! counters
-
-        real, parameter     :: A21S11S=51.3  ! HeI 2q [1/s]
-                                             ! Almog & Netzer, MNRAS 238(1989)57
-        real, parameter     :: nu0=1.514     ! 21s -> 11s frequency [Ryd]
-
-        real                :: alphaEff21SHeI! effective rec coeff to HeI 21S [e-14 cm^3/s]
-                                             ! Almog & Netzer, MNRAS 238(1989)57
-        real                :: Ay            ! interpolated rate [1/s]
-        real                :: fit1, fit2    ! interpolation coefficients
-        real                :: y             ! nu/nu0
-
-        ! assume all HeI singlets finally end up in the 2^1S
-        ! use total recombination cofficient to all singlets Benjamin, Skillman and SMits, ApJ, 1999, 514, 307
         alphaEff21SHeI = 6.23*((TeUsed/10000.)**(-0.827))
-
-        ! calculate coefficients as a function of frequency
         j = 1
         do i = 1, nbins
-            ! calculate y
             y  = nuArray(i)/nu0
-
             if ( y > y_dat(j) ) j=j+1
             if ( j >= 41 ) exit
-
-            fit1 = (Ay_dat(j+1)-Ay_dat(j)) / &
-&                                  (y_dat(j+1)-y_dat(j))
+            fit1 = (Ay_dat(j+1)-Ay_dat(j)) / (y_dat(j+1)-y_dat(j))
             fit2 = Ay_dat(j) - y_dat(j)*fit1
-
             Ay = fit1*y + fit2
-
             if ( Ay < 9.2163086E-03 ) Ay = 0.
-
             twoPhotHeI(i) = alphaEff21SHeI*Ay*0.66262*y/A21S11S
         end do
+    end subroutine HeI2photSub
 
-      end subroutine HeI2photSub
-
-    ! this subroutine sets the ff emission coefficients for z=1 (ffCoeff1)
-    ! and z=2 (ffCoeff2)
     subroutine free_free()
         implicit none
-
-        ! local variables
-        integer        :: i   ! counter
-
+        integer        :: i
         do i = 1, nbins
-            ! find the free-free emission coefficient for H+ and He+
             ffCoeff1(i) = ffCoeff(nuArray(i), 1, gauntFF(i))
-            ! find the free-free emission coefficient for He++
             ffCoeff2(i) = ffCoeff(nuArray(i), 2, gauntFFHeII(i))
         end do
     end subroutine free_free
 
-    ! this function calculates the ff emission coeficient for interactions between
-    ! ions of nuclear charge Z and electrons.
-    ! see Allen pg 103.
     function ffCoeff(nu, Z, g)
         implicit none
-
-        double precision     :: ffCoeff     ! ff emission coefficient [e-40 erg*cm^3/s.Hz]
-        real, intent(in)     :: g           ! ff gaunt
-        real, intent(in)     :: nu          ! frequency [Ryd]
-
-        integer, intent(in)  :: Z           ! nuclear charge
-
-        ! local variables
-        double precision     :: expFactor   ! exponential factor
+        double precision     :: ffCoeff
+        real, intent(in)     :: g, nu
+        integer, intent(in)  :: Z
+        double precision     :: expFactor
 
         expFactor = exp(dble(-nu*hcRyd_k/TeUsed))
-
         ffCoeff = fourPi*54.43*Z*Z*g*expFactor/sqrTeUsed
-
     end function ffCoeff
 
     subroutine RecLinesEmission()
         implicit none
-
-        ! local variables
-        integer                    :: i, denint   ! counters
-        integer                    :: ilow,&      ! pointer to lower level
-&                                      iup        ! pointer to upper level
-
-        real                       :: Hbeta       ! Hbeta emission
-        real                       :: HeII4686    ! HeII 4686 emission
-        real                       :: Lalpha      ! Lalpha emission
-        real                       :: T4          ! TeUsed/10000.
-        real                       :: x1, x2, coeff
-
-        real, dimension(34) :: HeIRecLines_raw ! Temporary array to hold raw values
-        logical, parameter :: DEBUG_THIS_CELL = .true. ! Set to .false. to turn off
-        real, parameter :: MIN_SAFE_TEMP = 5000.0 ! Validity limit of the BSS99 formula
-
-        ! The index for 5876A 
+        integer                    :: i, denint, ilow, iup
+        real                       :: Hbeta, HeII4686, Lalpha, T4, x1, x2, coeff
+        real, dimension(34) :: HeIRecLines_raw 
+        logical, parameter :: DEBUG_THIS_CELL = .true. 
+        real, parameter :: MIN_SAFE_TEMP = 5000.0 
         integer, parameter :: I_5876 = 16
 
         T4 = TeUsed / 10000.
-
-        ! copy HI data into array. this is where reading from file used to happen
-
         HIRecLines = HIRecLineData
 
-        ! do hydrogenic ions first
-
-        ! calculate Hbeta
-        ! Hbeta = 2530./(TeUsed**0.833) ! TeUsed < 26000K CASE
-        ! fits to Storey and Hummer MNRAS 272(1995)41
         Hbeta = 10**(-0.870*log10Te + 3.57)
-        Hbeta = Hbeta*NeUsed*ionDenUsed(elementXref(1),2)*grids(iG)%elemAbun(grids(iG)%abFileIndex(ix,iy,iz),1)
+        Hbeta = Hbeta*NeUsed*ionDenUsed(elementXref(1),2)*grids(iG)%elemAbun(abFileUsed,1)
 
-        ! calculate emission due to HI recombination lines [e-25 ergs/s/cm^3]
         do iup = 15, 3, -1
             do ilow = 2, min(8, iup-1)
                 HIRecLines(iup, ilow) = HIRecLines(iup, ilow)*Hbeta
             end do
         end do
 
-        ! add contribution of Lyman alpha
-        ! fits to Storey and Hummer MNRAS 272(1995)41
         Lalpha = 10**(-0.897*log10Te + 5.05)
-        HIRecLines(15, 8) =HIRecLines(15, 8) + grids(iG)%elemAbun(grids(iG)%abFileIndex(ix,iy,iz),1)*&
-             & ionDenUsed(elementXref(1),2)*&
-             & NeUsed*Lalpha
-
-
-        ! copy array. this is where the file used to be read in
+        HIRecLines(15, 8) =HIRecLines(15, 8) + grids(iG)%elemAbun(abFileUsed,1)*&
+             & ionDenUsed(elementXref(1),2)* NeUsed*Lalpha
 
         HeIIRecLines = HeIIRecLinedata
 
-        ! calculate HeII 4686 [E-25 ergs*cm^3/s]
         HeII4686 = 10.**(-.997*log10(TeUsed)+5.16)
-        HeII4686 = HeII4686*NeUsed*grids(iG)%elemAbun(grids(iG)%abFileIndex(ix,iy,iz),2)*ionDenUsed(elementXref(2),3)
+        HeII4686 = HeII4686*NeUsed*grids(iG)%elemAbun(abFileUsed,2)*ionDenUsed(elementXref(2),3)
 
-        ! calculate emission due to HeI recombination lines [e-25 ergs/s/cm^3]
         do iup = 30, 3, -1
             do ilow = 2, min(16, iup-1)
                 HeIIRecLines(iup, ilow) = HeIIRecLines(iup, ilow)*HeII4686
              end do
         end do
-
-        ! now do HeI
-
-!        ! Safeguard: Prevent T4 from being too small for the fitting formula
-!        ! this means HeI lines will be wrong in these regions
-!        ! this is a temp fix!!!!!!
-!        if (TeUsed < 5000.) then
-!           T4 = 5000.0 / 10000.
-!        endif
 
         if (NeUsed <= 100.) then
            denint=0
@@ -821,14 +534,12 @@ module emission_mod
         end if
         
         if (TeUsed > 5000.) then
-
-           ! data from Benjamin, Skillman and Smits ApJ514(1999)307 [e-25 ergs*cm^3/s]
            if (denint>0.and.denint<3) then
               do i = 1, 34
                   x1=HeIrecLineCoeff(i,denint,1)*(T4**(HeIrecLineCoeff(i,denint,2)))*exp(HeIrecLineCoeff(i,denint,3)/T4)
                   x2=HeIrecLineCoeff(i,denint+1,1)*(T4**(HeIrecLineCoeff(i,denint+1,2)))*exp(HeIrecLineCoeff(i,denint+1,3)/T4)
                   HeIRecLines(i) = x1+((x2-x1)*(NeUsed-100.**denint)/(100.**(denint+1)-100.**(denint)))
-              end do
+               end do
           elseif(denint==0) then
               do i = 1, 34
                  HeIRecLines(i) = HeIrecLineCoeff(i,1,1)*(T4**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/T4)
@@ -838,321 +549,158 @@ module emission_mod
                  HeIRecLines(i) = HeIrecLineCoeff(i,3,1)*(T4**(HeIrecLineCoeff(i,3,2)))*exp(HeIrecLineCoeff(i,3,3)/T4)
               end do
           end if
-          
        else
-       
-       ! conferir extrapolação abaixo para regime de densidade pois está errado!
-       ! Use Power-Law Extrapolation for Te < 5000       
            if (denint>0.and.denint<3) then
-           ! here we assume that coefficients converge to the same slope for any densities
-           ! Kept original if structure here to make this more explicit for now
               do i = 1, 34
-                 ! for T4=(5000/1e4)
                  x1 = HeIrecLineCoeff(i,1,1)*((0.5)**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/(0.5))
-                 ! for T4=(6000/1e4)
                  x2 = HeIrecLineCoeff(i,1,1)*((0.6)**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/(0.6))
-                 ! estimated slope
-                 coeff = (LOG10(x1)-LOG10(x2))/(LOG10(0.5)-LOG10(0.6))
-                 
-                 !final extrapolation
-                 HeIRecLines(i) = (x1/0.5**coeff)*T4**coeff
+                 coeff = (LOG10(x1)-LOG10(x2))/(-0.079181246)
+                 HeIRecLines(i) = (x1/(0.5**coeff))*T4**coeff
               end do
           elseif(denint==0) then
               do i = 1, 34                 
-                 ! for T4=(5000/1e4)
                  x1 = HeIrecLineCoeff(i,1,1)*((0.5)**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/(0.5))
-                 ! for T4=(6000/1e4)
                  x2 = HeIrecLineCoeff(i,1,1)*((0.6)**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/(0.6))
-                 ! estimated slope
-                 coeff = (LOG10(x1)-LOG10(x2))/(LOG10(0.5)-LOG10(0.6))
-                 
-                 !final extrapolation
-                 HeIRecLines(i) = (x1/0.5**coeff)*T4**coeff
+                 coeff = (LOG10(x1)-LOG10(x2))/(-0.079181246)
+                 HeIRecLines(i) = (x1/(0.5**coeff))*T4**coeff
               end do
           elseif(denint==3) then
               do i = 1, 34
-                 ! for T4=(5000/1e4)
                  x1 = HeIrecLineCoeff(i,3,1)*((0.5)**(HeIrecLineCoeff(i,3,2)))*exp(HeIrecLineCoeff(i,3,3)/(0.5))
-                 ! for T4=(6000/1e4)
                  x2 = HeIrecLineCoeff(i,3,1)*((0.6)**(HeIrecLineCoeff(i,3,2)))*exp(HeIrecLineCoeff(i,3,3)/(0.6))
-                 ! estimated slope
-                 coeff = (LOG10(x1)-LOG10(x2))/(LOG10(0.5)-LOG10(0.6))
-                 
-                 !final extrapolation
-                 HeIRecLines(i) = (x1/0.5**coeff)*T4**coeff
+                 coeff = (LOG10(x1)-LOG10(x2))/(-0.079181246)
+                 HeIRecLines(i) = (x1/(0.5**coeff))*T4**coeff
               end do
           end if
-       
        endif
 
-       HeIRecLines_raw = HeIRecLines ! Save the raw coefficients before scaling
-       HeIRecLines=HeIRecLines*NeUsed*grids(iG)%elemAbun(grids(iG)%abFileIndex(ix,iy,iz),2)*ionDenUsed(elementXref(2),2)
-
-!	! ==========================================================
-!	! START: ADD DIAGNOSTIC PRINTS HERE
-!	! ==========================================================
-!	    BLOCK
-!		! Trigger the print statement only for the problematic cells
-!!		if (DEBUG_THIS_CELL .and. TeUsed > 0.0 .and. TeUsed < 1000.0 .and. grids(iG)%Hden(grids(iG)%active(ix,iy,iz)) > 10000.) then
-!		if (DEBUG_THIS_CELL .and. grids(iG)%Hden(grids(iG)%active(ix,iy,iz)) > 10000.) then
-!		    
-!		    ! Print all the components of the calculation
-!		    print *, '--- DEBUG He I Lines ---'
-!		    print *, 'Cell (ix,iy,iz): ', ix, iy, iz
-!		    print *, 'Te = ', TeUsed, ' K,  Ne = ', NeUsed, ' cm^-3, Hden = ', grids(iG)%Hden(grids(iG)%active(ix,iy,iz)), ' cm^-3'
-!		    print *, 'T4 = ', T4, ' K', HeIrecLineCoeff(I_5876,1,1), T4**(HeIrecLineCoeff(I_5876,1,2)), exp(HeIrecLineCoeff(I_5876,1,3)/T4), x1, x2
-!		    print *, 'He+ Fraction [ionDenUsed(2,2)] = ', ionDenUsed(elementXref(2),2)
-!		    print *, 'Raw 5876A Coeff [HeIRecLines_raw(10)] = ', HeIRecLines_raw(I_5876)
-!		    print *, 'Final 5876A Emissivity = ', HeIRecLines(I_5876)
-!		    print *, '------------------------'
-
-!		end if
-!	    END BLOCK
-!	! ==========================================================
-!	! END OF DIAGNOSTIC BLOCK
-!	! ==========================================================
-
-       
+       HeIRecLines_raw = HeIRecLines
+       HeIRecLines=HeIRecLines*NeUsed*grids(iG)%elemAbun(abFileUsed,2)*ionDenUsed(elementXref(2),2)
         
     end subroutine RecLinesEmission
 
-
-    ! this subroutine is the driver for the calculation of the emissivity
-    ! from the heavy elements forbidden lines.
     subroutine forLines()
         implicit none
+        integer :: elem, ion 
 
-        integer :: elem, ion ! counters
-
-        ! re-initialize forbiddenLines
         forbiddenLines = 0.
 
         do elem = 3, nElements
            do ion = 1, min(elem+1, nstages)
               if (.not.lgElementOn(elem)) exit
-
               if (lgDataAvailable(elem, ion)) then
-
                  if (elem == 26 .and. ion == 2) then
                     if (nstages > 2) then
                        call equilibrium(file_name=dataFile(elem, ion), &
-                            &ionDenUp=ionDenUsed(elementXref(elem),ion+1)&
-                            &/ionDenUsed(elementXref(elem),ion), Te=TeUsed,&
-                            &Ne=NeUsed, FlineEm=forbiddenLinesLarge(&
-                            &1:nForLevelsLarge, 1:nForLevelsLarge))
+                            &ionDenUp=ionDenUsed(elementXref(elem),ion+1)/ionDenUsed(elementXref(elem),ion), Te=TeUsed,&
+                            &Ne=NeUsed, FlineEm=forbiddenLinesLarge(1:nForLevelsLarge, 1:nForLevelsLarge))
                     else
                        call equilibrium(file_name=dataFile(elem, ion), &
                             &ionDenUp=0., Te=TeUsed,&
-                            &Ne=NeUsed, FlineEm=forbiddenLinesLarge(&
-                            &1:nForLevelsLarge, 1:nForLevelsLarge))
+                            &Ne=NeUsed, FlineEm=forbiddenLinesLarge(1:nForLevelsLarge, 1:nForLevelsLarge))
                     end if
-
                     forbiddenLinesLarge(:, :) =&
-                         &forbiddenLinesLarge(:, :)*grids(iG)%elemAbun(&
-                         &grids(iG)%abFileIndex(ix,iy,iz),elem)*&
+                         &forbiddenLinesLarge(:, :)*grids(iG)%elemAbun(abFileUsed,elem)*&
                          & ionDenUsed(elementXref(elem), ion)
-
                  else
                     if (ion<nstages) then
                        call equilibrium(file_name=dataFile(elem, ion), &
-                            &ionDenUp=ionDenUsed(elementXref(elem),ion+1)/&
-                            &ionDenUsed(elementXref(elem),ion), Te=TeUsed,&
-                            &Ne=NeUsed, FlineEm=forbiddenLines(elem, ion,&
-                            &1:nForLevels, 1:nForLevels))
+                            &ionDenUp=ionDenUsed(elementXref(elem),ion+1)/ionDenUsed(elementXref(elem),ion), Te=TeUsed,&
+                            &Ne=NeUsed, FlineEm=forbiddenLines(elem, ion,1:nForLevels, 1:nForLevels))
                     else
                        call equilibrium(file_name=dataFile(elem, ion), &
                             &ionDenUp=0., Te=TeUsed, Ne=NeUsed, &
-                            &FlineEm=forbiddenLines(elem, ion,1:nForLevels,&
-                            &1:nForLevels))
+                            &FlineEm=forbiddenLines(elem, ion,1:nForLevels,1:nForLevels))
                     end if
-
                     forbiddenLines(elem, ion, :, :) =&
-                         &forbiddenLines(elem, ion, :, :)*grids(iG)%elemAbun(&
-                         &grids(iG)%abFileIndex(ix,iy,iz),elem)*&
+                         &forbiddenLines(elem, ion, :, :)*grids(iG)%elemAbun(abFileUsed,elem)*&
                          & ionDenUsed(elementXref(elem), ion)
-
                  end if
               end if
-
            end do
         end do
 
-
-        ! scale the forbidden lines emissivity to give units of [10^-25 erg/s/Ngas]
-        ! comment: the forbidden line emissivity is so far in units of cm^-1/s/Ngas
-        !          the energy [erg] of unit wave number [cm^-1] is 1.9865e-16, hence
-        !          the right units are obtained by multiplying by 1.9865e-16*1e25
-        !          which is 1.9865*1e9
         forbiddenLines = forbiddenLines*1.9865e9
 
     end subroutine forLines
 
     subroutine setDiffusePDF()
         implicit none
-
-        ! local variables
-
         real (kind=8)     :: tg
         real(kind=8),dimension(nTbins) :: Tspike,Pspike
+        real              :: alpha2tS, bb, const, correction, normalize, normDust
+        real              :: normFor, normHI, normHeI, normHeII, normRec, treal, T4
+        real              :: diffuse_scale ! Hoisted invariant
 
-        real              :: alpha2tS          ! effective rec coeff to the 2s trip HeI
-        real              :: bb                ! blackbody
-        real              :: const             ! general calculation constant
-        real              :: correction        ! general correction term
-        real              :: normalize         ! normHI+normHeI+normHeII
-        real              :: normDust           ! normalization constant for dust
-        real              :: normFor           ! normalization constant for lines
-        real              :: normHI            ! normalization constant for HI
-        real              :: normHeI           !                            HeI
-        real              :: normHeII          !                            HeII
-        real              :: normRec           !                            rec. lines
-        real              :: treal
-        real              :: T4                ! TeUsed/10000.
+        ! Automatic arrays replace dynamic memory allocations
+        real :: sumDiffuseHI(nbins)
+        real :: sumDiffuseHeI(nbins)
+        real :: sumDiffuseHeII(nbins)
+        real :: sumDiffuseDust(nbins)
 
-        real, allocatable     :: sumDiffuseDust(:) ! summation terms for dust emission
-        real, allocatable     :: sumDiffuseHI(:)   ! summation terms for HI emission
-        real, allocatable     :: sumDiffuseHeI(:)  ! summation terms for HeI emission
-        real, allocatable     :: sumDiffuseHeII(:) ! summation terms for HeII emission
-
-        integer           :: dcp                ! local dustComPointer
-        integer           :: elem, ion          ! counters
-        integer           :: err                ! allocation error status
-        integer           :: j2TsP              ! pointer to 2s triplet state in nuArray
-        integer           :: i,iup,ilow,j       ! counters
-        integer           :: nuP                ! frequency pointer in nuArray
-        integer           :: nS, ai, freq, iT   ! dust counters
-
+        integer           :: dcp, elem, ion, j2TsP, i,iup,ilow,j, nuP, nS, ai, freq, iT
         character(len=50) :: cShapeLoc
-
-        real,dimension(NHeIILyman) :: HeIILyman ! HeII Lyman lines em. [e-25ergs*cm^3/s]
+        real,dimension(NHeIILyman) :: HeIILyman 
 
         cShapeLoc = 'blackbody'
-
-        ! allocate space for the summation arrays
-        allocate(sumDiffuseHI(1:nbins), stat = err)
-        if (err /= 0) then
-            print*, "! setDiffusePDF: can't allocate recPDF array memory"
-            stop
-        end if
-        allocate(sumDiffuseHeI(1:nbins), stat = err)
-        if (err /= 0) then
-            print*, "! setDiffusePDF: can't allocate recPDF array memory"
-            stop
-        end if
-        allocate(sumDiffuseHeII(1:nbins), stat = err)
-        if (err /= 0) then
-            print*, "! setDiffusePDF: can't allocate recPDF array memory"
-            stop
-        end if
-
-
-
-        ! assign pointers for the He line photons
         call locate(nuArray, 1.45673, j2TsP)
 
-        ! calculate normalization constants for the HI, HeI and HeII diffuse probs
-
-        ! initialize constants
         normHI   = 0.
         normHeI  = 0.
         normHeII = 0.
-
         sumDiffuseHI = 0.
         sumDiffuseHeI = 0.
         sumDiffuseHeII = 0.
 
-        ! perform summations
+        diffuse_scale = cRyd / 1.e15 ! Hoisted scaling factor
+
         do i = 1, nbins
-
-           sumDiffuseHI(i) = real(cRyd*widFlx(i)*emissionHI(i)/1.e15)
-
+           sumDiffuseHI(i) = real(diffuse_scale*widFlx(i)*emissionHI(i))
            normHI = normHI + sumDiffuseHI(i)
 
-           sumDiffuseHeI(i) =  real(cRyd*widFlx(i)*emissionHeI(i)/1.e15)
-
+           sumDiffuseHeI(i) =  real(diffuse_scale*widFlx(i)*emissionHeI(i))
            normHeI = normHeI + sumDiffuseHeI(i)
 
-           sumDiffuseHeII(i) = real(cRyd*widFlx(i)*emissionHeII(i)/1.e15)
-
+           sumDiffuseHeII(i) = real(diffuse_scale*widFlx(i)*emissionHeII(i))
            normHeII = normHeII + sumDiffuseHeII(i)
-
         end do
 
-
-        ! Add contribution of HeI lines able to ionize HI
-
-        ! triplet states:
-        ! calculate effective recombination coefficients to triplet states[e-14 cm^3/s]
-        ! Benjamin, SKillman and mits, 1999, ApJ 514, 307
-        
-        ! limit T4 to the data limit used in the paper fits
         T4 = MAX(5000.,TeUsed)*1.e-4
-        
         alpha2tS = 27.2*(T4**(-0.678))
 
-        ! calculate correction for partial sums and normalization constant
-        ! triplet 2s
-        ! NOTE: multiply by 1.e11 to make units of [e-25 erg/cm^3/s] as e-14 from
-        ! rec coeff (see above).
         correction = alpha2tS * &
-             & NeUsed*grids(iG)%elemAbun(grids(iG)%abFileIndex(ix,iy,iz),2)*&
+             & NeUsed*grids(iG)%elemAbun(abFileUsed,2)*&
              &ionDenUsed(elementXref(2),2)*1.45673*hcRyd*1e11
 
         sumDiffuseHeI(j2TsP) = sumDiffuseHeI(j2TsP) + correction
         normHeI = normHeI + correction
 
-        ! Add contribution of HeII lines able to ionize HI and HeII
-
-        ! copy HeIILymanData into new array.  this is where file used to be read in
-
         HeIILyman = HeIILymanData
-
-        ! calculate Lyman alpha first
         HeIILyman(4) = 10.**(-0.792*log10(TeUsed)+6.01)
-        HeIILyman(4) = HeIILyman(4)*NeUsed*ionDenUsed(elementXref(2),3)*grids(iG)%elemAbun(grids(iG)%abFileIndex(ix,iy,iz),2)
+        HeIILyman(4) = HeIILyman(4)*NeUsed*ionDenUsed(elementXref(2),3)*grids(iG)%elemAbun(abFileUsed,2)
 
-        ! calculate emission due to HeII Lyman lines [e-25 ergs/s/cm^3]
         do i = 1, NHeIILyman-1
             HeIILyman(i) = HeIILyman(i)*HeIILyman(4)
         end do
 
-        ! add contributions in respective bins
         do i = 1, NHeIILyman
-            ! locate the frequency bin in the array
             call locate(NuArray, HeIILymanNu(i), NuP)
-            ! add contribution to HeII partial sums ...
             sumDiffuseHeII(NuP) = sumDiffuseHeII(NuP) + HeIILyman(i)
-            ! ... and to HeII normilazation constant
             normHeII = normHeII + HeIILyman(i)
         end do
 
-
-        ! calculate dust emission
         if (lgDust) then
-
            dcp = dustComPoint(nspE)
-
-           allocate(sumDiffuseDust(1:nbins), stat = err)
-           if (err /= 0) then
-              print*, "! setDiffusePDF: can't allocate sumDiffuseDust array memory"
-              stop
-           end if
-
            sumDiffuseDust = 0.
            normDust       = 0.
            do ai = 1, nSizes
               do nS = 1, nSpeciesPart(nspE)
-                 
                  if (grainRadius(ai) >= componentMinRadius(nspE, nS) .and. grainRadius(ai) <= componentMaxRadius(nspE, nS)) then
-
                     if (grids(iG)%Tdust(nS,ai,cellPUsed)<TdustSublime(dcp-1+nS)) then
-
                        if (lgQHeat .and. grainRadius(ai)<minaQHeat .and. convPercent>minConvQheat .and. nIterateMC>1) then
-
                           tg =  grids(iG)%Tdust(nS,ai,cellPused)
                           Tspike=0.
                           Pspike=0.
-
                           call qHeat(nS, ai,tg,Tspike,Pspike)
 
                           if (lgWritePss .and. taskid==0) then
@@ -1177,9 +725,7 @@ module emission_mod
                                      & grainWeight(ai)*grainAbun(nspE, nS)*Pspike(iT))
                              end do
                           end do
-
                        else
-
                           do freq = 1, nbins
                              bb = getFlux(nuArray(freq), grids(iG)%Tdust(nS,ai,cellPUsed), cShapeLoc)
                              sumDiffuseDust(freq) = sumDiffuseDust(freq) + &
@@ -1190,45 +736,32 @@ module emission_mod
                           end do
                        end if
                     end if 
-                    
-                 endif !!! grain size interval if block
-
+                 endif 
               end do
            end do
 
-           ! the hPlanck is re-introduced here (was excluded in the bb calcs)
            const = hPlanck*4.*Pi*1.e25*cRyd
            sumDiffuseDust = sumDiffuseDust*const*grids(iG)%Ndust(cellPUsed)/grids(iG)%Hden(cellPUsed)
            normDust = normDust*const*grids(iG)%Ndust(cellPUsed)/grids(iG)%Hden(cellPUsed)
-
         end if
 
-        ! Total normalization constant
         normalize = normHI + normHeI + normHeII
-
         if (lgDust) normalize = normalize+normDust
 
-        ! Sum  up energy in recombination lines
-
         normRec = 0.
-        ! HI
         do iup = 3, 15
             do ilow = 2, min0(8, iup-1)
                 normRec = normRec+real(HIRecLines(iup, ilow))
             end do
         end do
-        ! HeII
         do iup = 3, 30
             do ilow = 2, min0(16, iup-1)
                 normRec = normRec+real(HeIIRecLines(iup, ilow))
             end do
         end do
-        ! HeI singlets
         do i = 1, 34
             normRec = normRec+real(HeIRecLines(i))
         end do
-
-        ! Sum  up energy in forbidden lines
 
         normFor = 0.
         do elem = 3, nElements
@@ -1253,13 +786,9 @@ module emission_mod
            end do
         end do
 
-        ! total energy in lines (note: this variable will later be turned into the fraction of
-        ! non-ionizing line photons as in declaration)
-
         grids(iG)%totalLines(cellPUsed) = normRec + normFor
 
         if (lgDust) then
-
            do i = 1, nbins
               if (i == 1) then
                  grids(iG)%recPDF(cellPUsed, i) = sumDiffuseHI(i) + sumDiffuseHeI(i) +&
@@ -1269,11 +798,8 @@ module emission_mod
                       & sumDiffuseHI(i) + sumDiffuseHeI(i) +&
                       & sumDiffuseHeII(i) + sumDiffuseDust(i)
               end if
-
            end do
-
         else
-
            do i = 1, nbins
               if (i == 1) then
                  grids(iG)%recPDF(cellPUsed, i) = (sumDiffuseHI(i) + sumDiffuseHeI(i) +&
@@ -1284,161 +810,104 @@ module emission_mod
                       & sumDiffuseHeII(i) )
               end if
            end do
-
         end if
 
         grids(iG)%recPDF(cellPUsed, :) = grids(iG)%recPDF(cellPUsed, :)/grids(iG)%recPDF(cellPUsed, nbins)
-
         grids(iG)%recPDF(cellPUsed, nbins) = 1.
 
         do i = 1, nbins
-           if (grids(iG)%recPDF(cellPUsed, i) > 0.999998) grids(iG)%recPDF(cellPUsed, i) = 1.
+            if (grids(iG)%recPDF(cellPUsed, i) > 0.999998) grids(iG)%recPDF(cellPUsed, i) = 1.
         enddo
 
-        ! calculate the PDF for recombination and forbidden lines
         if (lgDebug) then
            i = 1
-           ! HI recombination lines
            do iup = 3, 15
               do ilow = 2, min(8, iup-1)
                  if (i == 1) then
-
-                    grids(iG)%linePDF(cellPUsed, i) = real(HIRecLines(iup, ilow) / &
-&                                                  grids(iG)%totalLines(grids(iG)%active(ix,iy,iz)))
-
-
-
+                    grids(iG)%linePDF(cellPUsed, i) = real(HIRecLines(iup, ilow) / grids(iG)%totalLines(cellPUsed))
                  else
-
                     grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(cellPUsed, i-1) + &
 &                        real(HIRecLines(iup, ilow) / grids(iG)%totalLines(cellPUsed))
-
-
-
                  end if
                  i = i+1
-
               end do
            end do
 
-           ! HeI singlet recombination lines
            do j = 1, 34
               grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(cellPUsed, i-1) + &
 &                           real(HeIRecLines(j) / grids(iG)%totalLines(cellPUsed))
               i = i+1
            end do
 
-           ! HeII recombination lines
            do iup = 3, 30
               do ilow = 2, min(16, iup -1)
-                 grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(grids(iG)%active(ix, iy,&
-                      & iz), i-1) + real(HeIIRecLines(iup, ilow) / grids(iG)&
-                      &%totalLines(grids(iG)%active(ix,iy,iz)))
+                 grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(cellPUsed, i-1) + real(HeIIRecLines(iup, ilow) / grids(iG)%totalLines(cellPUsed))
                  i = i+1
               end do
            end do
 
-           ! heavy elements forbidden lines
            do elem = 3, nElements
               do ion = 1, min(elem+1, nstages)
-
                  if (.not.lgElementOn(elem)) exit
                  if (lgDataAvailable(elem, ion)) then
                     if (elem == 26 .and. ion == 2) then
-
                        do iup = 1, nForLevelsLarge
                           do ilow = 1, nForLevelsLarge
-                             grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(grids(iG)%active(ix, iy&
-                                  &, iz), i-1) + real(forbiddenLinesLarge(iup, ilow)&
-                                  & / grids(iG)%totalLines(grids(iG)%active(ix,iy,iz)))
-
-                             if (grids(iG)%linePDF(cellPUsed, i) > 1. ) grids(iG)&
-                                  &%linePDF(cellPUsed, i) = 1.
+                             grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(cellPUsed, i-1) + real(forbiddenLinesLarge(iup, ilow)&
+                                  & / grids(iG)%totalLines(cellPUsed))
+                             if (grids(iG)%linePDF(cellPUsed, i) > 1. ) grids(iG)%linePDF(cellPUsed, i) = 1.
                              i = i+1
-
                           end do
                        end do
-
                     else
-
                        do iup = 1, nForLevels
                           do ilow = 1, nForLevels
-                             grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(grids(iG)%active(ix, iy&
-                                  &, iz), i-1) + real(forbiddenLines(elem, ion, iup, ilow)&
-                                  & / grids(iG)%totalLines(grids(iG)%active(ix,iy,iz)))
-
-                             if (grids(iG)%linePDF(cellPUsed, i) > 1. ) grids(iG)&
-                                  &%linePDF(cellPUsed, i) = 1.
+                             grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(cellPUsed, i-1) + real(forbiddenLines(elem, ion, iup, ilow)&
+                                  & / grids(iG)%totalLines(cellPUsed))
+                             if (grids(iG)%linePDF(cellPUsed, i) > 1. ) grids(iG)%linePDF(cellPUsed, i) = 1.
                              i = i+1
                           end do
                        end do
-
                     end if
-                 end if
-
+                  end if
               end do
            end do
            grids(iG)%linePDF(cellPUsed, nLines) = 1.
 
-           ! calculate the probability of Hbeta
-           HbetaProb = real(HIRecLines(4,2) / (grids(iG)%totalLines(grids(iG)%active(ix,iy,iz))&
+           HbetaProb = real(HIRecLines(4,2) / (grids(iG)%totalLines(cellPUsed)&
                 &+normalize))
-
-        end if ! debug condition
-
-        ! now compute the fraction of non-ionizing photons
-
-        normalize = normalize + grids(iG)%totalLines(grids(iG)%active(ix,iy,iz))
-
-        grids(iG)%totalLines(grids(iG)%active(ix,iy,iz)) = grids(iG)%totalLines(grids(iG)%active(ix,iy,iz)) / normalize
-        ! deallocate arrays
-        if ( allocated(sumDiffuseHI) ) deallocate(sumDiffuseHI)
-        if ( allocated(sumDiffuseHeI) ) deallocate(sumDiffuseHeI)
-        if ( allocated(sumDiffuseHeII) ) deallocate(sumDiffuseHeII)
-        if (lgDust) then
-           if ( allocated(sumDiffuseDust) ) deallocate(sumDiffuseDust)
         end if
+
+        normalize = normalize + grids(iG)%totalLines(cellPUsed)
+        grids(iG)%totalLines(cellPUsed) = grids(iG)%totalLines(cellPUsed) / normalize
 
     end subroutine setDiffusePDF
 
     subroutine setDustPDF()
       implicit none
-
       real :: bb,treal
       real (kind=8) :: tg
       real(kind=8),dimension(nTbins) :: Tspike,Pspike
-
-      integer :: i, n, ai, iT, dcp ! counters
-
+      integer :: i, n, ai, iT, dcp
       character(len=50) :: cShapeLoc
 
       Tspike=0.
       Pspike=0.
-
       cShapeLoc = 'blackbody'
-
       dcp = dustComPoint(nspE)
 
-      grids(iG)%dustPDF(grids(iG)%active(ix,iy,iz),:)=0.
+      grids(iG)%dustPDF(cellPUsed,:)=0.
       do n = 1, nSpeciesPart(nspE)
          do ai = 1, nSizes
-         
             if (grainRadius(ai) >= componentMinRadius(nspE, n) .and. grainRadius(ai) <= componentMaxRadius(nspE, n)) then
-
                if (grids(iG)%Tdust(n,ai,cellPUsed) >0. .and. &
                     & grids(iG)%Tdust(n,ai,cellPused)<TdustSublime(dcp-1+n)) then
-
-
                   if (lgQHeat .and. grainRadius(ai)<minaQHeat .and. &
                        & convPercent>minConvQheat.and. nIterateMC>1) then
-
                      tg =  grids(iG)%Tdust(n,ai,cellPused)
-
                      Tspike=0.
                      Pspike=0.
-
                      call qHeat(n, ai,tg,Tspike,Pspike)
-
                      do i = 1, nbins
                         do iT = 1, nTbins
                            treal = real(Tspike(iT))
@@ -1449,9 +918,7 @@ module emission_mod
                                 & grainAbun(nspE, n)*Pspike(iT))
                         end do
                      end do
-
-                  else
-
+                   else
                      do i = 1, nbins
                         treal = grids(iG)%Tdust(n,ai,cellPused)
                         bb = getFlux(nuArray(i), treal, cShapeLoc)
@@ -1460,48 +927,32 @@ module emission_mod
                              & grainWeight(ai)*grainAbun(nspE, n)
                      end do
                   end if
-
                end if 
-               
-            endif   ! end of grain size interval block           
-            
+            endif   
          end do
       end do
 
-      ! normalise
       do i = 2, nbins
-
          grids(iG)%dustPDF(cellPused,i) = &
               & grids(iG)%dustPDF(cellPUsed,i-1)+grids(iG)%dustPDF(cellPUsed,i)
-
       end do
       grids(iG)%dustPDF(cellPused,:) = &
            grids(iG)%dustPDF(cellPused,:)/grids(iG)%dustPDF(cellPused,nbins)
-
       grids(iG)%dustPDF(cellPused,nbins) = 1.
 
     end subroutine setDustPDF
 
-
-    ! calculates the quantum heating according to
-    ! guhathakurta & draine (G&D, 1989) ApJ 345, 230
-    ! adapted from a program originally written by
-    ! R. Sylvester
     subroutine qHeat(ns,na,tg,temp,pss)
       implicit none
-
       real ::  tbase
       integer, intent(in) :: ns, na
       integer             :: i,j,ii,if, dcp
       integer             :: wlp,wllp,wlsp,natom
-
       character(len=1)    :: sorc
-
       real(kind=8), dimension(nTbins,nTbins) :: A, B
       real(kind=8), intent(inout) :: tg
       real(kind=8), intent(inout) :: temp(nTbins),pss(nTbins)
-      real(kind=8)                :: lambda(nbins), sQabs(nbins),&
-           & temp1(nbins),temp2(nbins)
+      real(kind=8)                :: lambda(nbins), sQabs(nbins), temp1(nbins),temp2(nbins)
       real(kind=8)                :: U(nTbins),dU(nTbins)
       real(kind=8)                :: mgrain,mdUdt,ch
       real(kind=8)                :: const1, radField(nbins),hc,wlim
@@ -1509,12 +960,10 @@ module emission_mod
       real(kind=8)                :: UiTrun,sumX, sumBx
       real(kind=8)                :: wl,wll,wls
       real(kind=8)                :: qint,qint1,qint2,delwav
-
       integer :: ifreq
 
       dcp = dustComPoint(nspE)
 
-      ! radiation field at this location in Flambdas
       if (lgDebug) then
          radField = grids(iG)%Jste(cellPUsed,:) + grids(iG)%Jdif(cellPUsed,:)
       else
@@ -1523,8 +972,7 @@ module emission_mod
 
       do ifreq = 1, nbins
          radField(ifreq) = radField(ifreq)/(widflx(ifreq)*fr1ryd)
-
-        temp1(ifreq) = (radField(ifreq)* (nuArray(ifreq)*fr1Ryd)**2)/(c)
+         temp1(ifreq) = (radField(ifreq)* (nuArray(ifreq)*fr1Ryd)**2)/(c)
          temp2(ifreq) = xSecArray(dustAbsXSecP(ns+dcp-1,na)+ifreq-1)
       end do
       do ifreq=1, nbins
@@ -1532,7 +980,6 @@ module emission_mod
          lambda(ifreq) = c/(nuArray(nbins-ifreq+1)*fr1Ryd)
          sQabs(ifreq) = temp2(nbins-ifreq+1)
       end do
-
 
       const1 = (hPlanck*fr1Ryd)
       hc = hPlanck*c
@@ -1549,38 +996,28 @@ module emission_mod
 
       temp = 0.
       pss  = 0.
-
       sorc = grainLabel(ns)(1:1)
 
       select case(sorc)
-      case ('S') ! silicates
-         ! factor of 1.e12 to change from um to A
+      case ('S') 
          natom = nint(0.44*1.e12*grainRadius(na)**3)
-         if (natom<=0) then
-            print*, '! qHeat: invalid value for natom', sorc, na,natom, grainRadius(na)
-         end if
-
+         if (natom<=0) print*, '! qHeat: invalid value for natom', sorc, na,natom, grainRadius(na)
          mgrain = (4.*Pi/3.0)*(grainRadius(na)**3)*rho(dcp-1+ns)*1.e-12
-
-      case ('C')  ! carbonaceous
+      case ('C')  
          natom = nint(0.454*3.*1.e12*grainRadius(na)**3)
-         if (natom<=0) then
-            print*, '! qHeat: invalid value for natom', sorc, na,natom, grainRadius(na)
-         end if
+         if (natom<=0) print*, '! qHeat: invalid value for natom', sorc, na,natom, grainRadius(na)
          mgrain = (4.*Pi/3.0)*(grainRadius(na)**3)*rho(dcp-1+ns)*1.e-12
       case default
          qheatTemp = tg
          return
       end select
 
-      ! find enthalpy bins
       call getTmin(ns,na,temp(1))
-
       tbase=real(tg)
       U(1) = enthalpy(temp(1),natom,na,sorc)
 
       do i=2,10
-         temp(i)= temp(1) + real(i-1)/real(9)*(tbase-temp(1))  !big bins
+         temp(i)= temp(1) + real(i-1)/real(9)*(tbase-temp(1))
          U(i)=enthalpy(temp(i),natom,na,sorc)
       end do
 
@@ -1595,29 +1032,21 @@ module emission_mod
       end do
       dU(nTbins) = 0.5*(U(nTbins)-U(nTbins-1))
 
-      ! discrete heating term:
-      ! grain heated from state ii to higher state if
-      ! by a photon of wavelength hc/( U(if)-U(ii) )
       do ii = 1, nTbins-1
          do if = ii+1, nTbins
-
-            ! calculate wav of transition ii->if
             wl = hc/ (U(if)-U(ii))
             do wlp = nbins, 1, -1
                if (lambda(wlp)<wl) exit
             end do
             wlp = wlp+1
 
-            if ( (dU(if) >= (0.1* (U(if)-U(ii)))) .and. &
-                 & (if < nTbins) ) then
-
-               wls = hc/( (U(if)+U(if+1))/2.0 - U(ii)) ! shorter wl
-               wll = hc/( (U(if)+U(if-1))/2.0 - U(ii)) ! longer wl
+            if ( (dU(if) >= (0.1* (U(if)-U(ii)))) .and. (if < nTbins) ) then
+               wls = hc/( (U(if)+U(if+1))/2.0 - U(ii)) 
+               wll = hc/( (U(if)+U(if-1))/2.0 - U(ii)) 
 
                if ( wl>= 0.1 .or. wl < lambda(1)) then
                   A(if,ii) = 0.
                else
-
                   if (wll>0.1) wll =.1
                   if (wls<lambda(1)) wls = lambda(1)
 
@@ -1630,69 +1059,41 @@ module emission_mod
                   end do
                   wlsp = wlsp+1
 
-                  ! here R. Sylvester program interpolates
-                  ! our nu grid is finer and maybe this is
-                  ! not necessary - test this and possibly change
-                  ! if not too expensive
-
-                  ! 1st trapezium
-                  A(if,ii) = 0.5*(sQabs(wlsP)*radField(wlsP)&
-                       &*wls**3+sQabs(wlP)*radField(wlP)&
-                       &*wl**3)*(U(if+1)-U(if))/2.
-
-                  ! 2nd trapezium
-                  A(if,ii) = A(if,ii)+0.5*(sQabs(wlP)*radField(wlP)&
-                       &*wl**3+sQabs(wllP)*radField(wllP)&
-                       &*wll**3)*(U(if)-U(if-1))/2.
-
+                  A(if,ii) = 0.5*(sQabs(wlsP)*radField(wlsP)*wls**3+sQabs(wlP)*radField(wlP)*wl**3)*(U(if+1)-U(if))/2.
+                  A(if,ii) = A(if,ii)+0.5*(sQabs(wlP)*radField(wlP)*wl**3+sQabs(wllP)*radField(wllP)*wll**3)*(U(if)-U(if-1))/2.
                   A(if,ii) = A(if,ii) /(hc**2)
-
                end if
             else
                if ( (wl>=0.1) .or. (wl<lambda(1))) then
                   A(if,ii) = 0.
                else
-                  A(if,ii) = sQabs(wlP)*&
-                       & radField(wlP)*dU(if)*wl**3/(hc**2)
+                  A(if,ii) = sQabs(wlP)* radField(wlP)*dU(if)*wl**3/(hc**2)
                end if
-
             end if
          end do
 
-         ! heating of enthalpies beyond the highest bin
-         ! G&D p232
          UiTrun = U(nTbins)+dU(nTbins)/2.0 - U(ii)
          wlim = hc/UiTrun
-
          qint = 0.
          do j = 1,nbins-1
-
             qint1 = lambda(j)*sQabs(j)*radField(j)
             qint2 = lambda(j+1)*sQabs(j+1)*radField(j+1)
             delwav = lambda(j+1) - lambda(j)
 
             if (lambda(j+1)<wlim) then
-
                qint = qint + 0.5*(qint1+qint2)*delwav
-
             else if (lambda(j) < wlim) then
-               qint = qint+(wlim-lambda(j))*(qint1+0.5*(wlim-lambda(j))*&
-                    & (qint2-qint1)/delwav)
+               qint = qint+(wlim-lambda(j))*(qint1+0.5*(wlim-lambda(j))* (qint2-qint1)/delwav)
             end if
-
          end do
 
          qint = qint/hc
-
          A(nTbins,ii) = A(nTbins,ii)+qint
       end do
 
-      ! Work out the cooling terms
       do if = 1, nTbins-1
-
          call clrate(temp(if+1), lambda,radField,sQabs,mdUdt)
          call cheat(if+1,nTbins,lambda,radField,sQabs,U(1:nTbins),ch)
-
 
          A(if,if+1) = mdUdt/dU(if+1)
 
@@ -1702,22 +1103,15 @@ module emission_mod
          else
             A(if,if+1)=A(if,if+1) - ch/dU(if+1)
          end if
-
       end do
-
 
       if (A(2,1) == 0.) A(2,1) = 2.*A(1,2)
 
-
-      ! find the B(f,j) terms
-
       B=0.
       do ii = 1, nTbins
-
          B(nTbins,ii) = A(nTbins,ii)
          do if = nTbins-1, ii+1,-1
-
-            B(if,ii) = B(if+1,ii)+A(if,ii) ! G&D p233
+            B(if,ii) = B(if+1,ii)+A(if,ii)
          end do
       end do
       sumX = 0.
@@ -1725,11 +1119,9 @@ module emission_mod
       do if = 2, nTbins
          sumBx = 0.
          do j = 1, if-1
-
             sumBx = sumBx + B(if,j)*x(j)
          end do
-
-         x(if) = sumBx/A(if-1,if) ! G&D eqn 2.16
+         x(if) = sumBx/A(if-1,if) 
 
          if (x(if) > 1.d250) then
             do i = 1, if
@@ -1755,7 +1147,6 @@ module emission_mod
 
       qHeatTemp = 0.
       do i = 1, nTbins
-
          qHeatTemp = qHeatTemp+Pss(i)*temp(i)
       end do
 
@@ -1763,38 +1154,31 @@ module emission_mod
 
     end  subroutine qHeat
 
-
     subroutine getTmin(ns, ai, tmin)
       implicit none
-
-      real(kind=8), intent(out)      :: tmin  ! continuous heating/cooling equilibrium temp
-      real                   :: dustAbsIntegral   ! dust absorption integral
-      real                   :: cutoff            ! lambda=1000um (guhathakurta & draine 89)
-      real, dimension(nbins) :: radField          ! radiation field
-
-      integer, intent(in) :: ns, ai ! grain species and size pointers
-      integer :: iT,ifreq ! pointer to dust temp in dust temp array
-      integer :: cutoffP ! pointer to energy cutoff in nuarray
+      real(kind=8), intent(out)      :: tmin 
+      real                   :: dustAbsIntegral
+      real                   :: cutoff            
+      real, dimension(nbins) :: radField          
+      integer, intent(in) :: ns, ai 
+      integer :: iT,ifreq 
+      integer :: cutoffP 
       integer :: dcp
 
       dcp = dustComPoint(nspE)
-
       cutoff = 9.11e-5
 
       if (cutoff<nuArray(1)) then
-         print*, "! getTmin: [warning] nuMin larger than cutoff for continuous heating &
-              & in quantum heating routine"
+         print*, "! getTmin: [warning] nuMin larger than cutoff for continuous heating"
          cutoff = nuArray(1)
          cutoffP = 1
       else if (cutoff>=nuArray(nbins)) then
-         print*, "! getTmin: nuMax smaller than cutoff for continuous heating &
-              & in quantum heating routine"
+         print*, "! getTmin: nuMax smaller than cutoff for continuous heating"
          stop
       else
          call locate(nuArray, cutoff, cutoffP)
       end if
 
-      ! radiation field at this location
       if (lgDebug) then
          radField = grids(iG)%Jste(cellPUsed,:) + grids(iG)%Jdif(cellPUsed,:)
       else
@@ -1805,202 +1189,152 @@ module emission_mod
          radField(ifreq)=0.
       end do
 
-      ! zero out dust temperature
       tmin = 0.
-
-      ! calculate absorption integral
       dustAbsIntegral = 0.
       do i = 1, cutoffP
          dustAbsIntegral =  dustAbsIntegral + xSecArray(dustAbsXsecP(dcp-1+nS,ai)+i-1)*radField(i)/Pi
       end do
 
-
       call locate(dustEmIntegral(nS,ai,:), dustAbsIntegral, iT)
-      if (iT<=0) then
-         iT=1
-      end if
+      if (iT<=0) iT=1
 
       tmin = real(iT)
-
     end subroutine getTmin
 
+    function enthalpy(tg,natom,na,sorc)
+      implicit none
+      real(kind=8) :: enthalpy
+      real(kind=8), intent(in) :: tg
+      real(kind=8) :: enth1,  enth2,  enth3,  enth4, enth1_50,  enth2_150, enth3_500, vg
+      integer, intent(in) :: natom, na
+      character (len=1), intent(in) :: sorc
 
-          ! calculates the enthalpy for a spherical silicate
-          ! or graphite grain of radius a, temperature tg,
-          ! containing natom atoms
-          ! based on a program originally written by
-          ! R. Sylvester using G&D heat capacity
-          function enthalpy(tg,natom,na,sorc)
-            implicit none
+      enth1  = (1.4e3/3.) * tg**3
+      enth1_50 = (1.4e3/3.) * 50.**3
+      enth2 = (2.1647e4/2.3) * (tg**2.3 - 50.**2.3)
+      enth2_150 = (2.1647e4/2.3) * (150.**2.3 - 50.**2.3)
+      enth3 = (4.8375e5/1.68) * (tg**1.68 - 150.**1.68)
+      enth3_500 = (4.8375e5/1.68) * (500.**1.68 - 150.**1.68)
+      enth4 = 3.3107e7*(tg-500.)
+      vg = (4.18878*1.e-12*grainRadius(na)**3)
 
-            real(kind=8) :: enthalpy
-            real(kind=8), intent(in) :: tg
+      select case (sorc)
+      case ('S')
+         if (tg<=50.) then
+            enthalpy = enth1
+         else if (tg <= 150.) then
+            enthalpy = enth1_50 + enth2
+         else if (tg <= 500.) then
+            enthalpy = enth1_50 + enth2_150 + enth3
+         else
+            enthalpy = enth1_50 + enth2_150 + enth3_500 + enth4
+         end if
+         enthalpy = (1.-(2./real(natom))) * vg *enthalpy
+      case('C')
+         enthalpy = real(natom)*(4.15e-22*tg**3.3)
+         enthalpy = enthalpy/(1.+6.51e-3*tg + 1.5e-6*tg**2 + 8.3e-7*tg**2.3)
+         enthalpy = (1.-(2./real(natom))) * enthalpy
+      case default
+         print*, '! enthalpy: calculations only available for C & S identifiers'
+      end select
+    end function enthalpy
 
-            real(kind=8) :: enth1,  enth2,  enth3,  enth4,&
-                 & enth1_50,  enth2_150,  enth3_500, &
-                 & vg
+    function bbody(lam,tIn)
+      real(kind=8)            :: bbody
+      real(kind=8), intent(in):: lam, tIn
+      real(kind=8), parameter :: C1=3.74185e-5
+      real(kind=8), parameter :: C2=1.43883
+      real(kind=8)            :: exptest
 
-            integer, intent(in) :: natom, na
-            character (len=1), intent(in) :: sorc
+      exptest=C2/(lam*tIn)
 
-            enth1  = (1.4e3/3.) * tg**3
-            enth1_50 = (1.4e3/3.) * 50.**3
-            enth2 = (2.1647e4/2.3) * (tg**2.3 - 50.**2.3)
-            enth2_150 = (2.1647e4/2.3) * (150.**2.3 - 50.**2.3)
-            enth3 = (4.8375e5/1.68) * (tg**1.68 - 150.**1.68)
-            enth3_500 = (4.8375e5/1.68) * (500.**1.68 - 150.**1.68)
-            enth4 = 3.3107e7*(tg-500.)
+      if(exptest > 400.) then
+         bbody=0.
+      else
+         bbody = C1*(1./lam**5)/(exp(exptest)-1.)
+      end if
+    end function bbody
 
-            vg = (4.18878*1.e-12*grainRadius(na)**3)
+    subroutine clrate(tem,lam,fl,sQa,mdudt)
+      implicit none
+      real(kind=8), intent(out) :: mdudt
+      real(kind=8), intent(in) :: tem,lam(nbins),fl(nbins),sQa(nbins)
+      real(kind=8) :: cutoff, eout(nbins), engin, engout,eomid, delwav
+      integer :: k,cutoffP
 
-            select case (sorc)
-            case ('S')
+      cutoff = .1 
+      engin = 0.
+      engout = 0.
 
-               if (tg<=50.) then
-                  enthalpy = enth1
-               else if (tg <= 150.) then
-                  enthalpy = enth1_50 + enth2
-               else if (tg <= 500.) then
-                  enthalpy = enth1_50 + enth2_150 + enth3
-               else
-                  enthalpy = enth1_50 + enth2_150 + enth3_500 +&
-                       & enth4
-               end if
-               enthalpy = (1.-(2./real(natom))) * vg *enthalpy
+      do k = 1, nbins
+         eout(k) = sQa(k)*bbody(lam(k),tem)
+         if (lam(k)<cutoff) cutoffP=k
+         if (k>=2) then
+            eomid=(eout(k)+eout(k-1))/2.
+            delwav = lam(k)-lam(k-1)
+            engout = engout+4.*eomid*delwav
+         end if
+      end do
 
-            case('C')
-               enthalpy = real(natom)*(4.15e-22*tg**3.3)
-               enthalpy = enthalpy/(1.+6.51e-3*tg + 1.5e-6*tg**2 + 8.3e-7*tg**2.3)
-               enthalpy = (1.-(2./real(natom))) * enthalpy
-            case default
-               print*, '! enthalpy: calculations only available for C & S &
-                    & identifiers'
-            end select
+      engin  = 0.25*fl(cutoffP)*sQa(cutoffP)*cutoff
+      if (engin<0.) print*, "! clrate [warning]: engin < 0."
+      mdUdt = engout-engin
+    end subroutine clrate
 
-          end function enthalpy
+    subroutine cheat(it,nTbins,lam,fl,sQa,U,ch)
+      implicit none
+      real(kind=8), intent(out)   :: ch
+      real(kind=8), intent(in)    :: U(*),lam(nbins),fl(nbins),sQa(nbins)
+      real(kind=8) :: einmax,shwav,cutoff, ein(nbins),engin, eimid,hc,delwav
+      integer, intent(in) :: it,nTbins
+      integer :: nshort,nlong,k
 
+      if (it>nTbins) then
+         ch=0.
+         return
+      end if
 
-          ! Calculation of the Plank black body equation
-          ! lam in cm; output in erg/cm2/s/cm
-          ! C1 = 2.Pi.h.c^2
-          ! C2 = h.c/k
-          function bbody(lam,tIn)
+      hc = hPlanck*c
+      engin=0.
+      nshort=0
+      nlong=0
+      cutoff = .1
 
-            real(kind=8)            :: bbody
-            real(kind=8), intent(in):: lam, tIn
-            real(kind=8), parameter :: C1=3.74185e-5
-            real(kind=8), parameter :: C2=1.43883
-            real(kind=8)            :: exptest
+      if (it>=nTbins) then
+         ch = 0.
+         return
+      end if
 
-            exptest=C2/(lam*tIn)
+      einmax = 0.5*(U(it+1)-(U(it)))
+      shwav=hc/einmax
 
-            if(exptest > 400.) then
-               bbody=0.
-            else
-               bbody = C1*(1./lam**5)/(exp(exptest)-1.)
-            end if
-          end function bbody
+      if(shwav>=cutoff) then
+         ch=0.
+         return
+      end if
 
-          subroutine clrate(tem,lam,fl,sQa,mdudt)
-            implicit none
+      do k = 1, nbins
+         if (lam(k)<shwav) nshort = k
+         if (lam(k)<cutoff) nlong = k
+         ein(k) = sQa(k)*fl(k)
+      end do
 
-            real(kind=8), intent(out) :: mdudt
+      nshort = nshort+1
+      if (nshort>=nlong) then
+         ch = 0.
+         return
+      end if
 
-            real(kind=8), intent(in) :: tem,lam(nbins),fl(nbins),sQa(nbins)
+      do k = nshort,nlong
+         if (k>=2) then
+            eimid = (ein(k)+ein(k-1))/2.
+            delwav = lam(k)-lam(k-1)
+            engin=engin+eimid*delwav
+         end if
+      end do
+      ch = engin
 
-            real(kind=8) :: cutoff, eout(nbins), engin, engout,eomid, &
-                 & delwav
-
-            integer :: k,cutoffP
-
-            cutoff = .1 ! cm
-
-            ! calculate -dU/dt
-            engin = 0.
-            engout = 0.
-
-            do k = 1, nbins
-
-               eout(k) = sQa(k)*bbody(lam(k),tem)
-               if (lam(k)<cutoff) cutoffP=k
-
-               if (k>=2) then
-                  eomid=(eout(k)+eout(k-1))/2.
-                  delwav = lam(k)-lam(k-1)
-                  engout = engout+4.*eomid*delwav
-
-               end if
-            end do
-
-            engin  = 0.25*fl(cutoffP)*sQa(cutoffP)*cutoff
-            if (engin<0.) print*, "! clrate [warning]: engin < 0."
-
-            mdUdt = engout-engin
-
-          end subroutine clrate
-
-          ! continuous heating within a temoerature bin: photon not energetic
-          ! enough to raise the grain to the next temp bin
-          subroutine cheat(it,nTbins,lam,fl,sQa,U,ch)
-            implicit none
-
-            real(kind=8), intent(out)   :: ch
-            real(kind=8), intent(in)    :: U(*),lam(nbins),fl(nbins),sQa(nbins)
-            real(kind=8) :: einmax,shwav,cutoff, ein(nbins),engin,&
-                 & eimid,hc,delwav
-
-            integer, intent(in) :: it,nTbins
-            integer :: nshort,nlong,k
-
-            if (it>nTbins) then
-               ch=0.
-               return
-            end if
-
-            hc = hPlanck*c
-
-            engin=0.
-            nshort=0
-            nlong=0
-
-            cutoff = .1
-
-            if (it>=nTbins) then
-               ch = 0.
-               return
-            end if
-
-            einmax = 0.5*(U(it+1)-(U(it)))
-            shwav=hc/einmax
-
-            if(shwav>=cutoff) then
-               ch=0.
-               return
-            end if
-
-            do k = 1, nbins
-               if (lam(k)<shwav) nshort = k
-               if (lam(k)<cutoff) nlong = k
-               ein(k) = sQa(k)*fl(k)
-            end do
-            nshort = nshort+1
-            if (nshort>=nlong) then
-               ch = 0.
-               return
-            end if
-
-            do k = nshort,nlong
-               if (k>=2) then
-                  eimid = (ein(k)+ein(k-1))/2.
-                  delwav = lam(k)-lam(k-1)
-                  engin=engin+eimid*delwav
-               end if
-            end do
-
-            ch = engin
-
-          end subroutine cheat
-
+    end subroutine cheat
 
   end subroutine emissionDriver
 

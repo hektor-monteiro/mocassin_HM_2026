@@ -21,6 +21,15 @@ module photon_mod
     integer     , parameter :: safeLim = 10000          ! safety limit for the loops
     integer                        :: totalEscaped
 
+    ! --- NEW: Pre-calculated Volume Storage ---
+    type volume_storage
+        real, allocatable :: v(:,:,:)
+    end type volume_storage
+    
+    type(volume_storage), allocatable :: cell_volumes(:)
+    logical                           :: volumes_initialized = .false.
+    ! ------------------------------------------
+
     contains
 
     subroutine energyPacketDriver(iStar, n, grid, gpLoc, cellLoc)
@@ -63,6 +72,11 @@ module photon_mod
         if (iStar == 0) then
            deltaE(0) = grid(gpLoc)%LdiffuseLoc(grid(gpLoc)%active(cellLoc(1),cellLoc(2),cellLoc(3)))/NphotonsDiffuseLoc
         end if
+        
+        ! --- NEW: Initialize volumes if not already done ---
+        call initCellVolumes(grid)
+        ! ---------------------------------------------------
+
 
         call date_and_time(values=dt)
         msec=dt(8)
@@ -693,84 +707,58 @@ module photon_mod
         end function initPhotonPacket
 
 
+        !#############################################################################
+        
         ! this subroutine determines the frequency of a newly created photon packet
         ! according to the given probability density
-        subroutine getNu(probDen, nuP)
-
-            real, dimension(:), intent(in) :: probDen    ! probability density function
-
-            integer, intent(out)           :: nuP         ! frequency index of the new
-
-            ! local variables
-            real                           :: random     ! random number
-
-            ! get a random number
-            call random_number(random)
-
-            random = 1.-random
-
-            ! see what frequency random corresponds to
-            call locate(probDen, random, nuP)
-             if (nuP <= 0) nuP = 1
-
- !           if (probDen(nuP) /= random) then
- !              nuP = nuP+1
- !           end if
-
-             if (nuP<nbins) then
-                if (random>=(probDen(nuP+1)+probDen(nuP))/2.) nuP=nuP+1
-             end if
-
-        end subroutine getNu
-
-        ! this subroutine determines the frequency of a newly created photon packet
-        ! according to the given probability density
-        ! does not use bisection to locate nu on array
+        ! optimized: utilizes bisection (binary search) to locate nu on array
         subroutine getNu2(probDen, nuP)
 
             real, dimension(:), intent(in) :: probDen    ! probability density function
+            integer, intent(out)           :: nuP        ! frequency index of the new packet
 
             real                           :: random     ! random number
-
-            integer, intent(out)           :: nuP        ! frequency index of the new
-
-            integer                        :: isearch,i  !
+            integer                        :: ilow, ihigh, imid ! bisection indices
 
             ! get a random number
             call random_number(random)
 
-            do i = 1, 10000
-               if (random==0 .or. random==1. .or. random == 0.9999999) then
-                  call random_number(random)
-               else
-                  exit
-               end if
-            end do
-            if (i>=10000) then
-               print*, '! getNu2: problem with random number generator', random, i
-               stop
-            end if
-
-            ! see what frequency random corresponds to
-            nuP=1
-            do isearch = 1, nbins
-               if (random>=probDen(isearch)) then
-                  nuP=isearch
-               else
-                  exit
-               end if
+            ! Safely handle edge cases without an arbitrary 10,000 iteration limit
+            do while (random <= 0.0 .or. random >= 0.9999999)
+               call random_number(random)
             end do
 
-            if (nuP<nbins-1) then
-               nuP=nuP+1
+            ! Binary search (bisection) matching the exact index mapping of the legacy code
+            nuP = 1
+            ilow = 1
+            ihigh = nbins
+
+            do while (ilow <= ihigh)
+               imid = (ilow + ihigh) / 2
+               if (probDen(imid) <= random) then
+                  nuP = imid
+                  ilow = imid + 1
+               else
+                  ihigh = imid - 1
+               end if
+            end do
+
+            ! Legacy clamp: The original code manually shifts indices away from 
+            ! the lower boundary and clamps the upper boundary. 
+            ! This prevents nuP=1 which causes zero-opacity divide-by-zero crashes.
+            if (nuP < nbins - 1) then
+               nuP = nuP + 1
             end if
 
-            if (nuP>=nbins) then
+            ! Preserved legacy debug output
+            if (nuP >= nbins) then
                print*, 'random: ', random
                print*, 'probDen: ', probDen
             end if
 
-          end subroutine getNu2
+        end subroutine getNu2
+                   
+        !#############################################################################
 
 
         ! this function creates a new photon packet
@@ -1544,8 +1532,8 @@ module photon_mod
              tauCell = dS*grid(gP)%opacity(grid(gP)%active(xP,yP,zP), enPacket%nuP)
 
 
-             ! find the volume of this cell
-             dV = getVolume(grid(gP), xP,yP,zP)
+             ! find the volume of this cell via pre-calculated array
+             dV = cell_volumes(gP)%v(xP,yP,zP)
              
              !=============================================================
              ! force skip for high tau cells
@@ -3156,6 +3144,33 @@ module photon_mod
  end subroutine hg
 
 end subroutine energyPacketDriver
+
+! subroutine to pre-calculate cell volumes once
+    subroutine initCellVolumes(grid)
+        implicit none
+        type(grid_type), dimension(:), intent(in) :: grid
+        integer :: ig, ix, iy, iz
+        integer :: numGrids
+
+        if (.not. volumes_initialized) then
+            numGrids = size(grid)
+            allocate(cell_volumes(numGrids))
+            
+            do ig = 1, numGrids
+                allocate(cell_volumes(ig)%v(grid(ig)%nx, grid(ig)%ny, grid(ig)%nz))
+                
+                do ix = 1, grid(ig)%nx
+                    do iy = 1, grid(ig)%ny
+                        do iz = 1, grid(ig)%nz
+                            cell_volumes(ig)%v(ix,iy,iz) = getVolume(grid(ig), ix, iy, iz)
+                        end do
+                    end do
+                end do
+            end do
+            
+            volumes_initialized = .true.
+        end if
+    end subroutine initCellVolumes
 
 
  end module photon_mod
