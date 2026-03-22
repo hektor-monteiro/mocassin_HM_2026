@@ -45,22 +45,18 @@ module interpolation_mod
     ! ns = 0 or ns=n is returned to indicate that x is out
     ! of range.
 
+    ! =================================================================
+    ! Optimized Subroutine (Strict Legacy Compatibility)
+    ! =================================================================
     subroutine locate(xa,x,ns)
-
         implicit none
-
         integer, intent(out) :: ns
-
-        real, dimension(:), intent(in) :: xa  ! input array
-        real, intent(in) :: x                 ! variable to be located
-
-        ! local variables
-
-        integer :: n                 ! size of array xa
-
+        real, dimension(:), intent(in) :: xa
+        real, intent(in) :: x
+        integer :: n, jl, ju, jm, i
+        logical :: is_sorted
         n = size(xa)
-
-        ! first check if x is out of range
+                
         if ( x > xa(n) ) then
             ns = n
             return
@@ -71,13 +67,27 @@ module interpolation_mod
             return
         end if
 
-        ! if not, then locate
-        ! the command finds the location of the smallest positive value of xa-x
-        ! x lies between this location and the previous one
-        ! so subtract one, and then x lies between xa(ns) and xa(ns+1)
+        ! --- LEGACY COMPATIBILITY INTERCEPT ---
+        ! Forcing the replication of the original minloc boundary error.
+        if ( x == xa(n) ) then
+            ns = 1
+            return
+        end if
+        ! --------------------------------------
 
-        ns=max(minloc((xa-x),1,(xa-x).gt.0)-1,1)
-
+        ! Binary Search 
+        jl = 1
+        ju = n
+        do while (ju - jl > 1)
+            jm = (ju + jl) / 2
+            if (x >= xa(jm)) then
+                jl = jm
+            else
+                ju = jm
+            end if
+        end do
+        
+        ns = jl
     end subroutine locate
 
 
