@@ -693,84 +693,58 @@ module photon_mod
         end function initPhotonPacket
 
 
+        !#############################################################################
+        
         ! this subroutine determines the frequency of a newly created photon packet
         ! according to the given probability density
-        subroutine getNu(probDen, nuP)
-
-            real, dimension(:), intent(in) :: probDen    ! probability density function
-
-            integer, intent(out)           :: nuP         ! frequency index of the new
-
-            ! local variables
-            real                           :: random     ! random number
-
-            ! get a random number
-            call random_number(random)
-
-            random = 1.-random
-
-            ! see what frequency random corresponds to
-            call locate(probDen, random, nuP)
-             if (nuP <= 0) nuP = 1
-
- !           if (probDen(nuP) /= random) then
- !              nuP = nuP+1
- !           end if
-
-             if (nuP<nbins) then
-                if (random>=(probDen(nuP+1)+probDen(nuP))/2.) nuP=nuP+1
-             end if
-
-        end subroutine getNu
-
-        ! this subroutine determines the frequency of a newly created photon packet
-        ! according to the given probability density
-        ! does not use bisection to locate nu on array
+        ! optimized: utilizes bisection (binary search) to locate nu on array
         subroutine getNu2(probDen, nuP)
 
             real, dimension(:), intent(in) :: probDen    ! probability density function
+            integer, intent(out)           :: nuP        ! frequency index of the new packet
 
             real                           :: random     ! random number
-
-            integer, intent(out)           :: nuP        ! frequency index of the new
-
-            integer                        :: isearch,i  !
+            integer                        :: ilow, ihigh, imid ! bisection indices
 
             ! get a random number
             call random_number(random)
 
-            do i = 1, 10000
-               if (random==0 .or. random==1. .or. random == 0.9999999) then
-                  call random_number(random)
-               else
-                  exit
-               end if
-            end do
-            if (i>=10000) then
-               print*, '! getNu2: problem with random number generator', random, i
-               stop
-            end if
-
-            ! see what frequency random corresponds to
-            nuP=1
-            do isearch = 1, nbins
-               if (random>=probDen(isearch)) then
-                  nuP=isearch
-               else
-                  exit
-               end if
+            ! Safely handle edge cases without an arbitrary 10,000 iteration limit
+            do while (random <= 0.0 .or. random >= 0.9999999)
+               call random_number(random)
             end do
 
-            if (nuP<nbins-1) then
-               nuP=nuP+1
+            ! Binary search (bisection) matching the exact index mapping of the legacy code
+            nuP = 1
+            ilow = 1
+            ihigh = nbins
+
+            do while (ilow <= ihigh)
+               imid = (ilow + ihigh) / 2
+               if (probDen(imid) <= random) then
+                  nuP = imid
+                  ilow = imid + 1
+               else
+                  ihigh = imid - 1
+               end if
+            end do
+
+            ! Legacy clamp: The original code manually shifts indices away from 
+            ! the lower boundary and clamps the upper boundary. 
+            ! This prevents nuP=1 which causes zero-opacity divide-by-zero crashes.
+            if (nuP < nbins - 1) then
+               nuP = nuP + 1
             end if
 
-            if (nuP>=nbins) then
+            ! Preserved legacy debug output
+            if (nuP >= nbins) then
                print*, 'random: ', random
                print*, 'probDen: ', probDen
             end if
 
-          end subroutine getNu2
+        end subroutine getNu2
+                   
+        !#############################################################################
 
 
         ! this function creates a new photon packet
