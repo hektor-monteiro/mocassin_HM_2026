@@ -1,0 +1,46 @@
+           1
+   0.00000000      convWriteGrid
+ T  0.200000003       1.50000000      2000000000000000000  lgAutoPackets
+ F  lgSymmetricXYZ
+ F  lgTalk
+ F  lg1D
+         700  nbins
+   1.37464702E-02  nuStepSize
+   15.0000000      nuMax
+   1.00099999E-06  nuMin
+   0.00000000      R_in
+   5.00000007E-02  XHIlimit
+          15   90.0000000      maxIterateMC
+ F  lgDebug
+ F  lgPlaneIonization
+           2  nAbComponents
+ "input/abunPN150.in                                "
+ "input/abunPN150.in                                "
+ F  lgOutput
+   0.00000000       0.00000000      dxSlit,dySlit
+ T F  lgDust, lgDustConstant
+ F           1  lgMultiDustChemistry, nDustComponents
+ "input/dust_species.dat" dustFile
+ "input/dust_sizes.dat" dustFile
+ T  lgGas
+ F  lgRecombination
+           3           3          35  nSpeciesMax, nSpecies, nSizes
+           3  Partial nspecies
+   50.0000000     resLinesTransfer
+ T lgDustScattering
+           1  nAngleBins
+   0.00000000       1.57000005      inclination theta
+   0.00000000       0.00000000      inclination theta
+  -1.00000000      -1.00000000      continuumCube
+ T  lgPhotoelectric
+ F  lgTraceHeating
+   0.00000000      Ldiffuse
+   0.00000000      Tdiffuse
+ none                                               shapeDiffuse
+           0 nPhotonsDiffuse
+           0  emittingGrid
+           7  emittingGrid
+ F  lgMultiStars
+ F  2D geometry?
+ F   0.00000000       0.00000000       0.00000000      Echo on/off
+ F  NoSourceSED

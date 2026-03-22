@@ -1,0 +1,383 @@
+ ! iterateMC: [Summary] Iteration            1 ;            0 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration            1 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration            1 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration            1 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration            1 ; Total:    0.143953934     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration            1 ;              10000000  energy packets used
+ ! iterateMC: [Summary] Iteration            1 ; finished at 11:11:15
+ 
+ ! iterateMC: [Summary] Iteration            2 ;            0 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration            2 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration            2 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration            2 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration            2 ; Total:    0.983685195     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration            2 ;              10000000  energy packets used
+ ! iterateMC: [Summary] Iteration            2 ; finished at 11:11:38
+ 
+ ! iterateMC: [Summary] Iteration            3 ;            3 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration            3 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration            3 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration            3 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration            3 ; Total:     3.19097900     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration            3 ;              10000000  energy packets used
+ ! iterateMC: [Summary] Iteration            3 ; finished at 11:12:10
+ 
+ ! iterateMC: [Summary] Iteration            4 ;           12 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration            4 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration            4 ;            1 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration            4 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration            4 ; Total:     12.9558544     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration            4 ;              10000000  energy packets used
+ ! iterateMC: [Summary] Iteration            4 ; finished at 11:12:45
+ 
+ ! iterateMC: [Summary] Iteration            5 ;           54 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration            5 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration            5 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration            5 ;            2 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration            5 ; Total:     54.2946243     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration            5 ;              10000000  energy packets used
+ ! iterateMC: [Summary] Iteration            5 ; finished at 11:13:14
+ 
+ ! iterateMC: [Summary] Iteration            6 ;           60 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration            6 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration            6 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration            6 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration            6 ; 
+ Dust Budgets: 
+  Component            0
+  Contribution           0  0.341067880    
+  Contribution           1  0.456072509    
+  Contribution           2   9.80131095E-04
+  Contribution           3  0.105250120    
+  Contribution           4   1.66215503E-03
+  Contribution           5   8.86388719E-02
+  Contribution           6   6.32829219E-03
+  Component            1
+  Contribution           0  0.344769984    
+  Contribution           1  0.443209678    
+  Contribution           2   1.00227725E-03
+  Contribution           3  0.114296027    
+  Contribution           4   2.00215285E-03
+  Contribution           5   8.81054699E-02
+  Contribution           6   6.61438750E-03
+  Component            2
+  Contribution           0  0.334958583    
+  Contribution           1  0.477298200    
+  Contribution           2   9.43585648E-04
+  Contribution           3   9.03233588E-02
+  Contribution           4   1.10111956E-03
+  Contribution           5   8.95188004E-02
+  Contribution           6   5.85622108E-03
+ ! iterateMC: [Summary] Iteration            6 ; Total:     60.4606514     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration            6 ;              10000000  energy packets used
+ ! iterateMC: [Summary] Iteration            6 ; finished at 11:13:43
+ 
+ ! iterateMC: [Summary] Iteration            7 ;           64 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration            7 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration            7 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration            7 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration            7 ; 
+ Dust Budgets: 
+  Component            0
+  Contribution           0  0.352386862    
+  Contribution           1  0.433649123    
+  Contribution           2   9.62197955E-04
+  Contribution           3  0.118428759    
+  Contribution           4   2.17173109E-03
+  Contribution           5   8.50686505E-02
+  Contribution           6   7.33263418E-03
+  Component            1
+  Contribution           0  0.355411947    
+  Contribution           1  0.420186073    
+  Contribution           2   9.91473673E-04
+  Contribution           3  0.127971709    
+  Contribution           4   2.61597359E-03
+  Contribution           5   8.51677880E-02
+  Contribution           6   7.65505992E-03
+  Component            2
+  Contribution           0  0.347355127    
+  Contribution           1  0.456035495    
+  Contribution           2   9.13525873E-04
+  Contribution           3  0.102562077    
+  Contribution           4   1.43310556E-03
+  Contribution           5   8.49041268E-02
+  Contribution           6   6.79656537E-03
+ ! iterateMC: [Summary] Iteration            7 ; Total:     64.9952011     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration            7 ;              15000000  energy packets used
+ ! iterateMC: [Summary] Iteration            7 ; finished at 11:14:16
+ 
+ ! iterateMC: [Summary] Iteration            8 ;           67 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration            8 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration            8 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration            8 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration            8 ; 
+ Dust Budgets: 
+  Component            0
+  Contribution           0  0.356657356    
+  Contribution           1  0.420295715    
+  Contribution           2   9.70162451E-04
+  Contribution           3  0.127408251    
+  Contribution           4   2.55546183E-03
+  Contribution           5   8.41455236E-02
+  Contribution           6   7.96753634E-03
+  Component            1
+  Contribution           0  0.360287338    
+  Contribution           1  0.406199992    
+  Contribution           2   9.88191459E-04
+  Contribution           3  0.137315318    
+  Contribution           4   3.07507627E-03
+  Contribution           5   8.38347152E-02
+  Contribution           6   8.29929486E-03
+  Component            2
+  Contribution           0  0.350612164    
+  Contribution           1  0.443764389    
+  Contribution           2   9.40147729E-04
+  Contribution           3  0.110914417    
+  Contribution           4   1.69037888E-03
+  Contribution           5   8.46633837E-02
+  Contribution           6   7.41522899E-03
+ ! iterateMC: [Summary] Iteration            8 ; Total:     67.1305161     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration            8 ;              22500000  energy packets used
+ ! iterateMC: [Summary] Iteration            8 ; finished at 11:15:12
+ 
+ ! iterateMC: [Summary] Iteration            9 ;           70 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration            9 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration            9 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration            9 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration            9 ; 
+ Dust Budgets: 
+  Component            0
+  Contribution           0  0.359313339    
+  Contribution           1  0.409698367    
+  Contribution           2   9.94717004E-04
+  Contribution           3  0.134227082    
+  Contribution           4   2.88145686E-03
+  Contribution           5   8.44653398E-02
+  Contribution           6   8.41977540E-03
+  Component            1
+  Contribution           0  0.363597333    
+  Contribution           1  0.395146966    
+  Contribution           2   1.00166001E-03
+  Contribution           3  0.144441441    
+  Contribution           4   3.46272253E-03
+  Contribution           5   8.35849568E-02
+  Contribution           6   8.76498315E-03
+  Component            2
+  Contribution           0  0.352176368    
+  Contribution           1  0.433939159    
+  Contribution           2   9.83149745E-04
+  Contribution           3  0.117211632    
+  Contribution           4   1.91316276E-03
+  Contribution           5   8.59318823E-02
+  Contribution           6   7.84469768E-03
+ ! iterateMC: [Summary] Iteration            9 ; Total:     70.0815735     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration            9 ;              33750000  energy packets used
+ ! iterateMC: [Summary] Iteration            9 ; finished at 11:16:11
+ 
+ ! iterateMC: [Summary] Iteration           10 ;           72 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration           10 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration           10 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration           10 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration           10 ; 
+ Dust Budgets: 
+  Component            0
+  Contribution           0  0.361015737    
+  Contribution           1  0.401579142    
+  Contribution           2   1.02315762E-03
+  Contribution           3  0.139339685    
+  Contribution           4   3.15019302E-03
+  Contribution           5   8.51410627E-02
+  Contribution           6   8.75104778E-03
+  Component            1
+  Contribution           0  0.365691453    
+  Contribution           1  0.386944115    
+  Contribution           2   1.02250138E-03
+  Contribution           3  0.149622634    
+  Contribution           4   3.77490418E-03
+  Contribution           5   8.38434994E-02
+  Contribution           6   9.10089165E-03
+  Component            2
+  Contribution           0  0.353222668    
+  Contribution           1  0.425971180    
+  Contribution           2   1.02424854E-03
+  Contribution           3  0.122201286    
+  Contribution           4   2.10897042E-03
+  Contribution           5   8.73036683E-02
+  Contribution           6   8.16794671E-03
+ ! iterateMC: [Summary] Iteration           10 ; Total:     72.7447205     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration           10 ;              50625000  energy packets used
+ ! iterateMC: [Summary] Iteration           10 ; finished at 11:17:43
+ 
+ ! iterateMC: [Summary] Iteration           11 ;           75 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration           11 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration           11 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration           11 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration           11 ; 
+ Dust Budgets: 
+  Component            0
+  Contribution           0  0.362028033    
+  Contribution           1  0.395269573    
+  Contribution           2   1.06318691E-03
+  Contribution           3  0.142925158    
+  Contribution           4   3.36209987E-03
+  Contribution           5   8.63623023E-02
+  Contribution           6   8.98965728E-03
+  Component            1
+  Contribution           0  0.366871208    
+  Contribution           1  0.380771101    
+  Contribution           2   1.05730898E-03
+  Contribution           3  0.153151020    
+  Contribution           4   4.01325617E-03
+  Contribution           5   8.48017856E-02
+  Contribution           6   9.33434721E-03
+  Component            2
+  Contribution           0  0.353942573    
+  Contribution           1  0.419473320    
+  Contribution           2   1.07299676E-03
+  Contribution           3  0.125854790    
+  Contribution           4   2.27510766E-03
+  Contribution           5   8.89670104E-02
+  Contribution           6   8.41426477E-03
+ ! iterateMC: [Summary] Iteration           11 ; Total:     75.0959702     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration           11 ;              75937504  energy packets used
+ ! iterateMC: [Summary] Iteration           11 ; finished at 11:19:48
+ 
+ ! iterateMC: [Summary] Iteration           12 ;           76 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration           12 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration           12 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration           12 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration           12 ; 
+ Dust Budgets: 
+  Component            0
+  Contribution           0  0.362579465    
+  Contribution           1  0.390356421    
+  Contribution           2   1.10782415E-03
+  Contribution           3  0.145394713    
+  Contribution           4   3.52152134E-03
+  Contribution           5   8.78698677E-02
+  Contribution           6   9.17017367E-03
+  Component            1
+  Contribution           0  0.367476791    
+  Contribution           1  0.376104295    
+  Contribution           2   1.09822210E-03
+  Contribution           3  0.155456260    
+  Contribution           4   4.18409985E-03
+  Contribution           5   8.61756206E-02
+  Contribution           6   9.50470660E-03
+  Component            2
+  Contribution           0  0.354391038    
+  Contribution           1  0.414185047    
+  Contribution           2   1.12387666E-03
+  Contribution           3  0.128572807    
+  Contribution           4   2.41375854E-03
+  Contribution           5   9.07025114E-02
+  Contribution           6   8.61088652E-03
+ ! iterateMC: [Summary] Iteration           12 ; Total:     76.9193878     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration           12 ;             113906256  energy packets used
+ ! iterateMC: [Summary] Iteration           12 ; finished at 11:22:49
+ 
+ ! iterateMC: [Summary] Iteration           13 ;           79 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration           13 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration           13 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration           13 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration           13 ; 
+ Dust Budgets: 
+  Component            0
+  Contribution           0  0.362540543    
+  Contribution           1  0.386225343    
+  Contribution           2   1.16418907E-03
+  Contribution           3  0.147115469    
+  Contribution           4   3.64916143E-03
+  Contribution           5   8.99960175E-02
+  Contribution           6   9.30914190E-03
+  Component            1
+  Contribution           0  0.367502868    
+  Contribution           1  0.372133523    
+  Contribution           2   1.15101179E-03
+  Contribution           3  0.157110289    
+  Contribution           4   4.32325061E-03
+  Contribution           5   8.81409124E-02
+  Contribution           6   9.63807851E-03
+  Component            2
+  Contribution           0  0.354230911    
+  Contribution           1  0.409822971    
+  Contribution           2   1.18625164E-03
+  Contribution           3  0.130378738    
+  Contribution           4   2.52039800E-03
+  Contribution           5   9.31023806E-02
+  Contribution           6   8.75831489E-03
+ ! iterateMC: [Summary] Iteration           13 ; Total:     79.9904022     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration           13 ;             170859392  energy packets used
+ ! iterateMC: [Summary] Iteration           13 ; finished at 11:27:15
+ 
+ ! iterateMC: [Summary] Iteration           14 ;           84 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration           14 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration           14 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration           14 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration           14 ; 
+ Dust Budgets: 
+  Component            0
+  Contribution           0  0.362351865    
+  Contribution           1  0.383464009    
+  Contribution           2   1.21074938E-03
+  Contribution           3  0.147709087    
+  Contribution           4   3.72329447E-03
+  Contribution           5   9.21664312E-02
+  Contribution           6   9.37457383E-03
+  Component            1
+  Contribution           0  0.367378056    
+  Contribution           1  0.369668931    
+  Contribution           2   1.19330059E-03
+  Contribution           3  0.157516375    
+  Contribution           4   4.39907331E-03
+  Contribution           5   9.01543200E-02
+  Contribution           6   9.68994666E-03
+  Component            2
+  Contribution           0  0.353931457    
+  Contribution           1  0.406578124    
+  Contribution           2   1.23998104E-03
+  Contribution           3  0.131275803    
+  Contribution           4   2.59096036E-03
+  Contribution           5   9.55375433E-02
+  Contribution           6   8.84612463E-03
+ ! iterateMC: [Summary] Iteration           14 ; Total:     84.2130508     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration           14 ;             256289088  energy packets used
+ ! iterateMC: [Summary] Iteration           14 ; finished at 11:34:05
+ 
+ ! iterateMC: [Summary] Iteration           15 ;           87 % converged cells in grid            1
+ ! iterateMC: [Summary] Iteration           15 ;            0 % no hit cells in grid            1
+ ! iterateMC: [Summary] Iteration           15 ;            0 % Ion balance not reached in grid            1
+ ! iterateMC: [Summary] Iteration           15 ;            0 % Te balance not reached in grid           1
+ ! iterateMC: [Summary] Iteration           15 ; 
+ Dust Budgets: 
+  Component            0
+  Contribution           0  0.361752033    
+  Contribution           1  0.380424857    
+  Contribution           2   1.26020832E-03
+  Contribution           3  0.148852587    
+  Contribution           4   3.81038385E-03
+  Contribution           5   9.44263488E-02
+  Contribution           6   9.47362371E-03
+  Component            1
+  Contribution           0  0.366783261    
+  Contribution           1  0.366825193    
+  Contribution           2   1.23879337E-03
+  Contribution           3  0.158628523    
+  Contribution           4   4.48974641E-03
+  Contribution           5   9.22485590E-02
+  Contribution           6   9.78596509E-03
+  Component            2
+  Contribution           0  0.353316218    
+  Contribution           1  0.403229654    
+  Contribution           2   1.29611581E-03
+  Contribution           3  0.132458881    
+  Contribution           4   2.67116237E-03
+  Contribution           5   9.80781764E-02
+  Contribution           6   8.94984044E-03
+ ! iterateMC: [Summary] Iteration           15 ; Total:     87.4760056     % converged cells over all grids
+ ! iterateMC: [Summary] Iteration           15 ;             384433632  energy packets used
+ ! iterateMC: [Summary] Iteration           15 ; finished at 11:43:58
+ 
+ T(H+)    13997.2012      component            0
+ T(H+)    14125.3945      component            1
+ T(H+)    13799.8975      component            2
