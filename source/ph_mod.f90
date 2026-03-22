@@ -222,7 +222,7 @@ module xSec_mod
 
 
         ! allocate memory for xSecArrayTemp
-        allocate (xSecArrayTemp(1:1000000), stat = err)
+        allocate (xSecArrayTemp(1:2000000), stat = err)
         if (err /= 0) then
             print*, "! initXSecArray: Cannot allocate grid array"
             stop
@@ -849,7 +849,9 @@ module xSec_mod
         nSpeciesMax = 0
 
        do icomp = 1, nDustComponents
-
+       
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          ! Read the number of dust species for the component
           close(13)
           open(file = dustSpeciesFile(icomp), action="read",unit=13, &
                &position="rewind",status="old", iostat = ios)
@@ -858,45 +860,43 @@ module xSec_mod
              stop
           end if
           read(13, *) nSpeciesPart(icomp)
-
-          close(13)
           nSpecies = nSpecies+nSpeciesPart(icomp)
+          close(13)
 
           if (nSpeciesMax < nSpeciesPart(icomp)) nSpeciesMax = nSpeciesPart(icomp)
 
-        end do
+       end do
 
         allocate(rho(1:nSpecies), stat = err)
-        if (err /= 0) then
-           print*, "! makeDustXsec: can't allocate rho memory"
-           stop
-        end if
         rho=0.
         allocate(grainVn(1:nSpecies), stat = err)
-        if (err /= 0) then
-           print*, "! makeDustXsec: can't allocate grainVn memory"
-           stop
-        end if
         grainVn=0.
         allocate(MsurfAtom(1:nSpecies), stat = err)
+        MsurfAtom=0
+        allocate(componentMinRadius(1:nDustComponents,1:nSpecies), stat = err)
+        componentMinRadius=0.
+        allocate(componentMaxRadius(1:nDustComponents,1:nSpecies), stat = err)
+        componentMaxRadius=0.
         if (err /= 0) then
-           print*, "! makeDustXsec: can't allocate surfAtom memory"
+           print*, "! makeDustXsec (876): can't allocate array memory"
            stop
         end if
-        MsurfAtom=0
 
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	! Read dust optical data for all species to be used
         do icomp = 1, nDustComponents
+        
+           ! Read the number of dust species for the component
            if (icomp > 1) dustComPoint(icomp) = dustComPoint(icomp-1)+nSpeciesPart(icomp-1)
-
-           close(13)
-           open(file = dustSpeciesFile(icomp), action="read",unit=13, &
-                & position="rewind",status="old", iostat = ios)
+              close(13)
+              open(file = dustSpeciesFile(icomp), action="read",unit=13, position="rewind",status="old", iostat = ios)
            if (ios /= 0 ) then
               print*, "! makeDustXsec: can't open file ", dustSpeciesFile(icomp)
               stop
            end if
            read(13, *) nSpeciesPart(icomp)
 
+           ! For each species in component, read dust optical datafile
            do i = 1, nSpeciesPart(icomp)
               read(13,*) extFile
               close(14)
@@ -905,47 +905,38 @@ module xSec_mod
                  print*, "! makeDustXsec: can't open file ", PREFIX,"/share/mocassin/"//extFile
                  stop
               end if
-              read(14,*) readChar
-
+              read(14,*) readChar 
               read(14,*) readChar, readReal, rho(dustComPoint(icomp)+i-1), grainVn(dustComPoint(icomp)+i-1), &
                    &MsurfAtom(dustComPoint(icomp)+i-1)
               close(14)
            end do
            close(13)
-           print*, 'Passou...',icomp, dustComPoint(icomp)
         end do
         
 
-        ! allocate abundances array for dust
+        ! allocate array for dust absorption opacities
         allocate (absOpacSpecies(1:nSpecies, 1:nbins), stat=err)
-        if (err/=0) then
-           print*, "! makeDustXsec: error allocation memory for absOpacSpecies array"
-           stop
-        end if
         absOpacSpecies=0.
 
-        ! allocate abundances array for dust
+        ! allocate array for dust abundances
         allocate (grainAbun(1:nDustComponents, 1:nSpeciesMax), stat=err)
-        if (err/=0) then
-           print*, "! makeDustXsec: error allocation memory for grainAbun array"
-           stop
-        end if
         grainAbun=0.
 
-
+        ! allocate array for dust species label
         allocate (grainLabel(1:nSpecies), stat=err)
-        if (err/=0) then
-           print*, "! makeDustXsec: error allocation memory for grainLabel array"
-           stop
-        end if
         grainLabel=""
+        
+        ! allocate array for dust sublimation temperature
         allocate (TdustSublime(1:nSpecies), stat=err)
+        TdustSublime=0.
+        
         if (err/=0) then
-           print*, "! makeDustXsec: error allocation memory for TdustSublime array"
+           print*, "! makeDustXsec (925): error allocation memory for array"
            stop
         end if
-        TdustSublime=0.
 
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! Read file with dust grain size distribution
         close(11)
         open (unit=11, file=dustFile(2), iostat = ios, status = 'old', &
              &position = 'rewind', action="read")
@@ -954,36 +945,30 @@ module xSec_mod
            stop
         end if
 
-        ! chekc how many sizes are used
+        ! Read how many sizes are used and allocate array
         read (11, *) nSizes
         allocate (grainRadius(1:nSizes), stat=err)
-        if (err/=0) then
-           print*, "! makeDustXsec: error allocation memory for grainRadius array"
-           stop
-        end if
         grainRadius=0.
+        
         allocate (da(1:nSizes), stat=err)
-        if (err/=0) then
-           print*, "! makeDustXsec: error allocation memory for da array"
-           stop
-        end if
         da=0.
 
         allocate (grainWeight(1:nSizes), stat=err)
-        if (err/=0) then
-           print*, "! makeDustXsec: error allocation memory for grainWeight array"
-           stop
-        end if
         grainWeight=0.
         normWeight =0.
 
+        if (err/=0) then
+           print*, "! makeDustXsec (952): error allocation memory for array"
+           stop
+        end if
 
+        ! Read sizes and weights for the distribution
         do ai = 1, nSizes
            read(11,*) iskip, grainRadius(ai), grainWeight(ai)
         end do
-
         close(11)
 
+        ! Calculate bin size
         if (nSizes>1) then
            da(1) = grainRadius(2)-grainRadius(1)
            do ai = 2, nSizes-1
@@ -991,15 +976,16 @@ module xSec_mod
            end do
            da(nSizes) = grainRadius(nSizes)-grainRadius(nSizes-1)
         end if
+        
+        ! Calculate normalization for distribution weights
         normWeight=  0.
         do ai = 1, nSizes
            normWeight = normWeight+grainWeight(ai)*da(ai)
-!!!           normWeight = normWeight+grainWeight(ai)
         end do
+        
         if (nSizes>1) then
            do ai = 1, nSizes
               grainWeight(ai) = (grainWeight(ai)*da(ai))/normWeight
-!!!              grainWeight(ai) = (grainWeight(ai))/normWeight
               if (.not.grainWeight(ai)>=0.) then
                  print*, '! makeDustXSec : Invalid grain weight ', grainWeight(ai), ai
                  stop
@@ -1011,7 +997,9 @@ module xSec_mod
            print*, '! makeDustXSec : Invalid nSizes', nSizes
            stop
         end if
-
+        
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! print final data read to screen 
         if (taskid == 0)  then
            print*, '! makeDustXSec : Size Distribution '
            print*, ' index, a [um], da [um], weight '
@@ -1021,20 +1009,25 @@ module xSec_mod
         end if
 
         allocate (dustScaXSecP(0:nSpecies,1:nSizes), stat=err)
-        if (err/=0) then
-           print*, "! makeDustXsec: error allocation memory for dustScaXSecP array"
-           stop
-        end if
         dustScaXSecP = -1
         allocate (dustAbsXSecP(0:nSpecies,1:nSizes), stat=err)
-        if (err/=0) then
-           print*, "! makeDustXsec: error allocation memory for dustAbsXSecP array"
-           stop
-        end if
         dustAbsXSecP = -1
 
+        if (err/=0) then
+           print*, "! makeDustXsec (1011): error allocation memory for array"
+           stop
+        end if
 
-        do icomp = 1, nDustComponents   !  main dust component loop
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! Main loop to calculate crosssections for each dust component
+        
+        ! INITIALIZE TOTALS HERE, OUTSIDE THE LOOP
+        allocate (CTsca(1:nbins), stat=err)
+        allocate (CTabs(1:nbins), stat=err)
+        CTabs = 0.
+        CTsca = 0.
+
+        do icomp = 1, nDustComponents   
 
            open (unit=10, file=dustSpeciesFile(icomp), iostat = ios, status = &
                 &'old', position = 'rewind', action="read")
@@ -1043,24 +1036,31 @@ module xSec_mod
               stop
            end if
 
-           ! check how many species are used
+           ! Read how many species are used
            read (10, *) nSpeciesPart(icomp)
 
            do nSpec = 1, nSpeciesPart(icomp)
-
-              read(10, *) extinctionFile, grainAbun(icomp, nSpec)
-
+              
+              ! For each species read abundance and size interval to use
+              read(10, *) extinctionFile, grainAbun(icomp, nSpec), componentMinRadius(icomp, nSpec), componentMaxRadius(icomp, nSpec)
+              
+              ! Read dust optical constant data from file
               open (unit=20, file=PREFIX//"/share/mocassin/"//extinctionFile, iostat = ios, &
                    &status = 'old', position = 'rewind', action="read")
               if(ios/=0) then
                  print*, '! makeDustXSec: cannot open file for reading ', PREFIX,'/share/mocassin/',extinctionFile
                  stop
               end if
-
+              
+              ! Read if dust optical properties file is of 'nk' or 'Q' type 
               read (20, *) dustFileType
 
+              !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+              ! Do calculations depending on dust optical data file types
+              
               select case (dustFileType)
               
+              !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
               case ('nk')
 
                  read (unit=20, fmt=*, iostat=ios) textString
@@ -1080,27 +1080,11 @@ module xSec_mod
                  end if
 
                  allocate (wav(1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation &
-                         &memory for wav array"
-                    stop
-                 end if
                  allocate (tmp1(1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for &
-                         &tmp1 array"
-                    stop
-                 end if
                  allocate (tmp2(1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for &
-                         &tmp2 array"
-                    stop
-                 end if
                  allocate (tmp3(1:nWav), stat=err)
                  if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for &
-                         &tmp3 array"
+                    print*, "! makeDustXsec (1075): error allocation memory for array"
                     stop
                  end if
 
@@ -1112,56 +1096,35 @@ module xSec_mod
 
                  if (nSpec == 1 .and. icomp == 1) then
 
-                    ! allocate the pointers' memory
-
+                    ! allocate the  memory pointers
                     allocate (Gcos(1:nSpecies,0:nSizes,1:nbins), stat=err)
-                    if (err/=0) then
-                       print*, "! makeDustXsec: error allocation memory for Gcos array"
-                       stop
-                    end if
                     allocate (Csca(1:nSpecies,0:nSizes,1:nbins), stat=err)
-                    if (err/=0) then
-                       print*, "! makeDustXsec: error allocation memory for Csca array"
-                       stop
-                    end if
                     allocate (Cabs(1:nSpecies,0:nSizes,1:nbins), stat=err)
+!                    allocate (CTsca(1:nbins), stat=err)
+!                    allocate (CTabs(1:nbins), stat=err)
                     if (err/=0) then
-                       print*, "! makeDustXsec: error allocation memory for Cabs array"
-                       stop
-                    end if
-                    allocate (CTsca(1:nbins), stat=err)
-                    if (err/=0) then
-                       print*, "! makeDustXsec: error allocation memory for CTsca array"
-                       stop
-                    end if
-                    allocate (CTabs(1:nbins), stat=err)
-                    if (err/=0) then
-                       print*, "! makeDustXsec: error allocation memory for CTabs array"
+                       print*, "! makeDustXsec (1095): error allocation memory for array"
                        stop
                     end if
                  end if                 
                  if (nSpec == 1) then
-                    CTabs = 0.
-                    CTsca = 0.
+                    !CTabs = 0.
+                    !CTsca = 0.
                     Gcos = 0.
                     Cabs = 0.
                     Csca = 0.
                  endif
 
                  allocate (Ere(1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for Ere array"
-                    stop
-                 end if
                  allocate (Eim(1:nWav), stat=err)
                  if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for Eim array"
+                    print*, "! makeDustXsec (1110): error allocation memory for array"
                     stop
                  end if
                  Ere = 0.
                  Eim = 0.
 
-
+                 ! Read if dust optical properties file is of 'nk' or 'Q' type 
                  read(20, *) dustFileType
 
                  read(20, *) grainLabel(dustComPoint(icomp)-1+nSpec), &
@@ -1169,11 +1132,11 @@ module xSec_mod
                       & rho(dustComPoint(icomp)-1+nSpec), &
                       & grainVn(dustComPoint(icomp)-1+nSpec), &
                       & MsurfAtom(dustComPoint(icomp)-1+nSpec)
-
+                      
+                 ! Read the values
                  do i = 1, Nwav
                     read (20,*) wav(i), Ere(i), Eim(i)
                  end do
-
                  close(20)
 
                  nWavOld = nWav
@@ -1192,13 +1155,9 @@ module xSec_mod
                  if (allocated(Eim)) deallocate(Eim)
 
                  allocate (Ere(1:nbins), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for Ere array - 2"
-                    stop
-                 end if
                  allocate (Eim(1:nbins), stat=err)
                  if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for Eim array - 2"
+                    print*, "! makeDustXsec (1151): error allocation memory for array"
                     stop
                  end if
                  Ere = 0.
@@ -1209,10 +1168,8 @@ module xSec_mod
                  call linearMap(tmp2, wav, nwav, Eim, nuArray, nbins)
 
                  ! calculate efficiencies
-                 call getQs(Ere,Eim,Cabs(nSpec,1:nSizes,1:nbins),&
-                      & Csca(nSpec,1:nSizes,1:nbins), Gcos(nSpec,1:nSizes,1:nbins))
-!                 call getQs(Ere,Eim,Cabs(nSpec,1:nSizes,1:nbins),Csca(nSpec,1:nSizes,1:nbins))
-
+                 call getQs(Ere,Eim,Cabs(nSpec,1:nSizes,1:nbins),Csca(nSpec,1:nSizes,1:nbins), &
+                            & Gcos(nSpec,1:nSizes,1:nbins), componentMinRadius(icomp, nSpec), componentMaxRadius(icomp, nSpec))
 
                  if (allocated(wav)) deallocate(wav)
                  if (allocated(Ere)) deallocate(Ere)
@@ -1221,14 +1178,10 @@ module xSec_mod
                  if (allocated(tmp2)) deallocate(tmp2)
                  if (allocated(tmp3)) deallocate(tmp3)
 
-
+              !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
               case ('Q')
-
-                 ! read (unit=20, fmt=*, iostat=ios) textString
-
                  rewind(20)
                  read(20, *) dustFileType
-
                  read(20, *) grainLabel(dustComPoint(icomp)-1+nSpec), &
                       & TdustSublime(nSpec+dustComPoint(icomp)-1), &
                       &rho(dustComPoint(icomp)-1+nSpec), &
@@ -1243,63 +1196,19 @@ module xSec_mod
                  read(20,*) textString
 
                  allocate (wav(1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for wav array"
-                    stop
-                 end if
                  allocate (agrain(1:nRadii), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for agrain array"
-                    stop
-                 end if
                  allocate (QaTemp(1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for QaTemp array"
-                    stop
-                 end if
                  allocate (QsTemp(1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for QaTemp array"
-                    stop
-                 end if
                  allocate (gTemp(1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for QaTemp array"
-                    stop
-                 end if
                  allocate (temp1nbins(1:nRadii,1:nbins), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for temp1nbins array"
-                    stop
-                 end if
                  allocate (temp2nbins(1:nRadii,1:nbins), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for temp1nbins array"
-                    stop
-                 end if
                  allocate (temp3nbins(1:nRadii,1:nbins), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for temp1nbins array"
-                    stop
-                 end if
                  allocate (tmp11(1:nRadii,1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for tmp11 array"
-                    stop
-                 end if
                  allocate (tmp22(1:nRadii,1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for tmp22 array"
-                    stop
-                 end if
                  allocate (tmp33(1:nRadii,1:nWav), stat=err)
-                 if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for tmp33 array"
-                    stop
-                 end if
                  allocate (tmpWav(1:nWav), stat=err)
                  if (err/=0) then
-                    print*, "! makeDustXsec: error allocation memory for tmpWav array"
+                    print*, "! makeDustXsec (1204): error allocation memory forarray"
                     stop
                  end if
 
@@ -1317,44 +1226,26 @@ module xSec_mod
                  wav = 0.
                  agrain = 0.
 
-                 if (nSpec == 1  .and. icomp == 1) then
-                 
+                 if (nSpec == 1  .and. icomp == 1) then                 
                     ! allocate the pointers' memory
                     allocate (gCos(1:nSpecies,0:nSizes,1:nbins), stat=err)
-                    if (err/=0) then
-                       print*, "! makeDustXsec: error allocation memory for Cabs array"
-                       stop
-                    end if
                     allocate (Csca(1:nSpecies,0:nSizes,1:nbins), stat=err)
-                    if (err/=0) then
-                       print*, "! makeDustXsec: error allocation memory for Csca array"
-                       stop
-                    end if
                     allocate (Cabs(1:nSpecies,0:nSizes,1:nbins), stat=err)
-                    if (err/=0) then
-                       print*, "! makeDustXsec: error allocation memory for Cabs array"
-                       stop
-                    end if
                     allocate (CTsca(1:nbins), stat=err)
-                    if (err/=0) then
-                       print*, "! makeDustXsec: error allocation memory for CTsca array"
-                       stop
-                    end if
                     allocate (CTabs(1:nbins), stat=err)
                     if (err/=0) then
-                       print*, "! makeDustXsec: error allocation memory for CTabs array"
+                       print*, "! makeDustXsec (1230): error allocation memory for array"
                        stop
                     end if
                  end if
                  
                  if (nSpec == 1) then
-                    CTabs = 0.
-                    CTsca = 0.
+                    !CTabs = 0.
+                    !CTsca = 0.
                     Gcos = 0.
                     Cabs = 0.
                     Csca = 0.
-                 endif
-                
+                 endif                
 
                  do i = 1, nRadii
                     do j = 1, nWav
@@ -1372,13 +1263,11 @@ module xSec_mod
                     wav=tmpWav
 
                     ! map  data onto mocassin's nu grid
-
                     call linearMap(QaTemp, wav, nwav, temp1nbins(i,:), nuArray, nbins)
                     call linearMap(QsTemp, wav, nwav, temp2nbins(i,:), nuArray, nbins)
                     call linearMap(gTemp, wav, nwav, temp3nbins(i,:), nuArray, nbins)
 
                  end do
-
                  close(20)
 
                  if (allocated(QaTemp)) deallocate(QaTemp)
@@ -1391,56 +1280,65 @@ module xSec_mod
                  if (allocated(tmpWav)) deallocate(tmpWav)
 
                  ! interpolate over the grain size distribution
-                 do i = 1, nSizes
-
-                    call locate(agrain, grainRadius(i), iSize)
-
-                    if (grainRadius(i)<agrain(1)) then
-                       print*, '! makeDustXsec: [warning] Size distribution &
-                            & extends to radii smaller than &
-                            & the smallest radius listed in the external Qfile provided'
-                       print*, 'Value of the smallest radius was assigned'
-                       Cabs(nSpec,i,:) =  temp1nbins(1,:)
-                       Csca(nSpec,i,:) =  temp2nbins(1,:)
-                       gCos(nSpec,i,:) =  temp3nbins(1,:)
-                    else if (grainRadius(i)>agrain(nRadii)) then
-                       print*, '! makeDustXsec: [warning] Size distribution &
-                            & extends to radii larger than &
-                            & the largest radius listed in the external Qfile provided'
-                       print*, 'Value of the largest radius was assigned'
-
-                       Cabs(nSpec,i,:) =  temp1nbins(nRadii,:)
-                       Csca(nSpec,i,:) =  temp2nbins(nRadii,:)
-                       gCos(nSpec,i,:) =  temp3nbins(nRadii,:)
-
-                    else
-                       do j =1, nbins
-                       
-                          Cabs(nSpec,i,j) = temp1nbins(iSize,j)+&
-                               & (grainRadius(i)-agrain(iSize))*&
-                               & (temp1nbins(iSize+1,j)-temp1nbins(iSize,j))/&
-                               & (agrain(iSize+1)-agrain(iSize))
-
-                          Csca(nSpec,i,j) = temp2nbins(iSize,j)+&
-                               & (grainRadius(i)-agrain(iSize))*&
-                               & (temp2nbins(iSize+1,j)-temp2nbins(iSize,j))/&
-                               & (agrain(iSize+1)-agrain(iSize))
-
-                          gCos(nSpec,i,j) = temp3nbins(iSize,j)+&
-                               & (grainRadius(i)-agrain(iSize))*&
-                               & (temp3nbins(iSize+1,j)-temp3nbins(iSize,j))/&
-                               & (agrain(iSize+1)-agrain(iSize))
-                       end do
-                    end if
-
-                 end do
                  
+                 do i = 1, nSizes
+                 
+                    if (grainRadius(i) >= componentMinRadius(icomp, nSpec) .and. grainRadius(i) <= componentMaxRadius(icomp, nSpec)) then
+
+	               call locate(agrain, grainRadius(i), iSize)
+
+	               if (grainRadius(i)<agrain(1)) then
+	                  print*, '! makeDustXsec: [warning] Size distribution &
+	                       & extends to radii smaller than &
+	                       & the smallest radius listed in the external Qfile provided'
+	                  print*, 'Value of the smallest radius was assigned'
+	                  Cabs(nSpec,i,:) =  temp1nbins(1,:)
+	                  Csca(nSpec,i,:) =  temp2nbins(1,:)
+	                  gCos(nSpec,i,:) =  temp3nbins(1,:)
+	               else if (grainRadius(i)>agrain(nRadii)) then
+	                  print*, '! makeDustXsec: [warning] Size distribution &
+	                       & extends to radii larger than &
+	                       & the largest radius listed in the external Qfile provided'
+	                  print*, 'Value of the largest radius was assigned'
+
+	                  Cabs(nSpec,i,:) =  temp1nbins(nRadii,:)
+	                  Csca(nSpec,i,:) =  temp2nbins(nRadii,:)
+	                  gCos(nSpec,i,:) =  temp3nbins(nRadii,:)
+
+	               else
+	                  do j =1, nbins
+	               
+	                     Cabs(nSpec,i,j) = temp1nbins(iSize,j)+&
+	                          & (grainRadius(i)-agrain(iSize))*&
+	                          & (temp1nbins(iSize+1,j)-temp1nbins(iSize,j))/&
+	                          & (agrain(iSize+1)-agrain(iSize))
+
+	                     Csca(nSpec,i,j) = temp2nbins(iSize,j)+&
+	                          & (grainRadius(i)-agrain(iSize))*&
+	                          & (temp2nbins(iSize+1,j)-temp2nbins(iSize,j))/&
+	                          & (agrain(iSize+1)-agrain(iSize))
+
+	                     gCos(nSpec,i,j) = temp3nbins(iSize,j)+&
+	                          & (grainRadius(i)-agrain(iSize))*&
+	                          & (temp3nbins(iSize+1,j)-temp3nbins(iSize,j))/&
+	                          & (agrain(iSize+1)-agrain(iSize))
+	                  end do
+	               end if
+	               
+	            else
+	               
+	               Cabs(nSpec,i,:) = 0.
+	               Csca(nSpec,i,:) = 0.
+	               gCos(nSpec,i,:) = 0.
+	               
+	            endif
+
+                 end do                 
 
                  if (allocated(agrain)) deallocate(agrain)
                  if (allocated(temp1nbins)) deallocate(temp1nbins)
                  if (allocated(temp2nbins)) deallocate(temp2nbins)
                  if (allocated(temp3nbins)) deallocate(temp3nbins)
-
 
               case default
                  print*, "! makeDustXsec: invalid dustFileType", dustFileType,extinctionFile
@@ -1449,36 +1347,44 @@ module xSec_mod
               end select
 
            end do  ! species loop
-
            close(10)
 
-           print*, "! makeDustXsec: Grain Abundances: "
-           print*, "(icomp, index, label, abundance, sublimation T)"
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           ! Print the info about the grains to be used
+           
+           print*, "! makeDustXsec: Grain Abundances and sizes used: "
+           print*, "(icomp, index, label, abundance, sublimation T, amin, amax)"
            do nSpec = 1, nSpeciesPart(icomp)
               print*, icomp, nSpec, grainLabel(dustComPoint(icomp)-1+nSpec),&
-                   & grainAbun(icomp,nSpec),&
-                   & TdustSublime(dustComPoint(icomp)-1+nSpec)
+                   & grainAbun(icomp,nSpec), TdustSublime(dustComPoint(icomp)-1+nSpec), & 
+                   componentMinRadius(icomp, nSpec), componentMaxRadius(icomp, nSpec)
            end do
            print*, ""
 
-           ! calculate cross sections [um^2]
-           ! combine individual species/sizes cross-sections into total
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           ! calculate cross sections [um^2], combine individual species/sizes cross-sections into total
            ! cross-section for the grain mixture
 
            do i = 1, nbins
               do nSpec = 1, nSpeciesPart(icomp)
                  do ai = 1, nSizes
+                 
+                    if (grainRadius(ai) >= componentMinRadius(icomp, nSpec) .and. grainRadius(ai) <= componentMaxRadius(icomp, nSpec)) then
 
-                    Csca(nSpec,ai,i) = Csca(nSpec,ai,i)*Pi*grainRadius(ai)*grainRadius(ai)*1.e-8
-                    Cabs(nSpec,ai,i) = Cabs(nSpec,ai,i)*Pi*grainRadius(ai)*grainRadius(ai)*1.e-8
-                    
-                    CTsca(i) = CTsca(i) + grainAbun(icomp, nSpec)*Csca(nSpec,ai,i)*grainWeight(ai)
-                    CTabs(i) = CTabs(i) + grainAbun(icomp, nSpec)*Cabs(nSpec,ai,i)*grainWeight(ai)
-
+                       Csca(nSpec,ai,i) = Csca(nSpec,ai,i)*Pi*grainRadius(ai)*grainRadius(ai)*1.e-8
+                       Cabs(nSpec,ai,i) = Cabs(nSpec,ai,i)*Pi*grainRadius(ai)*grainRadius(ai)*1.e-8
+                                           
+                       CTsca(i) = CTsca(i) + grainAbun(icomp, nSpec)*Csca(nSpec,ai,i)*grainWeight(ai)
+                       CTabs(i) = CTabs(i) + grainAbun(icomp, nSpec)*Cabs(nSpec,ai,i)*grainWeight(ai)
+                                             
+                    endif
+                                           
                  end do
               end do
            end do
            
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           ! set temp arrays for the cross sections
            
            do i = 1, nbins
               xSecArrayTemp(xSecTop+i) = CTsca(i)
@@ -1499,10 +1405,9 @@ module xSec_mod
 
            end do
            
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           ! set up dust cross-section pointers individual species
            
-
-           ! set up dust cross-section pointers
-           ! individual species
            dustScaXsecP(0,:) = xSecTop+1
            dustAbsXsecP(0,:) = xSecTop+1+nbins
 
@@ -1521,36 +1426,40 @@ module xSec_mod
            ! update value of xSecTop
            xSecTop = xSecTop + 2*nbins*(nSpeciesPart(icomp)+1)*nSizes
            
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           ! set absorption opacities array
            
            gSca = 0.
            norm = 0.
-           do n = 1, nSpeciesPart(icomp)
+           do nSpec = 1, nSpeciesPart(icomp)
               do i = 1, nbins
                  do ai = 1, nSizes
-                    absOpacSpecies(dustComPoint(icomp)-1+n, i) = &
-                         & absOpacSpecies(dustComPoint(icomp)-1+n, i) &
-                         & + xSecArrayTemp(dustAbsXsecP(dustComPoint(icomp)-1+n,ai)+i-1)*&
-                         & grainWeight(ai)
-!                    gSca(i) = gSca(i)+gCos(n,ai,i)*grainWeight(ai)*&
-!                         &grainAbun(icomp, n)
-                    gSca(i) = gSca(i)+gCos(n,ai,i)*Pi*grainRadius(ai)**2*&
-                         & grainWeight(ai)*grainAbun(icomp, n)
-                    norm(i) = norm(i) + Pi*grainRadius(ai)**2*&
-                         & grainWeight(ai)*grainAbun(icomp, n)
+                 
+                    if (grainRadius(ai) >= componentMinRadius(icomp, nSpec) .and. grainRadius(ai) <= componentMaxRadius(icomp, nSpec)) then
+                    
+                       absOpacSpecies(dustComPoint(icomp)-1+nSpec, i) = &
+                            & absOpacSpecies(dustComPoint(icomp)-1+nSpec, i) &
+                            & + xSecArrayTemp(dustAbsXsecP(dustComPoint(icomp)-1+nSpec,ai)+i-1)*&
+                            & grainWeight(ai)
 
+                       gSca(i) = gSca(i)+gCos(nSpec,ai,i)*Pi*grainRadius(ai)**2*&
+                            & grainWeight(ai)*grainAbun(icomp, nSpec)
+                       norm(i) = norm(i) + Pi*grainRadius(ai)**2*&
+                            & grainWeight(ai)*grainAbun(icomp, nSpec)
+                            
+                    endif
+                    
                  end do
-              end do
-              
+              end do              
            end do
-!           print*,' '
-!           print*,'Dust-grain anisotropy parameter g'
+
            do i = 1, nbins
               gSca(i)=gSca(i)/norm(i)
 !              write(6,'(i5,2es12.4)')i,c/(nuArray(i)*fr1Ryd)*1.e4,gSca(i)
            enddo
+                      
+           !print*, icomp, absOpacSpecies(1,100), xSecArrayTemp(100), gSca(100), dustAbsXsecP(1,1), dustAbsXsecP(10,1), Cabs(1,1,100), CTabs(100)
            
-           
-           print*, icomp, absOpacSpecies(1,100), xSecArrayTemp(100), gSca(100), dustAbsXsecP(1,1), dustAbsXsecP(10,1), Cabs(1,1,100), CTabs(100)
         end do  ! Loop of components
 
         if (allocated(gCos)) deallocate(gCos)
@@ -1564,15 +1473,15 @@ module xSec_mod
 
 
 
-      subroutine getQs(Ere_in,Eim_in,Qabs,Qsca,ggCos)
+      subroutine getQs(Ere_in,Eim_in,Qabs,Qsca,ggCos,amin,amax)
         implicit none
 
-        real, intent(in) :: Ere_in(*), Eim_in(*)
+        real, intent(in) :: Ere_in(*), Eim_in(*),amin,amax
         real, intent(out) :: Qabs(nsizes,nbins), Qsca(nSizes, nbins),&
              &ggCos(nSizes,nbins)
 
         complex :: refIndex
-        real    :: sizeParam
+        real    :: sizeParam, ggcostemp
 
         integer :: i, ai
 
@@ -1580,24 +1489,40 @@ module xSec_mod
 
            ! complex refraction index
            refIndex = cmplx(Ere_in(i),Eim_in(i))
-
+           
+           
            do ai = 1, nSizes
+           
+              if (grainRadius(ai) > amin .and. grainRadius(ai) < amax) then
+                               
+		 ! size parameter
+		 sizeParam=2.0*3.14159265*grainRadius(ai)/( 2.9979250e14/(nuArray(i)*fr1Ryd) )
 
-              ! size parameter
-              sizeParam=2.0*3.14159265*grainRadius(ai)/&
-                   &( 2.9979250e14/(nuArray(i)*fr1Ryd) )
+		 ! if size parameter > 100 use 100 (geometrical optics)
+		 if (sizeParam > 100.) sizeParam=100.
 
-              ! if size parameter > 100 use 100 (geometrical optics)
-              if (sizeParam > 100.) sizeParam=100.
+!		 ! now calculate the efficiencies
+!		 call BHmie(sizeParam,refIndex,Qabs(ai,i),Qsca(ai,i),ggCos(ai,i))
+		 
+		 if (sizeParam < 1) then 
+		    call CDE_efficiency(grainRadius(ai), refIndex, 2.9979250e14/(nuArray(i)*fr1Ryd), Qabs(ai,i),Qsca(ai,i),ggCos(ai,i))
+		 else 
+		    call BHmie(sizeParam,refIndex,Qabs(ai,i),Qsca(ai,i),ggCos(ai,i))
+		 endif
+		 
+                 ! Qabs here is the Qext returned by efficiency functions
+		 Qabs(ai,i) = Qabs(ai,i) - Qsca(ai,i)
 
-              ! now calculate the efficiencies
-              call BHmie(sizeParam,refIndex,Qabs(ai,i),Qsca(ai,i),&
-                   & ggCos(ai,i))
-
-              Qabs(ai,i) = Qabs(ai,i) - Qsca(ai,i)
-
-              if (.not.lgDustScattering) Qsca(ai,i)=0.
-
+		 if (.not.lgDustScattering) Qsca(ai,i)=0. 
+		 
+              else ! if grain size is outside the range for the given species set all to 0
+              
+                 Qabs(ai,i) = 0.
+                 Qsca(ai,i) = 0.
+                 ggCos(ai,i) = 0.
+                 
+              endif         
+                 
            end do
 
         end do
@@ -1774,6 +1699,96 @@ module xSec_mod
 
 
     end subroutine BHmie
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! This subroutine calculates the scattering efficiencies for a continuous distribution of ellipsoids (CDE)
+! https://www.aanda.org/articles/aa/pdf/2003/22/aah4358.pdf
+! based on the input particle radius, complex refractive index, and wavelength.
+! It returns the scattering, absorption, and extinction efficiencies.
+!
+! Inputs:
+!   a          : Particle radius 
+!   refIndex   : Complex refractive index 
+!   wavelength : Wavelength of light 
+!
+! Outputs:
+!   qext : Extinction efficiency 
+!   qsca : Scattering efficiency 
+!   ggsca : assymetry factor 
+!
+SUBROUTINE CDE_efficiency(a, refIndex, wavelength, qext,qsca,ggsca)
+    IMPLICIT NONE
+
+    ! Define double precision kind first
+    INTEGER, PARAMETER :: dp = 4
+    ! Input variables
+    REAL(kind=dp), INTENT(IN) :: a            ! Particle radius
+    COMPLEX, INTENT(IN) :: refIndex  ! Complex refractive index (N + iK)
+    REAL(kind=dp), INTENT(IN) :: wavelength   ! Wavelength
+
+    ! Output variables
+    REAL(kind=dp), INTENT(OUT) :: qext    ! Scattering efficiency
+    REAL(kind=dp), INTENT(OUT) :: qsca    ! Absorption efficiency
+    REAL(kind=dp), INTENT(OUT) :: ggsca    ! Absorption efficiency
+
+    ! Local variables
+    COMPLEX          :: m
+    REAL(kind=dp)    :: k_wavenumber
+    REAL(kind=dp)    :: V
+    REAL(kind=dp)    :: Ag
+    COMPLEX          :: alpha
+    REAL(kind=dp)    :: sigma_denominator
+    REAL(kind=dp)    :: sigma
+    REAL(kind=dp)    :: cde_cabs
+    REAL(kind=dp)    :: cde_csca
+    REAL(kind=dp)    :: cde_qsca    ! Scattering efficiency
+    REAL(kind=dp)    :: cde_qabs    ! Absorption efficiency
+    REAL(kind=dp)    :: cde_qext    ! Extinction efficiency
+
+    REAL(kind=dp), PARAMETER :: PI = ACOS(-1.0)
+
+    ! Complex refractive index 'm'
+    m = refIndex
+    k_wavenumber = (2.0 * PI) / wavelength
+
+    ! Assuming spherical particle volume
+    V = (4.0 / 3.0) * PI * (a**3)
+    ! Calculate geometrical cross-section (Ag)
+    Ag = PI * (a**2)
+
+    ! Calculate alpha
+    ! Note: LOG is the natural logarithm for real and complex numbers in Fortran
+    alpha = (2.0 * m**2 * LOG(m**2)) / (m**2 - 1.0) - 2.0
+
+    ! Calculate sigma_denominator
+    ! CABS returns the magnitude of a complex number
+    sigma_denominator = (CABS(m**2 - 1.0))**2
+
+    ! Calculate sigma
+    ! AIMAG returns the imaginary part of a complex number
+    sigma = (6.0 * PI / (V * k_wavenumber**3)) * AIMAG(m**2) / sigma_denominator
+    
+    ! Calculate cde_cabs and cde_csca
+    cde_cabs = k_wavenumber * V * AIMAG(alpha)
+    cde_csca = k_wavenumber * V * AIMAG(alpha) / sigma
+    
+    ! Calculate efficiencies
+    cde_qsca = cde_csca / Ag
+    cde_qabs = cde_cabs / Ag
+    cde_qext = cde_qsca + cde_qabs
+    
+    if (((2 * PI * a) / wavelength > 1)) then
+        cde_qext = 2.0
+        cde_qsca = cde_qext - cde_qabs
+    endif
+    
+    ggsca=0.
+    qsca=cde_qsca
+    qext=cde_qext
+
+
+END SUBROUTINE CDE_efficiency
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
     ! sets up Compton X-Sections and PDFs using the Klein Nishina formula

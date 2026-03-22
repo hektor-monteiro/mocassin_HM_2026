@@ -377,5 +377,35 @@ module interpolation_mod
 
     end  function interpGrid
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! linear interpolation routine
+
+subroutine linear_interpolation(xa, ya, x, y)
+    implicit none
+    real, dimension(:), intent(inout) :: xa, ya   ! Input arrays of x and y values
+    real, intent(in) :: x              ! The x value to interpolate
+    real, intent(out) :: y             ! Interpolated y value
+    integer :: i, j, n
+    ! Determine the length of the input arrays
+    n = size(xa)
+    ! check if x is within range
+    if ( x <= xa(1) ) then
+        y = ya(1)
+        return
+    else if ( x >= xa(n) ) then
+        y = ya(n)
+        return
+    end if
+
+    ! Find the index where x is in the interval [xa(i), xa(i+1)]
+    i = max(1, min(n - 1, maxval([(j, j = 1, n - 1)], mask=(x >= xa(1:n-1) .and. x <= xa(2:n)))))
+
+    ! Compute the interpolated value
+    y = ya(i) + (ya(i+1) - ya(i)) * (x - xa(i)) / (xa(i+1) - xa(i))
+        
+end subroutine linear_interpolation
+    
+
 end module interpolation_mod
 

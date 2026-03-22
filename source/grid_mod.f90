@@ -487,7 +487,6 @@ module grid_mod
     ! Version 1.0 and later: this subroutine now sets up any type of grids
     subroutine fillGrid(grid)
         implicit none
-
         include 'mpif.h'
 
         type(grid_type), dimension(:),intent(inout) :: grid
@@ -687,11 +686,13 @@ module grid_mod
                              dV = getVolume(grid(iG),ix,iy,iz)
                              do ai = 1, nsizes
                                 do nspec = 1, nspeciesPart(nsp)
-                                   totalDustMass = totalDustMass + &
-                           & (1.3333*Pi*((grainRadius(ai)*1.e-4)**3)*&
-                           & rho(dustComPoint(nsp)-1+nspec)*&
-                           & grainWeight(ai)*grainAbun(nsp,nspec)&
-                           & *grid(iG)%Ndust(grid(iG)%active(ix,iy,iz))*dV)
+                                   if (grainRadius(ai) >= componentMinRadius(nsp, nspec) .and. grainRadius(ai) <= componentMaxRadius(nsp, nspec)) then
+                                      totalDustMass = totalDustMass + &
+                                         & (1.3333*Pi*((grainRadius(ai)*1.e-4)**3)*&
+                                         & rho(dustComPoint(nsp)-1+nspec)*&
+                                         & grainWeight(ai)*grainAbun(nsp,nspec)&
+                                         & *grid(iG)%Ndust(grid(iG)%active(ix,iy,iz))*dV)
+                                   endif
                                 end do
                              end do
                           endif
@@ -732,18 +733,28 @@ module grid_mod
               totCellsloc = totCellsloc+grid(i)%nCells
            end do
 
-           if (taskid==0) print*, '! fillGrid: total number of active cells over all grids: ', totCells
+           if (taskid==0) then
+              print*, '! fillGrid: total number of active cells over all grids: ', totCells
 
-           if (lgGas) then
-              if (lgSymmetricXYZ) totalGasMass=totalGasMass*8.
-              print*, 'fillGrid: Actual total gas mass [1.e45 g]: ', totalGasMass
-              print*, 'fillGrid: Actual total gas mass [Msol]: ', totalGasMass*5.028e11
-           end if
-           if (lgDust) then
-              if (lgSymmetricXYZ) totalDustMass=totalDustMass*8.
-              print*, 'fillGrid: Actual total dust mass [1.e45 g]: ', totalDustMass
-              print*, 'fillGrid: Actual total dust mass [Msol]: ', totalDustMass*5.028e11
-           end if
+              if (lgGas) then
+                 if (lgSymmetricXYZ) totalGasMass=totalGasMass*8.
+                 print*, 'fillGrid: Actual total gas mass [1.e45 g]: ', totalGasMass
+                 print*, 'fillGrid: Actual total gas mass [Msol]: ', totalGasMass*5.028e11
+              end if
+              
+              if (lgDust) then
+                 if (lgSymmetricXYZ) then
+                     totalDustMass=totalDustMass*8.
+                     totalSpecMass=totalSpecMass*8.
+                 endif
+                 do nspec = 1, nSpecies
+                    print*, 'fillGrid: Actual Total dust mass of species ', grainLabel(nspec) ,' [Msol]: ', totalSpecMass(nspec)*5.025e11
+                 enddo
+           
+                 print*, 'fillGrid: Actual total dust mass [1.e45 g]: ', totalDustMass
+                 print*, 'fillGrid: Actual total dust mass [Msol]: ', totalDustMass*5.028e11
+              end if
+           endif
 
            if (nPhotonsDiffuse > 0 .and. nPhotonsDiffuse < totCellsloc) then
               print*, '! fillGrid: total number of active cells is larger than the &
@@ -1064,78 +1075,6 @@ module grid_mod
                  dustAbunIndexTemp = 0.
               end if
 
-              ! set grains mass density [g/cm^3]
-!              allocate(dustComPoint(nDustComponents))
-!              dustComPoint = 0
-!              dustComPoint(1) = 1
-
-!              nSpecies = 0
-!              nSpeciesMax = 0
-!print*, 'heer', ndustcomponents
-!              do icomp = 1, nDustComponents
-!print*, icomp
-!                 close(13)
-!                 open(file =   dustSpeciesFile(icomp), action="read",unit=13, &
-!                      &position="rewind",status="old", iostat = ios)
-!                 if (ios /= 0 ) then
-!                    print*, "! setMotherGrid: can't open file ", dustSpeciesFile(icomp)
-!                    stop
-!                 end if
-!                 read(13, *) nSpeciesPart(icomp)
-!print*, nspeciespart(icomp)
-!                 close(13)
-!                 nSpecies = nSpecies+nSpeciesPart(icomp)
-!print*, nspecies
-!                 if (nSpeciesMax < nSpeciesPart(icomp)) nSpeciesMax = nSpeciesPart(icomp)
-!print*, nspeciesmax
-!              end do
-!
-!              allocate(rho(1:nSpecies), stat = err)
-!              if (err /= 0) then
-!                 print*, "! setMotherGrid: can't allocate rho memory"
-!                 stop
-!              end if
-!              rho=0.
-!              allocate(grainVn(1:nSpecies), stat = err)
-!              if (err /= 0) then
-!                 print*, "! setMotherGrid: can't allocate grainVn memory"
-!                 stop
-!              end if
-!              grainVn=0.
-!              allocate(MsurfAtom(1:nSpecies), stat = err)
-!              if (err /= 0) then
-!                 print*, "! setMotherGrid: can't allocate surfAtom memory"
-!                 stop
-!              end if
-!              MsurfAtom=0
-!
-!              do icomp = 1, nDustComponents
-!                 if (icomp > 1) dustComPoint(icomp) = dustComPoint(icomp-1)+nSpeciesPart(icomp)
-!                 close(13)
-!                 open(file =   dustSpeciesFile(icomp), action="read",unit=13, &
-!                      & position="rewind",status="old", iostat = ios)
-!                 if (ios /= 0 ) then
-!                    print*, "! setMotherGrid: can't open file ", dustSpeciesFile(icomp)
-!                    stop
-!                 end if
-!                 read(13, *) nSpeciesPart(icomp)
-!
-!                 do i = 1, nSpeciesPart(icomp)
-!                    read(13,*) extFile
-!                    close(14)
-!                    open(file=extFile,unit=14,  action="read", position="rewind",status="old", iostat = ios)
-!                    if (ios /= 0 ) then
-!                       print*, "! setMotherGrid: can't open file ", extFile
-!                       stop
-!                    end if
-!                    read(14,*) readChar
-!                    read(14,*) readChar, readReal, rho(dustComPoint(icomp)+i-1), grainVn(dustComPoint(icomp)+i-1), &
-!                         &MsurfAtom(dustComPoint(icomp)+i-1)
-!                    close(14)
-!                 end do
-!                 close(13)
-!              end do
-!
               if (lgMdMg .or. lgMdMh) then
 
                  allocate(MdMg(1:grid%nx,1:grid%ny,1:grid%nz), stat = err)
@@ -1612,7 +1551,13 @@ module grid_mod
           end if ! lgGas
 
            if (lgDust) then
+           
               if(allocated(NdustTemp)) deallocate(NdustTemp)
+              
+              ! allocate array for dust species mass
+              allocate (totalSpecMass(1:nSpecies), stat=err)
+              totalSpecMass = 0.                ! initialize dust species mass
+
               if(lgMultiDustChemistry .and. allocated(dustAbunIndexTemp)) deallocate(dustAbunIndexTemp)
            end if
 
@@ -1622,7 +1567,7 @@ module grid_mod
                 & 39.948, 39.102, 40.08, 44.956, 47.90, 50.9414, 51.996, 54.9380, 55.847, 58.9332, &
                 & 58.71, 63.546, 65.37 /)
 
-           totalDustMass = 0.
+           totalDustMass = 0.           
            totalGasMass = 0.
            totalVolume = 0.
            echoVolume = 0.
@@ -1630,7 +1575,9 @@ module grid_mod
            do i = 1, grid%nx
               do j = 1, yTop
                  do k = 1, grid%nz
+                 
                     grid%echoVol(i,j,k)=0. ! initialize
+                    
                     if (grid%active(i,j,k)>0) then
 
                        dV = getVolume(grid,i,j,k)
@@ -1647,16 +1594,16 @@ module grid_mod
                        end if
 
                        totalVolume = totalVolume + dV
-!
-! echoes only
-!
+
+                       ! echoes only
+
                        if (lgEcho) then
                           grid%echoVol(i,j,k)=vEcho(grid,i,j,k,echot1,echot2,vol)
                           echoVolume = echoVolume + vol
                        endif
-
+                       
+                       
                        if (lgDust .and. (lgMdMg.or.lgMdMh) ) then
-
 
                           if (lgMdMh) then
                              MhMg=0.
@@ -1668,6 +1615,7 @@ module grid_mod
                              MhMg = 1./MhMg
                              MdMg(i,j,k) = MdMg(i,j,k)*MhMg
                           end if
+                          
 
                           if (.not.lgGas) then
                              print*, '! setMotherGrid: Mass to dust ratio (MdMg) cannot be used in a pure dust (noGas)&
@@ -1684,36 +1632,48 @@ module grid_mod
                           else
                              nsp = 1
                           end if
-!print*, nsp, 'here!'
+
                           do nspec = 1, nSpeciesPart(nsp)
                              do ai = 1, nSizes
-                                denominator = denominator + &
-                                     & (1.3333*Pi*( (grainRadius(ai)*1.e-4)**3)*&
-                                     & rho(dustComPoint(nsp)+nspec-1)*grainWeight(ai)*&
-                                     & grainAbun(nsp, nspec))
+                                if (grainRadius(ai) >= componentMinRadius(nsp, nspec) .and. grainRadius(ai) <= componentMaxRadius(nsp, nspec)) then
+                                   denominator = denominator + &
+                                        & (1.3333*Pi*( (grainRadius(ai)*1.e-4)**3)*&
+                                        & rho(dustComPoint(nsp)+nspec-1)*grainWeight(ai)*&
+                                        & grainAbun(nsp, nspec))
+                                endif
                              end do
                           end do
                           grid%Ndust(grid%active(i,j,k)) = grid%Ndust(grid%active(i,j,k))/&
                                & (denominator)
                        end if
 
+                       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                        ! calculate total dust mass
+                       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!                       
                        if (lgDust) then
                           if (lgMultiDustChemistry) then
                              nsp = grid%dustAbunIndex(grid%active(i,j,k))
                           else
                              nsp = 1
                           end if
+                          
+                          do nspec = 1, nspeciesPart(nsp)   ! this is the species loop
+                                                  
+                             do ai = 1, nsizes
+                                if (grainRadius(ai) >= componentMinRadius(nsp, nspec) .and. grainRadius(ai) <= componentMaxRadius(nsp, nspec)) then
+                                
+                                   totalSpecMass(dustComPoint(nsp)+nspec-1) = totalSpecMass(dustComPoint(nsp)+nspec-1) + &
+                                        &(1.3333*Pi*((grainRadius(ai)*1.e-4)**3)*&
+                                        & rho(dustComPoint(nsp)+nspec-1)*grainWeight(ai)*&
+                                        & grainAbun(nsp,nspec))*grid%Ndust(grid%active(i,j,k))*dV
+                                        
+                                endif
+                             end do ! grain radius loop 
 
-                          do ai = 1, nsizes
-                             do nspec = 1, nspeciesPart(nsp)
-                                totalDustMass = totalDustMass + &
-                                     &(1.3333*Pi*((grainRadius(ai)*1.e-4)**3)*&
-                                     & rho(dustComPoint(nsp)-1+nspec)*grainWeight(ai)*&
-                                     & grainAbun(nsp,nspec))*grid%Ndust(grid%active(i,j,k))*dV
-
-                             end do
-                          end do
+                             
+                          end do ! species loop
+                          
+                          !totalDustMass = totalDustMass + SUM(totalSpecMass)
 
                        end if
 
@@ -1721,26 +1681,37 @@ module grid_mod
                  end do
               end do
            end do
+           
+           if (lgDust) then
+              totalDustMass = SUM(totalSpecMass)
+           endif
 
 
 
            if(allocated(MdMg)) deallocate(MdMg)
 
+
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           ! Print to screen the total masses of input grid used
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
            if (taskid == 0) then
 
-              print*, 'Mothergrid :'
+              print*, 'Mothergrid:'
               if (lgGas) then
                  print*, 'Total gas mass of ionized region by mass [1.e45 g]: ', totalGasMass
                  print*, '                                         [Msol]   : ', totalGasMass*5.025e11
               end if
               if (lgDust) then
+                 do nspec = 1, nSpecies
+                    print*, 'Total dust mass of species ', grainLabel(nspec) ,' [Msol]: ', totalSpecMass(nspec)*5.025e11
+                 enddo
+                 
                  print*, 'Total dust mass of ionized region by mass [1.e45 g]: ', totalDustMass
                  print*, '                                          [Msol]   : ', totalDustMass*5.025e11
               end if
               print*, 'Total volume of the active region [e45 cm^3]: ', totalVolume
 
-! break if no gas or dust present
-
+              ! break if no gas or dust present
               if (totalGasMass + totalDustMass .eq. 0.) then
                 print *,"! fillGrid: total mass in grid is zero. Terminating."
                 stop
@@ -2543,10 +2514,12 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
 
                              do nspec = 1, nSpeciesPart(nsp)
                                 do ai = 1, nSizes
-                                   denominator = denominator + &
-                                        & (1.3333*Pi*( (grainRadius(ai)*1.e-4)**3)*&
-                                        & rho(dustComPoint(nsp)-1+nspec)&
-                                        &*grainWeight(ai)*grainAbun(nsp,nspec))
+                                   if (grainRadius(ai) >= componentMinRadius(nsp, nspec) .and. grainRadius(ai) <= componentMaxRadius(nsp, nspec)) then
+                                      denominator = denominator + &
+                                           & (1.3333*Pi*( (grainRadius(ai)*1.e-4)**3)*&
+                                           & rho(dustComPoint(nsp)-1+nspec)&
+                                           &*grainWeight(ai)*grainAbun(nsp,nspec))
+                                   endif
                                 end do
                              end do
                              grid(iG)%Ndust(grid(iG)%active(ix,iy,iz)) = grid(iG)%Ndust(grid(iG)%active(ix,iy,iz))/&
@@ -2565,11 +2538,13 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
 
                              do ai = 1, nsizes
                                 do nspec = 1, nspeciesPart(nsp)
-                                   totalDustMass = totalDustMass + &
-                                        &(1.3333*Pi*((grainRadius(ai)*1.e-4)**3)*&
-                                        & rho(dustComPoint(nsp)-1+nspec)*&
-                                        & grainWeight(ai)*grainAbun(nsp,nspec)&
-                                        & *grid(iG)%Ndust(grid(iG)%active(ix,iy,iz))*dV)
+                                   if (grainRadius(ai) >= componentMinRadius(nsp, nspec) .and. grainRadius(ai) <= componentMaxRadius(nsp, nspec)) then
+                                      totalDustMass = totalDustMass + &
+                                           &(1.3333*Pi*((grainRadius(ai)*1.e-4)**3)*&
+                                           & rho(dustComPoint(nsp)-1+nspec)*&
+                                           & grainWeight(ai)*grainAbun(nsp,nspec)&
+                                           & *grid(iG)%Ndust(grid(iG)%active(ix,iy,iz))*dV)
+                                   endif
                                 end do
                              end do
 
@@ -2613,9 +2588,11 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
                  if(allocated(grid%dustPDF)) deallocate(grid%dustPDF)
               end if
            end if
+           
            if (allocated(grid%active)) deallocate(grid%active)
            if (allocated(grid%lgConverged)) deallocate(grid%lgConverged)
            if (allocated(grid%lgBlack)) deallocate(grid%lgBlack)
+           
            if (lgGas) then
               if (allocated(grid%abFileIndex)) deallocate(grid%abFileIndex)
               if (allocated(grid%Te)) deallocate(grid%Te)
@@ -2626,13 +2603,16 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
               if (allocated(grid%recPDF)) deallocate(grid%recPDF)
               if (allocated(grid%totalLines)) deallocate(grid%totalLines)
            end if
+           
            if (allocated(grid%opacity)) deallocate(grid%opacity)
+
            if (allocated(grid%Jste)) deallocate(grid%Jste)
-!BS10           if (lgDebug) then
+
+           if (lgDebug) then
               if (allocated(grid%Jdif)) deallocate(grid%Jdif)
               if (allocated(grid%linePackets)) deallocate(grid%linePackets)
               if (allocated(grid%linePDF)) deallocate(grid%linePDF)
-!BS10           end if
+           end if
            if (lgNeInput) then
                if (allocated(grid%NeInput)) deallocate(grid%NeInput)
            end if
@@ -2745,7 +2725,7 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
                     end if
                     if (lgDust) then
 
-                       if (lgMultiChemistry) then
+                       if (lgMultiDustChemistry) then
                           write(50, *) grid(iG)%Ndust(cellP), grid(iG)%dustAbunIndex(cellP)
                        else
                           write(50, *) grid(iG)%Ndust(cellP)
@@ -2873,96 +2853,79 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
 
 
       ! this function returns the volume of a cell in [e45 cm^3]
-      function getVolume(grid,xP, yP, zP)
-        implicit none
+function getVolume(grid, xP, yP, zP)
+  implicit none
 
-        type(grid_type),intent(in) :: grid              ! the grid
+  type(grid_type), intent(in) :: grid        ! the grid
+  integer, intent(in)         :: xP, yP, zP    ! cell indices
+  real                        :: getVolume     ! volume of the cell [e45 cm^3]
 
-        integer, intent(in)        :: xP, yP, zP        ! cell indeces
+  ! local variables
+  real :: dx, dy, dz         ! cartesian axes increments in [cm]
+  real :: factor
 
-        real                       :: getVolume         ! volume of the cell [e45 cm^3]
+  if (lg1D) then
+    if (nGrids > 1) then
+      print*, '! getVolume: 1D option and multiple grids options are not compatible'
+      stop
+    end if
 
-        ! local variables
+    if (xP == 1) then
+      getVolume = 4.*Pi* ((grid%xAxis(xP+1)/1.e15)**3)/3.
+    else if (xP == grid%nx) then
+      getVolume = Pi* ((3.*(grid%xAxis(xP)/1.e15)-(grid%xAxis(xP-1)/1.e15))**3 - &
+                      ((grid%xAxis(xP)/1.e15)+(grid%xAxis(xP-1)/1.e15))**3 ) / 6.
+    else
+      getVolume = Pi* (((grid%xAxis(xP+1)/1.e15)+(grid%xAxis(xP)/1.e15))**3 - &
+                      ((grid%xAxis(xP-1)/1.e15)+(grid%xAxis(xP)/1.e15))**3 ) / 6.
+    end if
+    getVolume = getVolume/8.
 
-        real                       :: dx, &             ! cartesian axes increments
-&                                      dy, &             ! in [cm]
-&                                      dz                !
+  else
+    ! Determine the factor based on lgSymmetricXYZ
+    if (lgSymmetricXYZ) then
+      factor = 2.0
+    else
+      factor = 1.0
+    end if
 
-        if (lg1D) then
-           if (nGrids>1) then
-              print*, '! getVolume: 1D option and multiple grids options are not compatible'
-              stop
-           end if
+    ! Calculate dx
+    if ((xP > 1) .and. (xP < grid%nx)) then
+      dx = abs(grid%xAxis(xP+1) - grid%xAxis(xP-1)) / 2.0
+    else if (xP == 1) then
+      dx = abs(grid%xAxis(xP+1) - grid%xAxis(xP)) / factor
+    else if (xP == grid%nx) then
+      dx = abs(grid%xAxis(xP)   - grid%xAxis(xP-1)) / factor
+    end if
 
-           if (xP == 1) then
+    ! Calculate dy
+    if ((yP > 1) .and. (yP < grid%ny)) then
+      dy = abs(grid%yAxis(yP+1) - grid%yAxis(yP-1)) / 2.0
+    else if (yP == 1) then
+      dy = abs(grid%yAxis(yP+1) - grid%yAxis(yP)) / factor
+    else if (yP == grid%ny) then
+      dy = abs(grid%yAxis(yP)   - grid%yAxis(yP-1)) / factor
+    end if
 
-              getVolume = 4.*Pi* ( (grid%xAxis(xP+1)/1.e15)**3)/3.
+    ! Calculate dz
+    if ((zP > 1) .and. (zP < grid%nz)) then
+      dz = abs(grid%zAxis(zP+1) - grid%zAxis(zP-1)) / 2.0
+    else if (zP == 1) then
+      dz = abs(grid%zAxis(zP+1) - grid%zAxis(zP)) / factor
+    else if (zP == grid%nz) then
+      dz = abs(grid%zAxis(zP)   - grid%zAxis(zP-1)) / factor
+    end if
 
+    dx = dx / 1.e15
+    dy = dy / 1.e15
+    dz = dz / 1.e15
 
-           else if ( xP==grid%nx) then
+    ! calculate the volume
+    getVolume = dx * dy * dz
 
-              getVolume = Pi* ( (3.*(grid%xAxis(xP)/1.e15)-(grid%xAxis(xP-1)/1.e15))**3 - &
-                   & ((grid%xAxis(xP)/1.e15)+(grid%xAxis(xP-1)/1.e15))**3 ) / 6.
+  end if
 
-           else
-
-              getVolume = Pi* ( ((grid%xAxis(xP+1)/1.e15)+(grid%xAxis(xP)/1.e15))**3 - &
-                   & ((grid%xAxis(xP-1)/1.e15)+(grid%xAxis(xP)/1.e15))**3 ) / 6.
-
-           end if
-
-           getVolume = getVolume/8.
-
-        else
-
-           if ( (xP>1) .and. (xP<grid%nx) ) then
-              dx = abs(grid%xAxis(xP+1)-grid%xAxis(xP-1))/2.
-           else if ( xP==1 ) then
-              if (lgSymmetricXYZ) then
-                 dx = abs(grid%xAxis(xP+1)-grid%xAxis(xP))/2.
-              else
-                 dx = abs(grid%xAxis(xP+1)-grid%xAxis(xP))
-              end if
-           else if ( xP==grid%nx ) then
-              dx = abs(grid%xAxis(xP)  -grid%xAxis(xP-1))
-           end if
-
-           if ( (yP>1) .and. (yP<grid%ny) ) then
-              dy = abs(grid%yAxis(yP+1)-grid%yAxis(yP-1))/2.
-           else if ( yP==1 ) then
-              if (lgSymmetricXYZ) then
-                 dy = abs(grid%yAxis(yP+1)-grid%yAxis(yP))/2.
-              else
-                dy = abs(grid%yAxis(yP+1)-grid%yAxis(yP))
-             end if
-          else if ( yP==grid%ny ) then
-             dy = abs(grid%yAxis(yP)  -grid%yAxis(yP-1))
-          end if
-
-          if ( (zP>1) .and. (zP<grid%nz) ) then
-             dz = abs(grid%zAxis(zP+1)-grid%zAxis(zP-1))/2.
-          else if ( zP==1 ) then
-             if (lgSymmetricXYZ) then
-                dz = abs(grid%zAxis(zP+1)-grid%zAxis(zP))/2.
-             else
-                dz = abs(grid%zAxis(zP+1)-grid%zAxis(zP))
-             end if
-          else if ( zP==grid%nz ) then
-             dz = abs(grid%zAxis(zP)-grid%zAxis(zP-1))
-          end if
-
-          dx = dx/1.e15
-          dy = dy/1.e15
-          dz = dz/1.e15
-
-
-          ! calculate the volume
-          getVolume = dx*dy*dz
-
-
-       end if
-
-    end function getVolume
+end function getVolume
     
 
     subroutine resetGrid(grid)
@@ -3381,6 +3344,13 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
             grid(iG)%Ndust = 0.
             grid(iG)%Tdust = 0.
 
+            allocate(grid(iG)%dustAbunIndex(0:grid(iG)%nCells), stat = err)
+            if (err /= 0) then
+               print*, "! grid: can't allocate dustAbunIndex memory"
+               stop
+            end if
+            grid(iG)%dustAbunIndex=0
+
             if (.not.lgGas) then
 
                allocate(grid(iG)%dustPDF(0:grid(iG)%nCells, 1:nbins), stat = err)
@@ -3392,6 +3362,8 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
             end if
 
          end if
+         
+         
 
          grid(iG)%opacity = 0.
          grid(iG)%Jste = 0.

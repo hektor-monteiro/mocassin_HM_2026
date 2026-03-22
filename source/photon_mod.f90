@@ -285,7 +285,7 @@ module photon_mod
         contains
 
 
-          subroutine energyPacketRun(chType, position, xP, yP, zP, gP, rR)
+          subroutine energyPacketRun(chType, position, xP, yP, zP, gP, reRun)
             implicit none
 
             type(vector),intent(inout) :: position         ! the position of the photon
@@ -295,10 +295,11 @@ module photon_mod
                                                                  ! 1= mother; 2=sub
 
 
-            integer, intent(inout) :: rR               ! rerun?
+            integer, intent(inout) :: reRun               ! rerun?
             integer, intent(inout) :: gP               ! grid index
             integer                          :: igpr             ! grid pointer 1= mother 2=sub
             integer                          :: difSourceL(3)    ! cell indeces
+            real                             :: start_weight     ! start weight of the packet
 
             integer                          :: idirP, idirT     ! direction cosines
 
@@ -306,13 +307,13 @@ module photon_mod
 
             character(len=7), intent(inout)     :: chType           ! stellar or diffuse?
 
-!            countRecursive = countRecursive+1
-!            if (countRecursive > recursionLimit) then
-!               trapped = trapped+1
-!               return
-!            end if
-
-            rR = 0
+            if (reRun == 1) then 
+               start_weight = enPacket%weight
+            else
+               start_weight = 1.0
+            endif
+            
+            !print*, reRun, chType, enPacket%weight
 
             if (gP==1) then
                igpr = 1
@@ -347,6 +348,7 @@ module photon_mod
                 difSourceL(3) = zP(igpr)
 
 
+
                 enPacket = newPhotonPacket(chType, position, xp, yp, zp, gP, difSourceL)
 
             ! if the photon is diffuse
@@ -365,6 +367,12 @@ module photon_mod
                      &zP=zP, gP=gP, difSource = noCellLoc)
 
             end select
+            
+            enPacket%weight = start_weight
+            
+            !print*, reRun, chType, enPacket%weight, enPacket%nuP
+                        
+            reRun = 0
 
             if (.not.lgDust .and. enPacket%nu < ionEdge(1) .and. .not.enPacket%lgLine) then
 
@@ -415,11 +423,11 @@ module photon_mod
 
                      grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,viewPointPtheta(idirT)) = &
                           &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                          & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar)
+                          & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar) *(enPacket%weight)
                      grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                           & enPacket%nuP,0) = &
                           & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                          & enPacket%nuP,0) +  deltaE(iStar)
+                          & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                   elseif (viewPointPtheta(idirT) == viewPointPphi(idirP).or. &
                        & (viewPointTheta(viewPointPphi(idirP))==viewPointTheta(viewPointPtheta(idirT))) .or. &
@@ -427,18 +435,18 @@ module photon_mod
 
                      grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,viewPointPtheta(idirT)) = &
                           &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                          & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar)
+                          & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar) *(enPacket%weight)
                      if (viewPointPtheta(idirT)/=0) grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                           & enPacket%nuP,0) = &
                           & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                          & enPacket%nuP,0) +  deltaE(iStar)
+                          & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                   else
 
                      grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                           & enPacket%nuP,0) = &
                           & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                          & enPacket%nuP,0) +  deltaE(iStar)
+                          & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                   end if
 
@@ -456,7 +464,7 @@ module photon_mod
                   grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                        & enPacket%nuP,0) = &
                        & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                       & enPacket%nuP,0) +  deltaE(iStar)
+                       & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                end if
 
@@ -478,7 +486,7 @@ module photon_mod
                     & grid(gP)%linePackets(grid(gP)%active(enPacket%xP(igpr), &
                     & enPacket%yP(igpr), enPacket%zP(igpr)), enPacket%nuP) = &
                     & grid(gP)%linePackets(grid(gP)%active(enPacket%xP(igpr), &
-                    & enPacket%yP(igpr), enPacket%zP(igpr)), enPacket%nuP) +deltaE(iStar)
+                    & enPacket%yP(igpr), enPacket%zP(igpr)), enPacket%nuP) +deltaE(iStar) *(enPacket%weight)
 
 
             end if
@@ -487,13 +495,14 @@ module photon_mod
 
 
         ! this function initializes a photon packet
-        function initPhotonPacket(nuP,  position, direction, lgLine, lgStellar, xP, yP, zP, gP, lgHg)
+        function initPhotonPacket(nuP,  position, direction, lgLine, lgStellar, xP, yP, zP, gP, lgHg, start_weight)
             implicit none
 
             type(photon_packet)      :: initPhotonPacket  ! the photon packet
 
             real                     :: random            ! random number
 
+            real, intent(in)         :: start_weight      ! starting weight of packet
             integer, intent(in)      :: nuP               ! the frequency of the photon packet
             integer, intent(in),dimension(2) :: xP, yP, &
                  & zP                                     ! indeces of position on the x, y and z axes
@@ -522,8 +531,8 @@ module photon_mod
 
 
             initPhotonPacket%position = position
-
             initPhotonPacket%iG  = gP
+            initPhotonPacket%weight  = start_weight
 
             if (gP==1) then
                igpi=1
@@ -633,6 +642,7 @@ module photon_mod
                      print*, igpi, initPhotonPacket%xP(igpi),  &
                           & grid(gP)%xAxis(grid(gP)%nx), &
                           & initPhotonPacket%zP(igpi), &
+
                           & grid(gP)%zAxis(grid(gP)%nz),  random, &
                           & initPhotonPacket%position%z
 
@@ -851,8 +861,7 @@ module photon_mod
 
                 newPhotonPacket = initPhotonPacket(nuP, &
                      &starPosition(iStar), nullUnitVector,.false., .true., &
-                     & orX,orY,orZ, &
-                     & starIndeces(iStar,4), .false.)
+                     & orX,orY,orZ, starIndeces(iStar,4), .false., 1.0)
 
 
                 if (newPhotonPacket%nu>1.) then
@@ -894,12 +903,9 @@ module photon_mod
                    print*, chType, nuP, starPosition(iStar), .false., .true., orX,orY,orZ, gp
                    stop
                 end if
-!                newPhotonPacket = initPhotonPacket(nuP, positionLoc, .false., .false., orX,&
-!                     & orY, orZ, gP)
 
-                newPhotonPacket = initPhotonPacket(nuP, positionLoc, &
-                     & nullUnitVector,.false., .false., orX,&
-                     & orY, orZ, gP, .false.)
+                newPhotonPacket = initPhotonPacket(nuP, positionLoc,  nullUnitVector,.false., .false., orX,&
+                     & orY, orZ, gP, .false., 1.0)
 
 
             ! if the photon is diffuse
@@ -951,8 +957,8 @@ module photon_mod
 
 
                    newPhotonPacket = initPhotonPacket(nuP, position, &
-                        & nullUnitVector, .true., .false., xP, yP, zP, gP, .false.)
-!                   newPhotonPacket = initPhotonPacket(nuP, position, .true., .false., xP, yP, zP, gP)
+                        & nullUnitVector, .true., .false., xP, yP, zP, gP, .false., 1.0)
+
                 else
                     ! continuum photon
 
@@ -982,11 +988,8 @@ module photon_mod
                       stop
                    end if
 
-!                    newPhotonPacket = initPhotonPacket(nuP, position, .false., .false., xP, yP, zP, gP)
-
-
                     newPhotonPacket = initPhotonPacket(nuP, position, nullUnitVector,&
-                         & .false., .false., xP, yP, zP, gP, .false.)
+                         & .false., .false., xP, yP, zP, gP, .false., 1.0)
 
                 end if
 
@@ -1004,6 +1007,7 @@ module photon_mod
                        & grid containing gas."
                   stop
                end if
+
 
                ! check that the position is not inside the inner region
                if (grid(gP)%active(xP(igPn),yP(igPn),zP(igPn))<= 0) then
@@ -1040,10 +1044,8 @@ module photon_mod
                       stop
                    end if
 
-!               newPhotonPacket = initPhotonPacket(nuP, position, .false., .false., xP, yP, zP, gP)
-
                newPhotonPacket = initPhotonPacket(nuP, position, nullUnitVector,&
-                    & .false., .false., xP, yP, zP, gP, .false.)
+                    & .false., .false., xP, yP, zP, gP, .false., 1.0)
 
 
 
@@ -1056,6 +1058,99 @@ module photon_mod
             end select
 
         end function newPhotonPacket
+
+    subroutine calculate_pass_prob_and_weight(tauCell, initial_weight, passProb, weightFactor)
+        implicit none
+
+        ! Subroutine arguments
+        real, intent(in)  :: tauCell
+        real, intent(in)  :: initial_weight
+        real, intent(out) :: passProb
+        real, intent(out) :: weightFactor
+
+        ! Local variables
+        real :: tauMax
+        real :: random   ! To hold a random number [0, 1)
+        real :: compXi   ! Composite scheme parameter
+        real :: alpha    ! Constant for the composite distribution
+        real :: expval   ! precalc exp
+        REAL :: C        ! Normalization constant for g(x)
+        REAL :: G_alpha     ! Value of the CDF at the boundary x=20
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! original basic probability
+        call random_number(random)
+        passProb = -log(1.-random)
+        weightFactor = 1.0
+
+!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!        ! Probability considering path stretching with fixed alpha
+!        call random_number(random)
+!        alpha = 1.0 / (1.0 + tauCell)
+!        passProb = -log(1.-random)/alpha
+!        weightFactor = 1.0/(alpha*exp((1-alpha)*passProb))
+
+!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!        ! Using modified exponential for strech part
+!        ! Define a constant for the composite distribution.
+!        alpha = 1.0 / (1.0 + tauCell)
+!        compXi = 0.5 ! Define the composite scheme parameter.
+!        ! Sample the optical depth from the composite distribution.
+!        if (random < compXi) then
+!           ! Sample from the exponential distribution part
+!           call random_number(random)
+!           passProb = -log(1.0 - random)
+!        else
+!          ! Sample from the modified exponential distribution part
+!          call random_number(random)
+!          passProb = -log(1.0 - random) / alpha
+!        endif
+!        ! Apply the weight correction based on the composite scheme formula.
+!        weightFactor = 1.0 / (compXi + (1.0-compXi)*(alpha*exp( (1.0-alpha)*passProb )))
+!         
+         
+
+
+!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!        ! sample from piece wise function
+!        ! alpha here defines boundary of uniform
+!        alpha = 1.0
+!        tauMax = max(20.0, tauCell*2)
+!        ! --- 1. Calculate the normalization constant C ---
+!        C = 1.0 / (1.0 + (tauMax - (alpha + 1.0)) * EXP(-alpha))
+!        ! --- 2. Calculate the CDF value at the boundary ---
+!        G_alpha = C * (1.0 - EXP(-alpha))
+!        
+!        ! --- 3. Generate a uniform random number ---
+!        CALL RANDOM_NUMBER(random)
+
+!        ! --- 4. Sample x using the Inverse Transform Method ---
+!        IF (random < G_alpha) THEN
+!            ! We are in the exponential part: 0 <= x < alpha
+!            ! Solve for x in: xi = C * (1 - exp(-x))
+!            passProb = -LOG(1.0 - random / C)
+!        ELSE
+!            ! We are in the constant part: alpha <= x < Xcut
+!            ! Solve for x in: xi = G_alpha + C * exp(-alpha) * (x - alpha)
+!            passProb = alpha + (random - G_alpha) / (C * EXP(-alpha))
+!        END IF
+
+!        ! --- 5. Calculate the Weight Factor W = f(x)/g(x) ---
+!        ! We assume the true (analog) PDF is f(x) = exp(-x).
+!        IF (passProb < alpha) THEN
+!            ! Here, g(x) = C * exp(-x)
+!            ! So, W = exp(-x) / (C * exp(-x)) = 1/C
+!            weightFactor = 1.0 / C
+!        ELSE
+!            ! Here, g(x) = C * exp(-alpha)
+!            ! So, W = exp(-x) / (C * exp(-alpha))
+!            weightFactor = EXP(-passProb + alpha) / C
+!        END IF
+        
+        
+    end subroutine calculate_pass_prob_and_weight
+
+
 
         subroutine pathSegment(enPacket)
           implicit none
@@ -1078,6 +1173,7 @@ module photon_mod
           real                            :: radius   ! radius
           real                            :: random   ! random number
           real                            :: tauCell  ! local tau
+          real                            :: weightFactor !updated packet weight
 
           integer                         :: iierr, ihg
           integer                         :: idirT,idirP ! direction cosine counters
@@ -1085,12 +1181,13 @@ module photon_mod
           integer                         :: xP,yP,zP ! cartesian axes indeces
           integer                         :: gP       ! grid index
           integer                         :: igpp     ! grid index 1=mother 2=sub
-          integer                         :: safeLimit =1000
-                                                      ! safe limit for the loop
+          integer                         :: safeLimit =1000 ! safe limit for the loop
+                                                      
+          integer                         :: active_cell, abun_idx, n_species, comp_idx_start !auxiliary variables for checks on dust scattering
 
           character(len=7)                :: packetType ! stellar, diffuse, dustEmitted?
 
-          logical                         :: lgScattered ! is the packet scattering with dust?
+          logical                         :: lgScattered=.False. ! is the packet scattering with dust?
           logical                         :: lgReturn
 
 
@@ -1176,20 +1273,32 @@ module photon_mod
           ! initialize optical depth
           absTau = 0.
 
-          ! get a random number
-          call random_number(random)
+          ! calculate the optical depth to the next cell wall
+          tauCell = R_out*grid(gP)%opacity(grid(gP)%active(xP,yP,zP), enPacket%nuP)
 
-          ! calculate the probability
-          passProb = -log(1.-random)
+!          ! get a random number
+!          call random_number(random)
+!          ! calculate the probability
+!          passProb = -log(1.-random)
+
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          ! Using new sampling subroutine
+          call calculate_pass_prob_and_weight(tauCell, enPacket%weight, passProb, weightFactor)
+!          print*, '           i, reRun, lgScattered, chTypeIn, enPacket%weight, weightFactor, enPacket%nuP, tauCell, absTau, passProb, probSca'
+!          print*, i, reRun, lgScattered, chTypeIn, enPacket%weight, weightFactor, enPacket%nuP, tauCell, absTau, passProb, probSca
+          enPacket%weight = enPacket%weight * weightFactor
+          !print*, tauCell, passProb, weightFactor
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
           ! speed up photons that my be trapped
           if (lgPlaneIonization) then
              safeLimit=5000
           else
-             safeLimit=500000
+             safeLimit=50000
 !             safeLimit=500
           end if
-
+          
+          
           do i = 1, safeLimit
 
              do j = 1, safeLimit
@@ -1436,82 +1545,15 @@ module photon_mod
 
 
              ! find the volume of this cell
-!             dV = getVolumeLoc(grid(gP), xP,yP,zP)
-
-
-             if (lg1D) then
-                if (nGrids>1) then
-                   print*, '! getVolumeLoc: 1D option and multiple grids options are not compatible'
-                   stop
-                end if
-
-                if (xP == 1) then
-
-                   dV = 4.*Pi* ( (grid(gP)%xAxis(xP+1)/1.e15)**3)/3.
-
-
-                else if ( xP==grid(gP)%nx) then
-
-                   dV = Pi* ( (3.*(grid(gP)%xAxis(xP)/1.e15)-(grid(gP)%xAxis(xP-1)/1.e15))**3 - &
-                        & ((grid(gP)%xAxis(xP)/1.e15)+(grid(gP)%xAxis(xP-1)/1.e15))**3 ) / 6.
-
-                else
-
-                   dV = Pi* ( ((grid(gP)%xAxis(xP+1)/1.e15)+(grid(gP)%xAxis(xP)/1.e15))**3 - &
-                        & ((grid(gP)%xAxis(xP-1)/1.e15)+(grid(gP)%xAxis(xP)/1.e15))**3 ) / 6.
-
-                end if
-
-                dV = dV/8.
-
-             else
-
-                if ( (xP>1) .and. (xP<grid(gP)%nx) ) then
-
-                   dx = abs(grid(gP)%xAxis(xP+1)-grid(gP)%xAxis(xP-1))/2.
-                else if ( xP==1 ) then
-                   if (lgSymmetricXYZ) then
-                      dx = abs(grid(gP)%xAxis(xP+1)-grid(gP)%xAxis(xP))/2.
-                   else
-                      dx = abs(grid(gP)%xAxis(xP+1)-grid(gP)%xAxis(xP))
-                   end if
-                else if ( xP==grid(gP)%nx ) then
-                   dx = abs(grid(gP)%xAxis(xP)  -grid(gP)%xAxis(xP-1))
-                end if
-
-                if ( (yP>1) .and. (yP<grid(gP)%ny) ) then
-                   dy = abs(grid(gP)%yAxis(yP+1)-grid(gP)%yAxis(yP-1))/2.
-                else if ( yP==1 ) then
-                   if (lgSymmetricXYZ) then
-                      dy = abs(grid(gP)%yAxis(yP+1)-grid(gP)%yAxis(yP))/2.
-                   else
-                      dy = abs(grid(gP)%yAxis(yP+1)-grid(gP)%yAxis(yP))
-                   end if
-                else if ( yP==grid(gP)%ny ) then
-                   dy = abs(grid(gP)%yAxis(yP)  -grid(gP)%yAxis(yP-1))
-                end if
-
-                if ( (zP>1) .and. (zP<grid(gP)%nz) ) then
-                   dz = abs(grid(gP)%zAxis(zP+1)-grid(gP)%zAxis(zP-1))/2.
-                 else if ( zP==1 ) then
-                   if (lgSymmetricXYZ) then
-                      dz = abs(grid(gP)%zAxis(zP+1)-grid(gP)%zAxis(zP))/2.
-                   else
-                      dz = abs(grid(gP)%zAxis(zP+1)-grid(gP)%zAxis(zP))
-                   end if
-                else if ( zP==grid(gP)%nz ) then
-                   dz = abs(grid(gP)%zAxis(zP)-grid(gP)%zAxis(zP-1))
-                end if
-
-                dx = dx/1.e15
-                dy = dy/1.e15
-                dz = dz/1.e15
-
-
-                ! calculate the volume
-                dV = dx*dy*dz
-
-             end if
+             dV = getVolume(grid(gP), xP,yP,zP)
+             
+             !=============================================================
+             ! force skip for high tau cells
+             if ( i == 1 .and. tauCell > 20.0) then 
+                passProb = tauCell+1.0e-6
+                enPacket%weight = enPacket%weight / weightFactor * exp(-passProb)
+                !print*, tauCell, enPacket%weight
+             endif
 
              ! check if the packet interacts within this cell
              if ((absTau+tauCell > passProb) .and. (grid(gP)%active(xP,yP,zP)>0)) then
@@ -1562,14 +1604,14 @@ module photon_mod
                 ! add contribution of the packet to the radiation field
                 if (enPacket%lgStellar) then
                    grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) = &
-                        grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dlLoc*deltaE(iStar) / dV
+                        grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dlLoc*deltaE(iStar) *(enPacket%weight) / dV
                 else ! if the energy packet is diffuse
                    if (lgDebug) then
                       grid(gP)%Jdif(grid(gP)%active(xP,yP,zP),enPacket%nuP) = &
-                           & grid(gP)%Jdif(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dlLoc*deltaE(iStar) / dV
+                           & grid(gP)%Jdif(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dlLoc*deltaE(iStar) *(enPacket%weight) / dV
                    else
                       grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) = &
-                           & grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dlLoc*deltaE(iStar) / dV
+                           & grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dlLoc*deltaE(iStar) *(enPacket%weight) / dV
                    end if
                 end if
 
@@ -1634,34 +1676,34 @@ module photon_mod
                       if (viewPointPtheta(idirT) > 0 .and. viewPointPhi(viewPointPtheta(idirT)) < 0) then
                          grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,viewPointPtheta(idirT)) = &
                               &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                              & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar)
+                              & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar) *(enPacket%weight)
                          grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                               & enPacket%nuP,0) = &
                               & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                              & enPacket%nuP,0) +  deltaE(iStar)
+                              & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                       elseif (viewPointPtheta(idirT) == viewPointPphi(idirP).or. &
                            & (viewPointTheta(viewPointPphi(idirP))==viewPointTheta(viewPointPtheta(idirT))) .or. &
                            & (viewPointPhi(viewPointPtheta(idirT))==viewPointPhi(viewPointPphi(idirP))) ) then
                          grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,viewPointPtheta(idirT)) = &
                               &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                              & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar)
+                              & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar) *(enPacket%weight)
                          if (viewPointPtheta(idirT)/=0) grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                               & enPacket%nuP,0) = &
                               & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                              & enPacket%nuP,0) +  deltaE(iStar)
+                              & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
                       else
                          grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                           & enPacket%nuP,0) = &
                           & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                          & enPacket%nuP,0) +  deltaE(iStar)
+                          & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
                       end if
                    else
 
                       grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                            & enPacket%nuP,0) = &
                            & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                           & enPacket%nuP,0) +  deltaE(iStar)
+                           & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                    end if
 
@@ -1678,7 +1720,7 @@ module photon_mod
                    call random_number(random)
 
                    random = 1.-random
-
+                   
                    if (random > probSca) then
                       lgScattered = .false.
                    else if (random <= probSca) then
@@ -1720,31 +1762,33 @@ module photon_mod
                       scaInt = scaInt + 1.
 
                       if (lgMultiDustChemistry) then
-                         do nS = 1, nSpeciesPart(grid(gP)%dustAbunIndex(grid(gP)%active(xP,yP,zP)))
-                            if (grainabun(grid(gP)%dustAbunIndex(grid(gP)%active(xP,yP,zP)),nS)>0. &
-                                 &.and. grid(gP)%Tdust(nS, 0, &
-                                 & grid(gP)%active(xP,yP,zP))<TdustSublime(dustComPoint(&
-                                 &grid(gP)%dustAbunIndex(grid(gP)%active(xP,yP,zP)))-1+nS)) exit
-                         end do
-                         if (nS>nSpeciesPart(grid(gP)%dustAbunIndex(grid(gP)%active(xP,yP,zP)))) then
-                            print*, "! pathSegment: packet scatters with dust at position where all &
-                                 &grains have sublimed -1-."
-                            print*, xP,yP,zP, grid(gP)%active(xP,yP,zP), tauCell, absTau, passProb
+                         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                         ! --- Check if ANY non-sublimed dust exists using array syntax ---
+                         active_cell    = grid(gP)%active(xP, yP, zP)
+                         abun_idx       = grid(gP)%dustAbunIndex(active_cell)
+                         n_species      = nSpeciesPart(abun_idx)
+                         comp_idx_start = dustComPoint(abun_idx)
+
+                         if (.not. ANY( grainabun(abun_idx, 1:n_species) > 0.0 .and. &
+                                        grid(gP)%Tdust(1:n_species, 0, active_cell) < &
+                                        TdustSublime(comp_idx_start : comp_idx_start + n_species - 1) )) then
+                            print*, "! pathSegment: packet scatters with dust at position where all grains have sublimed -1-."
+                            print*, xP, yP, zP, active_cell, tauCell, absTau, passProb
                             stop
                          end if
+                         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                       else
-                         do nS = 1, nSpeciesPart(1)
-                            if (grainabun(1,nS)>0. &
-                                 &.and. grid(gP)%Tdust(nS, 0, &
-                                 & grid(gP)%active(xP,yP,zP))<TdustSublime(dustComPoint(&
-                                 &1)-1+nS)) exit
-                         end do
-                         if (nS>nSpeciesPart(1)) then
-                            print*, "! pathSegment: packet scatters with dust at position where all &
-                                 &grains have sublimed -2-."
-                            print*, xP,yP,zP, grid(gP)%active(xP,yP,zP), tauCell, absTau, passProb
-                            stop
-                         end if
+                         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                         ! --- Check if ANY non-sublimed dust exists using array syntax ---
+                         if (.not. ANY( grainabun(1, 1:nSpeciesPart(1)) > 0.0 .and. &
+                                        grid(gP)%Tdust(1:nSpeciesPart(1), 0, grid(gP)%active(xP,yP,zP)) < &
+                                        TdustSublime(dustComPoint(1) : dustComPoint(1) + nSpeciesPart(1) - 1) )) then
+                             print*, "! pathSegment: packet scatters with dust at position where all grains have sublimed -2-."
+                             print*, xP, yP, zP, grid(gP)%active(xP,yP,zP), tauCell, absTau, passProb, probSca
+                             stop
+                          end if
+                         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                         
                       end if
 
                       ! packet is scattered by the grain
@@ -1763,7 +1807,7 @@ module photon_mod
                       end if
 
                       enPacket = initPhotonPacket(enPacket%nuP, rVec, enPacket%direction, .false., .false., enPacket%xP(1:2), &
-                           & enPacket%yP(1:2), enPacket%zP(1:2), gP, .true.)
+                           & enPacket%yP(1:2), enPacket%zP(1:2), gP, .true., enPacket%weight)
 
                       if (.not.lgIsotropic .and. .not.enPacket%lgStellar) then
                          do ihg = 1,10
@@ -1790,11 +1834,16 @@ module photon_mod
                       ! initialize optical depth
                       absTau = 0.
 
-                      ! get a random number
-                      call random_number(random)
+!                      ! get a random number
+!                      call random_number(random)
+!                      ! calculate the probability
+!                      passProb = -log(1.-random)
 
-                      ! calculate the probability
-                      passProb = -log(1.-random)
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                      ! Using new sampling subroutine
+                      call calculate_pass_prob_and_weight(tauCell, enPacket%weight, passProb, weightFactor)
+                      enPacket%weight = enPacket%weight * weightFactor
+                      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
                    end if
 
@@ -1821,14 +1870,14 @@ module photon_mod
 
                 if (enPacket%lgStellar) then
                    grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) = &
-                        grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dS*deltaE(iStar) / dV
+                        grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dS*deltaE(iStar) *(enPacket%weight) / dV
                 else ! if the energy packet is diffuse
                    if (lgDebug) then
                       grid(gP)%Jdif(grid(gP)%active(xP,yP,zP),enPacket%nuP) = &
-                           & grid(gP)%Jdif(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dS*deltaE(iStar) / dV
+                           & grid(gP)%Jdif(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dS*deltaE(iStar) *(enPacket%weight) / dV
                    else
                       grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) = &
-                           & grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dS*deltaE(iStar) / dV
+                           & grid(gP)%Jste(grid(gP)%active(xP,yP,zP),enPacket%nuP) + dS*deltaE(iStar) *(enPacket%weight) / dV
                    end if
                 end if
 
@@ -1861,6 +1910,7 @@ module photon_mod
                          if ( rvec%y > ( grid(grid(gP)%motherP)%yAxis(enPacket%yP(1)) + &
                               & grid(grid(gP)%motherP)%yAxis(enPacket%yP(1)+1)/2.) ) &
                               & enPacket%yP(1) = enPacket%yP(1)+1
+
                       end if
 
                       call locate(grid(grid(gP)%motherP)%zAxis, rvec%z, enPacket%zP(1))
@@ -2154,29 +2204,29 @@ module photon_mod
 
                             grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,viewPointPtheta(idirT)) = &
                                  &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                 & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar)
+                                 & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar) *(enPacket%weight)
                             grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                  & enPacket%nuP,0) = &
                                  & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                 & enPacket%nuP,0) +  deltaE(iStar)
+                                 & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                          elseif (viewPointPtheta(idirT) == viewPointPphi(idirP).or. &
                               & (viewPointTheta(viewPointPphi(idirP))==viewPointTheta(viewPointPtheta(idirT))) .or. &
                               & (viewPointPhi(viewPointPtheta(idirT))==viewPointPhi(viewPointPphi(idirP))) ) then
                             grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,&
                                  & viewPointPtheta(idirT)) =grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2),&
-                                 & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar)
+                                 & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar) *(enPacket%weight)
 
                             if (viewPointPtheta(idirT)/=0) grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                  &enPacket%nuP,0) = &
                                  & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                 & enPacket%nuP,0) +  deltaE(iStar)
+                                 & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                          else
                             grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                  & enPacket%nuP,0) = &
                                  & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                 & enPacket%nuP,0) +  deltaE(iStar)
+                                 & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                          end if
 
@@ -2185,7 +2235,7 @@ module photon_mod
                          grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                               enPacket%nuP,0) = &
                               & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                              & enPacket%nuP,0) +  deltaE(iStar)
+                              & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
                       end if
 
                       return
@@ -2374,28 +2424,28 @@ module photon_mod
 
                             grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,viewPointPtheta(idirT)) = &
                                  &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                 & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar)
+                                 & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar) *(enPacket%weight)
                             grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                  & enPacket%nuP,0) = &
                                  & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                 & enPacket%nuP,0) +  deltaE(iStar)
+                                 & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                          elseif (viewPointPtheta(idirT) == viewPointPphi(idirP).or. &
                               & (viewPointTheta(viewPointPphi(idirP))==viewPointTheta(viewPointPtheta(idirT))) .or. &
                               & (viewPointPhi(viewPointPtheta(idirT))==viewPointPhi(viewPointPphi(idirP))) ) then
                             grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,viewPointPtheta(idirT)) = &
                                  &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                 & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar)
+                                 & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar) *(enPacket%weight)
                             if (viewPointPtheta(idirT)/=0) grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                  enPacket%nuP,0) = &
                                  & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                 & enPacket%nuP,0) +  deltaE(iStar)
+                                 & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                          else
                             grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                  enPacket%nuP,0) = &
                              & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                             & enPacket%nuP,0) +  deltaE(iStar)
+                             & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                          end if
 
@@ -2404,7 +2454,7 @@ module photon_mod
                          grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                               enPacket%nuP,0) = &
                               & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                              & enPacket%nuP,0) +  deltaE(iStar)
+                              & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                       end if
 
@@ -2500,11 +2550,11 @@ module photon_mod
 
                            grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,viewPointPtheta(idirT)) = &
                                 &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar)
+                                & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar) *(enPacket%weight)
                            grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                 & enPacket%nuP,0) = &
                                 & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                & enPacket%nuP,0) +  deltaE(iStar)
+                                & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 !print*, 'd1', enPacket%origin(1), enPacket%origin(2)
 
                         elseif (viewPointPtheta(idirT) == viewPointPphi(idirP).or. &
@@ -2513,26 +2563,26 @@ module photon_mod
                            grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,&
                                 & viewPointPtheta(idirT)) = &
                                 &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar)
+                                & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar) *(enPacket%weight)
 !print*, 'd2'
                            if (viewPointPtheta(idirT)/=0) grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                 enPacket%nuP,0) = &
                                 & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                & enPacket%nuP,0) +  deltaE(iStar)
+                                & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
                         else
 
 !print*, 'd3'
                            grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                 enPacket%nuP,0) = &
                                 & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                & enPacket%nuP,0) +  deltaE(iStar)
+                                & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
                         end if
                      else
 !print*, 'd4'
                         grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                              enPacket%nuP,0) = &
                              & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                             & enPacket%nuP,0) +  deltaE(iStar)
+                             & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                      end if
 
@@ -2627,11 +2677,11 @@ module photon_mod
 
                               grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,viewPointPtheta(idirT)) = &
                                    &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                   & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar)
+                                   & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar) *(enPacket%weight)
                               grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                    & enPacket%nuP,0) = &
                                    & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                   & enPacket%nuP,0) +  deltaE(iStar)
+                                   & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                            elseif (viewPointPtheta(idirT) == viewPointPphi(idirP).or. &
                                 &(viewPointTheta(viewPointPphi(idirP))==viewPointTheta(viewPointPtheta(idirT))).or. &
@@ -2639,23 +2689,23 @@ module photon_mod
                               grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,&
                                    & viewPointPtheta(idirT)) = &
                                    &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                   & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar)
+                                   & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar) *(enPacket%weight)
                               if (viewPointPtheta(idirT)/=0) grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                    enPacket%nuP,0) = &
                                    & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                   & enPacket%nuP,0) +  deltaE(iStar)
+                                   & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
                            else
                               grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                    enPacket%nuP,0) = &
                                    & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                   & enPacket%nuP,0) +  deltaE(iStar)
+                                   & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
                            end if
                         else
 
                            grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                                 enPacket%nuP,0) = &
                                 & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                                & enPacket%nuP,0) +  deltaE(iStar)
+                                & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                         end if
 
@@ -2720,6 +2770,7 @@ module photon_mod
                   zP = enPacket%zP(1)
                   gP = 1
                   igpp = 1
+
 
                end if
 
@@ -2795,11 +2846,11 @@ module photon_mod
 
                   grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,viewPointPtheta(idirT)) = &
                        &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                       & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar)
+                       & enPacket%nuP,viewPointPtheta(idirT)) + deltaE(iStar) *(enPacket%weight)
                   grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                        & enPacket%nuP,0) = &
                        & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                       & enPacket%nuP,0) +  deltaE(iStar)
+                       & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
                elseif (viewPointPtheta(idirT) == viewPointPphi(idirP).or. &
                     & (viewPointTheta(viewPointPphi(idirP))==viewPointTheta(viewPointPtheta(idirT))) .or. &
@@ -2807,23 +2858,23 @@ module photon_mod
                   grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), enPacket%nuP,&
                        & viewPointPtheta(idirT)) = &
                        &grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                    & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar)
+                    & enPacket%nuP,viewPointPtheta(idirT)) +  deltaE(iStar) *(enPacket%weight)
                   if (viewPointPtheta(idirT)/=0) grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                        enPacket%nuP,0) = &
                        & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                       & enPacket%nuP,0) +  deltaE(iStar)
+                       & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
                else
                   grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                        enPacket%nuP,0) = &
                        & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                       & enPacket%nuP,0) +  deltaE(iStar)
+                       & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
                end if
             else
 
                grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
                     enPacket%nuP,0) = &
                     & grid(enPacket%origin(1))%escapedPackets(enPacket%origin(2), &
-                    & enPacket%nuP,0) +  deltaE(iStar)
+                    & enPacket%nuP,0) +  deltaE(iStar) *(enPacket%weight)
 
             end if
 
@@ -2832,6 +2883,8 @@ module photon_mod
 
 
          end if
+         
+         !print*, i, reRun, lgScattered, chTypeIn, enPacket%weight, weightFactor, enPacket%nuP, tauCell, absTau, passProb, probSca
 
       end do ! safelimit loop
 
@@ -2866,7 +2919,9 @@ module photon_mod
       inY =  enPacket%yP(1:2)
       inZ =  enPacket%zP(1:2)
       gPIn = gP
+      
       reRun = 1
+      
       return
 
     end subroutine pathSegment
@@ -3104,6 +3159,7 @@ end subroutine energyPacketDriver
 
 
  end module photon_mod
+
 
 
 

@@ -1,6 +1,6 @@
 # standard
-FC = mpif90
-LD = mpif90
+FC = mpif90.openmpi
+LD = mpif90.openmpi
 
 #IBM
 #FC = mpxlf90_r
@@ -49,10 +49,10 @@ ifeq ($(CO),debug) #to show all compiler warnings
 else ifeq ($(CO),valgrind)
   FFLAGS += -g
 else ifeq ($(CO),gprof)
-  FFLAGS += -pg
+  FFLAGS += -g -O0
 else
 #  FFLAGS += -O3 -fbacktrace -Wall -fcheck=all -fopt-info -fopt-info-missed -march=native -mtune=native -fomit-frame-pointer -fopenmp
-  FFLAGS += -O2 -g
+  FFLAGS += -O2
 endif
 
 .PHONY: all clean new install uninstall

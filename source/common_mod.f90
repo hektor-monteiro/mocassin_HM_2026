@@ -68,7 +68,7 @@ module common_mod
     real            :: dPhi                    !
     real            :: nu0                     !
     real            :: nu0Add                  !
-    real            :: totalDustMass
+    real            :: totalDustMass           ! total dust mass 
     real            :: totalGasMass
     real            :: inputDustMass           ! for when user sets desired dust mass in input
     real            :: inputGasMass           ! for when user sets desired gas mass in input
@@ -182,7 +182,8 @@ module common_mod
     real, allocatable :: dustHeatingBudget(:,:) ! heating budget of grains (nAbComponents, nResLines+1)
     real, allocatable :: SEDnoExt(:)            ! SED no extinction
     real, allocatable :: equivalentTau(:)       ! SED no extinction
-
+    real, allocatable :: totalSpecMass(:)      ! Total dust species mass (nspecies)
+    
     double precision, save, allocatable::&
           & forbiddenLines(:,:,:,:)                                 ! emissivity from heavies  rec lines
     double precision, save, allocatable::&
@@ -311,6 +312,8 @@ module common_mod
         integer       :: iG        ! grid index
 
         real          :: nu
+        real          :: weight    ! weight to be used in path streching
+        
         logical       :: lgStellar
         logical       :: lgLine
 
@@ -429,6 +432,8 @@ module common_mod
     real               :: densityLaw(3)    ! density law parameters (R1,n,f,N0)
     real, allocatable       :: grainAbun(:,:)     ! abundance of this species
     real, allocatable       :: grainRadius(:)   ! grain radius [um]
+    real, allocatable       :: componentMinRadius(:,:)   ! grain minimum radius [um] for species
+    real, allocatable       :: componentMaxRadius(:,:)   ! grain maximum radius [um] for species
     real, allocatable       :: grainWeight(:)   ! grain weight normalised to 1
     real, allocatable       :: viewPointTheta(:),viewPointPhi(:)     ! viewing angles
     real               :: Hdensity         ! constant H density values (cm-^3)

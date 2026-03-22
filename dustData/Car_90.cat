@@ -1,5 +1,5 @@
 Q                                                                               ! file type (can be 'nk' or 'Q')
-Cneutral_PAH_graphitic_solid 2200. 2.2 0.323 12.004                           ! grain label Tsublime rho Vn Msurfatom
+Cneutral_PAH_graphitic_solid 2200. 2.2 0.323 12.004                             ! grain label Tsublime rho Vn Msurfatom
 Computed by B.T.Draine.  Please cite:                                           ! comment
 for lambda < .03um (all a)       : Laor, A., & Draine, B.T. 1993, ApJ, 402,441  ! comment
   90 3.548E-04 1.000E+01 = NRAD, a_1 (micron), a_NRAD (micron)                  ! only 1st integer read

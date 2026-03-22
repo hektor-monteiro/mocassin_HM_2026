@@ -2020,7 +2020,7 @@ endif
         real                       :: HeII4686    ! HeII 4686 emission
         real                       :: Lalpha      ! Lalpha emission
         real                       :: T4          ! TeUsed/10000.
-        real                       :: x1,x2
+        real                       :: x1,x2, coeff
         real                       :: hb          ! emissivity of H 4->2
         real                       :: fh          ! emissivity of H
 
@@ -2122,23 +2122,80 @@ endif
         elseif (NeUsed >= 1.e6) then
            denint=3
         end if
+        
+!        ! Safeguard: Prevent T4 from being too small for the fitting formula
+!        ! this means HeI lines will be wrong in these regions
+!        ! this is a temp fix!!!!!!
+!        if (TeUsed < 5000.) then
+!           T4 = 5000.0 / 10000.
+!        endif
 
-        ! data from Benjamin, Skillman and Smits ApJ514(1999)307 [e-25 ergs*cm^3/s]
-        if (denint>0.and.denint<3) then
-           do i =1, 34
-              x1=HeIrecLineCoeff(i,denint,1)*(T4**(HeIrecLineCoeff(i,denint,2)))*exp(HeIrecLineCoeff(i,denint,3)/T4)
-              x2=HeIrecLineCoeff(i,denint+1,1)*(T4**(HeIrecLineCoeff(i,denint+1,2)))*exp(HeIrecLineCoeff(i,denint+1,3)/T4)
-              HeIRecLines(i) = x1+((x2-x1)*(NeUsed-100.**denint)/(100.**(denint+1)-100.**(denint)))
-           end do
-        elseif(denint==0) then
-           do i = 1, 34
-              HeIRecLines(i) = HeIrecLineCoeff(i,1,1)*(T4**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/T4)
-           end do
-        elseif(denint==3) then
-           do i = 1, 34
-              HeIRecLines(i) = HeIrecLineCoeff(i,3,1)*(T4**(HeIrecLineCoeff(i,3,2)))*exp(HeIrecLineCoeff(i,3,3)/T4)
-           end do
-        end if
+
+        if (TeUsed > 5000.) then
+
+           ! data from Benjamin, Skillman and Smits ApJ514(1999)307 [e-25 ergs*cm^3/s]
+           if (denint>0.and.denint<3) then
+              do i = 1, 34
+                  x1=HeIrecLineCoeff(i,denint,1)*(T4**(HeIrecLineCoeff(i,denint,2)))*exp(HeIrecLineCoeff(i,denint,3)/T4)
+                  x2=HeIrecLineCoeff(i,denint+1,1)*(T4**(HeIrecLineCoeff(i,denint+1,2)))*exp(HeIrecLineCoeff(i,denint+1,3)/T4)
+                  HeIRecLines(i) = x1+((x2-x1)*(NeUsed-100.**denint)/(100.**(denint+1)-100.**(denint)))
+              end do
+          elseif(denint==0) then
+              do i = 1, 34
+                 HeIRecLines(i) = HeIrecLineCoeff(i,1,1)*(T4**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/T4)
+              end do
+          elseif(denint==3) then
+              do i = 1, 34
+                 HeIRecLines(i) = HeIrecLineCoeff(i,3,1)*(T4**(HeIrecLineCoeff(i,3,2)))*exp(HeIrecLineCoeff(i,3,3)/T4)
+              end do
+          end if
+          
+       else
+       
+       ! conferir extrapolação abaixo para regime de densidade pois está errado!
+       ! Use Power-Law Extrapolation for Te < 5000       
+           if (denint>0.and.denint<3) then
+           ! here we assume that coefficients converge to the same slope for any densities
+           ! Kept original if structure here to make this more explicit for now
+              do i = 1, 34
+                 ! for T4=(5000/1e4)
+                 x1 = HeIrecLineCoeff(i,1,1)*((0.5)**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/(0.5))
+                 ! for T4=(6000/1e4)
+                 x2 = HeIrecLineCoeff(i,1,1)*((0.6)**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/(0.6))
+                 ! estimated slope
+                 coeff = (LOG10(x1)-LOG10(x2))/(LOG10(0.5)-LOG10(0.6))
+                 
+                 !final extrapolation
+                 HeIRecLines(i) = (x1/0.5**coeff)*T4**coeff
+              end do
+          elseif(denint==0) then
+              do i = 1, 34                 
+                 ! for T4=(5000/1e4)
+                 x1 = HeIrecLineCoeff(i,1,1)*((0.5)**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/(0.5))
+                 ! for T4=(6000/1e4)
+                 x2 = HeIrecLineCoeff(i,1,1)*((0.6)**(HeIrecLineCoeff(i,1,2)))*exp(HeIrecLineCoeff(i,1,3)/(0.6))
+                 ! estimated slope
+                 coeff = (LOG10(x1)-LOG10(x2))/(LOG10(0.5)-LOG10(0.6))
+                 
+                 !final extrapolation
+                 HeIRecLines(i) = (x1/0.5**coeff)*T4**coeff
+              end do
+          elseif(denint==3) then
+              do i = 1, 34
+                 ! for T4=(5000/1e4)
+                 x1 = HeIrecLineCoeff(i,3,1)*((0.5)**(HeIrecLineCoeff(i,3,2)))*exp(HeIrecLineCoeff(i,3,3)/(0.5))
+                 ! for T4=(6000/1e4)
+                 x2 = HeIrecLineCoeff(i,3,1)*((0.6)**(HeIrecLineCoeff(i,3,2)))*exp(HeIrecLineCoeff(i,3,3)/(0.6))
+                 ! estimated slope
+                 coeff = (LOG10(x1)-LOG10(x2))/(LOG10(0.5)-LOG10(0.6))
+                 
+                 !final extrapolation
+                 HeIRecLines(i) = (x1/0.5**coeff)*T4**coeff
+              end do
+          end if
+       
+       endif
+
         HeIRecLines=HeIRecLines*NeUsed*elemAbundanceUsed(2)*ionDenUsed(elementXref(2),2)
 
     end subroutine RecLinesEmission
@@ -2505,219 +2562,432 @@ endif
     end subroutine writeTauNu
 
 
-    subroutine writeSED(grid)
-      implicit none
+!    subroutine writeSED(grid)
+!      implicit none
 
-      type(grid_type), intent(in) :: grid(*)     !
+!      type(grid_type), intent(in) :: grid(*)     !
 
-      integer :: ios, err                        ! I/O error status
-      integer :: i,j,k,freq, imu, iG, ic, ijk    ! counters
+!      integer :: ios, err                        ! I/O error status
+!      integer :: i,j,k,freq, imu, iG, ic, ijk    ! counters
 
-      real, allocatable :: SED(:,:),sSED(:,:),dSED(:,:)               ! SED array
+!      real, allocatable :: Luminosity(:,:),SED(:,:),sSED(:,:),CS_SED(:,:)               ! SED array
 
-      real          :: theta1, theta2, phi1, phi2
-      real          :: lambda                    ! lambda [cm]
-      real          :: totalE                    ! total energy [erg/sec]
+!      real          :: theta1, theta2, phi1, phi2
+!      real          :: lambda                    ! lambda [cm]
+!      real          :: totalE                    ! total energy [erg/sec]
+!      real          :: SEDratio                  ! ratio to estimate collecting area
 
-      print*, 'in writeSED'
+!      print*, 'in writeSED'
 
-      close(16)
+!      close(16)
 
-      open(unit=16,file='output/SED.out',status='unknown', position='rewind',iostat=ios, action="write")
-      if (ios /= 0) then
-         print*, "! writeSED: Cannot open output/SED.out for writing"
-         stop
-      end if
-
-!      open(unit=116,file='output/sourceSED.out',status='unknown', position='rewind',iostat=ios, action="write")
+!      open(unit=16,file='output/SED.out',status='unknown', position='rewind',iostat=ios, action="write")
 !      if (ios /= 0) then
-!         print*, "! writeSED: Cannot open output/sourceSED.out for writing"
+!         print*, "! writeSED: Cannot open output/SED.out for writing"
 !         stop
 !      end if
 
-      allocate(SED(1:nbins,0:nAngleBins), stat=err)
-      allocate(sSED(1:nbins,0:nAngleBins), stat=err)
-!      allocate(dSED(1:nbins,0:nAngleBins), stat=err)
-      if (err /= 0) then
-         print*, "! writeSED: can't allocate array memory: SED"
-         stop
-      end if
+!!      open(unit=116,file='output/sourceSED.out',status='unknown', position='rewind',iostat=ios, action="write")
+!!      if (ios /= 0) then
+!!         print*, "! writeSED: Cannot open output/sourceSED.out for writing"
+!!         stop
+!!      end if
+
+!      allocate(SED(1:nbins,0:nAngleBins), stat=err)
+!      allocate(CS_SED(1:nbins,0:nAngleBins), stat=err)
+!      allocate(Luminosity(1:nbins,0:nAngleBins), stat=err)
+!!      allocate(dSED(1:nbins,0:nAngleBins), stat=err)
+!      if (err /= 0) then
+!         print*, "! writeSED: can't allocate array memory: SED"
+!         stop
+!      end if
 
 
-      SED=0.
-      sSED=0.
-!      dSED=0.
+!      SED=0.
+!      CS_SED=0.
+!      Luminosity=0.
+!!      dSED=0.
 
-      write(16,*) 'Spectral energy distribution at the surface of the nebula: '
-      write(16,*) '  viewPoints = ', (viewPointTheta(i), viewPointPhi(i), ' , ', i = 1, nAngleBins)
-      write(16,*) '   nu [Ryd]        lambda [um]         F(nu)*D^2            '
-     write(16,*) '                                       [Jy * pc^2]              '
+!      write(16,*) 'Spectral energy distribution at the surface of the nebula: '
+!      write(16,*) '  viewPoints = ', (viewPointTheta(i), viewPointPhi(i), ' , ', i = 1, nAngleBins)
+!      write(16,*) '   nu [Ryd]        lambda [um]         F(nu)*D^2            '
+!     write(16,*) '                                       [Jy * pc^2]              '
 
-!      write(116,*) 'Spectral energy distribution of sources: '
-!      write(116,*) '   nu [Ryd]        lambda [um]         F(nu)*D^2            '
-!     write(116,*) '                                       [Jy * pc^2]              '
+!!      write(116,*) 'Spectral energy distribution of sources: '
+!!      write(116,*) '   nu [Ryd]        lambda [um]         F(nu)*D^2            '
+!!     write(116,*) '                                       [Jy * pc^2]              '
 
-      totalE=0.
+!      totalE=0.
 
-      do iG = 1, nGrids
-       do freq=1,nbins
-          if (.not.lgEcho .and. .not.lgNosource) then
-             do i = 0, grid(iG)%nCells
-                do imu = 0, nAngleBins
-                   SED(freq,imu)=SED(freq,imu)+grid(iG)%escapedPackets(i,freq,&
-                        &imu)
-                end do
-             end do
-          else
-             do i = 1, grid(iG)%nx
-              do j = 1, grid(iG)%ny
-               do k = 1, grid(iG)%nz
-                ijk = grid(iG)%active(i,j,k)
-                if (ijk.gt.0) then
-!                   do ic=1,nStars
-!                      if (grid(iG)%active(starIndeces(ic,1),&
-!                           &starIndeces(ic,2),starIndeces(ic,3)).eq.ijk) then
-!                         do imu = 0, nAngleBins
-!                            sSED(freq,imu)=sSED(freq,imu)+&
-!                                 &grid(iG)%escapedPackets(ijk,freq,imu)
-!                         end do
-!                      endif
-!                   enddo
-                   if (.not.lgEcho) then
-                      if (lgNosource) then ! exclude source if requested
-                         do ic=1,nStars
-                            if (grid(iG)%active(starIndeces(ic,1),&
-                                 &starIndeces(ic,2),starIndeces(ic,3)).ne.ijk)&
-                                 & then
-                               do imu = 0, nAngleBins
-                                  SED(freq,imu)=SED(freq,imu)+&
-                                       &grid(iG)%escapedPackets(ijk,freq,imu)
-                               end do
-                            endif
-                         enddo
-                      end if
-                   else ! only get SED from region defined by light echo
-                      do imu = 0, nAngleBins
-                         SED(freq,imu)=SED(freq,imu)+&
-                              &grid(iG)%escapedPackets(ijk,freq,imu)*&
-                              &grid(iG)%echoVol(i,j,k)
-! mult by echoVol() corrects for actual percentage of cell that was illuminated
-                      end do
-                   endif
-                endif
-               enddo
-              enddo
-             enddo
-            endif
-         end do
-      end do
+!      do iG = 1, nGrids
+!       do freq=1,nbins
+!          if (.not.lgEcho .and. .not.lgNosource) then
+!             do i = 0, grid(iG)%nCells
+!                do imu = 0, nAngleBins
+!                   SED(freq,imu)=SED(freq,imu)+grid(iG)%escapedPackets(i,freq,imu)
+!                   Luminosity(freq,imu)=Luminosity(freq,imu)+grid(iG)%escapedPackets(i,freq,imu)
+!                end do
+!             end do
+!          else
+!             do i = 1, grid(iG)%nx
+!              do j = 1, grid(iG)%ny
+!               do k = 1, grid(iG)%nz
+!                ijk = grid(iG)%active(i,j,k)
+!                if (ijk.gt.0) then
+!!                   do ic=1,nStars
+!!                      if (grid(iG)%active(starIndeces(ic,1),&
+!!                           &starIndeces(ic,2),starIndeces(ic,3)).eq.ijk) then
+!!                         do imu = 0, nAngleBins
+!!                            sSED(freq,imu)=sSED(freq,imu)+&
+!!                                 &grid(iG)%escapedPackets(ijk,freq,imu)
+!!                         end do
+!!                      endif
+!!                   enddo
+!                   if (.not.lgEcho) then
+!                      if (lgNosource) then ! exclude source if requested
+!                         do ic=1,nStars
+!                            if (grid(iG)%active(starIndeces(ic,1),&
+!                                 &starIndeces(ic,2),starIndeces(ic,3)).ne.ijk)&
+!                                 & then
+!                               do imu = 0, nAngleBins
+!                                  SED(freq,imu)=SED(freq,imu)+&
+!                                       &grid(iG)%escapedPackets(ijk,freq,imu)
+!                               end do
+!                            endif
+!                         enddo
+!                      end if
+!                   else ! only get SED from region defined by light echo
+!                      do imu = 0, nAngleBins
+!                         SED(freq,imu)=SED(freq,imu)+&
+!                              &grid(iG)%escapedPackets(ijk,freq,imu)*&
+!                              &grid(iG)%echoVol(i,j,k)
+!! mult by echoVol() corrects for actual percentage of cell that was illuminated
+!                      end do
+!                   endif
+!                endif
+!               enddo
+!              enddo
+!             enddo
+!            endif
+!         end do
+!      end do
+
+!      
+!      do freq = 1, nbins
+!!         do imu = 1, nAngleBins
+!!            if (viewPointTheta(imu)>0.) SED(freq,imu) = SED(freq,imu)/dTheta
+!!            if (viewPointPhi(imu)>0.) SED(freq,imu) = SED(freq,imu)/dPhi
+!!         end do
+
+!         lambda = c/(nuArray(freq)*fr1Ryd)
 
 
+!         if (lgSymmetricXYZ) then
+!            SED(freq,0) = SED(freq,0)*8.
+!!            sSED(freq,0) = sSED(freq,0)*8.
+!            SED(freq,1:nanglebins) = SED(freq,1:nanglebins)*4.
+!         endif
 
-      do freq = 1, nbins
+
+!         totalE = totalE +  SED(freq,0)
+
+!         ! dilute the SEDs -  user must still divide by D^2 in pc
+!         ! the 1.e18 is absorbed later
+!         SED(freq,0) = SED(freq,0)/(4.*Pi*3.086*3.086)
+!!         sSED(freq,0) = sSED(freq,0)/(4.*Pi*3.08*3.08)
+!         ! convert to Jy
+!         SED(freq,0) = 1.e23*SED(freq,0)/(3.2898e15*widflx(freq))
+!!         sSED(freq,0) = 1.e23*SED(freq,0)/(3.2898e15)*widflx(freq)
+
+
 !         do imu = 1, nAngleBins
-!            if (viewPointTheta(imu)>0.) SED(freq,imu) = SED(freq,imu)/dTheta
-!            if (viewPointPhi(imu)>0.) SED(freq,imu) = SED(freq,imu)/dPhi
+
+!            ! find theta1 and theta2
+!            theta1 = int(viewPointTheta(imu)/dTheta)*dTheta
+!            theta2 = theta1+dTheta
+!            ! find phi1 and phi2
+!            phi1 = int(viewPointPhi(imu)/dPhi)*dPhi
+!            phi2 = phi1+dPhi
+
+!!            SED(freq, imu) = SED(freq, imu)/(2.*Pi*3.08*3.08*abs(cos(theta1)-cos(theta2)))
+!            !SED(freq, imu) = SED(freq, imu)/(dPhi*3.08*3.08*abs(cos(theta1)-cos(theta2)))
+!            
+!            SEDratio = SUM(luminosity(:, 0))/SUM(luminosity(:, imu))
+
+!            SED(freq, imu) = SED(freq, imu)*SEDratio/(3.086*3.086)
+
+!            SED(freq, imu) = 1.e23*SED(freq, imu)/(3.2898e15*widflx(freq))
+
 !         end do
 
-         lambda = c/(nuArray(freq)*fr1Ryd)
+!         write(16,*) nuArray(freq), c/(nuArray(freq)*fr1Ryd)*1.e4, (SED(freq,imu), imu=0,nAngleBins )
+!!         write(6,'(a1,1pg12.4,4es12.4)')"d",c/(nuArray(freq)*fr1Ryd)*1.e4,widflx(freq),SED(freq,0),sSED(freq,0),dSED(freq,0)
+
+!!         write(116,*) nuArray(freq), c/(nuArray(freq)*fr1Ryd)*1.e4, sSED(freq,0)
+
+!      end do
+
+!      if (lgEquivalentTau .and. nIterateMC==1) then
+!         SEDnoExt = SED(:,0)
+!      elseif (lgEquivalentTau .and. nIterateMC>1) then
+
+!         open (unit=74,file='output/equivalentTau.out',action='write', position='rewind',&
+!              & iostat=ios, status='unknown')
+!         write (74,*) "# frequency (Ryd)  wavelength (um)    equivalentTau    SED"
+
+!         do freq = 1, nbins
+!            if (SEDnoExt(freq)>0. .and. SED(freq,0)>0.) then
+!               equivalentTau(freq) = log(SEDnoExt(freq)/SED(freq,0))
+!            else
+!               equivalentTau(freq) = -1
+!            end if
+
+!            write(74,*) nuArray(freq), c/(nuArray(freq)*fr1Ryd)*1.e4, equivalentTau(freq), SEDnoExt(freq)
+
+!         end do
+
+!         close(74)
 
 
-         if (lgSymmetricXYZ) then
+!      end if
+
+
+!      write(16,*) ' '
+!      write(16,*) 'Total energy radiated out of the nebula [e36 erg/s]:', totalE
+!      print*, 'Total energy radiated out of the nebula [e36 erg/s]:', totalE, Lstar, nphotons
+!!      write(16,*) 'All SEDs given per unit direction'
+!!      write(16,*) 'To obtain total emission over all directions must multiply by Pi'
+
+!      write(16,*) 'dTheta: ', dTheta, theta1, theta2, viewPointTheta(1)
+!      write(16,*) 'dPhi: ', dPhi
+!      write(16,*) 'SEDratio: ', SEDratio
+
+
+!      write(16,*) ' '
+!      if (nuArray(1)<radio4p9GHzP) then
+!         write(16,*) 'Flux at 4.9GHz (must multiply by 1.e36/(4 Pi D[cm]^2 to obtain units of [Jy]) :', &
+!              & SED(radio4p9GHzP,0)*Pi*1.e23/(nuArray(radio4p9GHzP)*fr1Ryd)
+!         print*, 'Flux at 4.9GHz (must multiply by 1.e36/(4 Pi D[cm]^2 to obtain units of [Jy]) :', &
+!              & SED(radio4p9GHzP,0)*Pi*1.e23/(nuArray(radio4p9GHzP)*fr1Ryd)
+!      end if
+
+!      close(16)
+!!      close(116)
+
+!      if (allocated(SED)) deallocate(SED)
+!      if (allocated(sSED)) deallocate(sSED)
+!      if (allocated(dSED)) deallocate(dSED)
+
+!      print*, 'out writeSED...'
+
+!    end subroutine writeSED
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    subroutine writeSED(grid)
+      implicit none
+  
+      type(grid_type), intent(in) :: grid(*)    ! Input grid data structure
+  
+      ! --- Local Variables ---
+      integer :: ios, err                        ! I/O and allocation status flags
+      integer :: i,j,k,freq, imu, iG, ic, ijk    ! Loop counters
+      integer, dimension(1) :: farIR_ind         ! index of start of far IR region
+  
+      ! SED arrays:
+      !   Luminosity: Raw escaped energy [erg/s]
+      !   SED:        Final processed SED for the nebula [Jy * pc^2]
+      !   sSED:       SED from stellar sources only [Jy * pc^2]
+      !   CS_SED:     (Not used, sSED holds the source data)
+      real, allocatable :: Luminosity(:,:),SED(:,:),sSED(:,:),CS_SED(:,:)
+  
+      real :: theta1, theta2, phi1, phi2        ! Angle calculation variables
+      real :: lambda                            ! Wavelength [cm]
+      real :: totalE                            ! Total energy radiated out [erg/sec]
+      real :: SEDratio                          ! Ratio for normalizing angle-dependent SED
+      logical :: isStarCell                     ! Flag to identify if a cell contains a star
+  
+      print*, 'in writeSED'
+  
+      ! --- File Handling and Memory Allocation ---
+      close(16)
+      open(unit=16,file='output/SED.out',status='unknown', position='rewind',iostat=ios, action="write")
+      if (ios /= 0) then
+          print*, "! writeSED: Cannot open output/SED.out for writing"
+          stop
+      end if
+  
+      allocate(SED(1:nbins,0:nAngleBins), stat=err)
+      allocate(sSED(1:nbins,0:nAngleBins), stat=err)
+      allocate(Luminosity(1:nbins,0:nAngleBins), stat=err)
+      if (err /= 0) then
+          print*, "! writeSED: can't allocate array memory"
+          stop
+      end if
+  
+      ! Initialize arrays to zero before accumulation
+      SED=0.
+      sSED=0.
+      Luminosity=0.
+  
+      ! --- Write Header to Output File ---
+      write(16,*) 'Spectral energy distribution at the surface of the nebula: '
+      write(16,*) '  viewPoints (theta, phi, comma separated) = ', (viewPointTheta(i), viewPointPhi(i), ' , ', i = 1, nAngleBins)
+      write(16,*) '  nu [Ryd]         lambda [um]        F(nu)*D^2 [Jy * pc^2] ... for each viewpoint'
+  
+      ! --- Main Data Aggregation Loop ---
+      ! This loop iterates through every active cell in the grid to accumulate
+      ! the energy of escaped packets into the appropriate arrays.
+      totalE=0.
+      do iG = 1, nGrids
+        do freq=1,nbins
+        
+          do i = 1, grid(iG)%nx
+            do j = 1, grid(iG)%ny
+              do k = 1, grid(iG)%nz
+                ijk = grid(iG)%active(i,j,k)
+  
+                ! Process only active cells
+                if (ijk.gt.0) then
+                  
+                  ! Check if the current cell contains a stellar source
+                  isStarCell = .false.
+                  do ic=1,nStars
+                    if (i == starIndeces(ic,1) .and. j == starIndeces(ic,2) .and. k == starIndeces(ic,3)) then
+                       isStarCell = .true.
+                       exit ! Star found, no need to check further
+                    end if
+                  end do
+  
+                  ! Accumulate energy for each viewing angle
+                  do imu = 0, nAngleBins
+                    ! 1. Accumulate total raw luminosity from all escaped packets
+                    Luminosity(freq,imu) = Luminosity(freq,imu) + grid(iG)%escapedPackets(ijk,freq,imu)
+  
+                    ! 2. Accumulate SED from stellar sources only
+                    if (isStarCell) then
+                       sSED(freq,imu) = sSED(freq,imu) + grid(iG)%escapedPackets(ijk,freq,imu)
+                    end if
+  
+                    ! 3. Accumulate the final SED based on physics flags
+                    if (lgEcho) then
+                       ! For a light echo, weight by the illuminated volume fraction
+                       SED(freq,imu) = SED(freq,imu) + &
+                                       grid(iG)%escapedPackets(ijk,freq,imu) * grid(iG)%echoVol(i,j,k)
+                    else
+                       ! For standard simulation
+                       if (lgNosource) then
+                          ! If requested, include only non-stellar (reprocessed) emission
+                          if (.not. isStarCell) then
+                             SED(freq,imu) = SED(freq,imu) + grid(iG)%escapedPackets(ijk,freq,imu)
+                          end if
+                       else
+                          ! Default case: include all emission (stellar + reprocessed)
+                          SED(freq,imu) = SED(freq,imu) + grid(iG)%escapedPackets(ijk,freq,imu)
+                       end if
+                    end if
+                  end do ! end imu loop
+                end if ! end active cell check
+              enddo ! k
+            enddo ! j
+          enddo ! i
+        end do ! freq
+      end do ! iG
+      
+      ! save index of far IR zone to use later in effective area calculation
+      ! **** WARNING **** have to account for gas only models at some point
+      farIR_ind = minloc(abs(c/(nuArray*fr1Ryd)*1.e4 - 150.0))
+  
+      ! --- Post-Processing, Unit Conversion, and Output ---
+      do freq = 1, nbins
+        lambda = c/(nuArray(freq)*fr1Ryd)*1.e4
+  
+        ! Apply correction factor if simulation used XYZ symmetry
+        if (lgSymmetricXYZ) then
             SED(freq,0) = SED(freq,0)*8.
-!            sSED(freq,0) = sSED(freq,0)*8.
+            sSED(freq,0) = sSED(freq,0)*8.
             SED(freq,1:nanglebins) = SED(freq,1:nanglebins)*4.
-         endif
-
-
-         totalE = totalE +  SED(freq,0)
-
-         ! dilute the SEDs -  user must still divide by D^2 in pc
-         ! the 1.e18 is absorbed later
-         SED(freq,0) = SED(freq,0)/(4.*Pi*3.08*3.08)
-!         sSED(freq,0) = sSED(freq,0)/(4.*Pi*3.08*3.08)
-         ! convert to Jy
-         SED(freq,0) = 1.e23*SED(freq,0)/(3.2898e15*widflx(freq))
-!         sSED(freq,0) = 1.e23*SED(freq,0)/(3.2898e15)*widflx(freq)
-
-
-         do imu = 1, nAngleBins
-
+            sSED(freq,1:nanglebins) = sSED(freq,1:nanglebins)*4.
+        endif
+  
+        ! Sum the angle-integrated SED to get the total radiated energy
+        totalE = totalE +  SED(freq,0)
+  
+        ! --- Convert Angle-Integrated SED (imu=0) to Standard Units ---
+        ! Convert from total energy [erg/s] to flux density [erg/s/cm^2] at a distance of 1 pc.
+        ! The distance D is 3.086e18 cm (1 parsec). We divide by 4*Pi*D^2.
+        SED(freq,0) = SED(freq,0)/(4.*Pi*3.086*3.086)
+        sSED(freq,0) = sSED(freq,0)/(4.*Pi*3.086*3.086)
+  
+        ! Convert flux density [erg/s/cm^2/Hz] to Janskys [Jy], where 1 Jy = 1e-23 erg/s/cm^2/Hz.
+        ! Also divide by frequency bin width to get density.
+        SED(freq,0) = 1.e23*SED(freq,0)/(3.2898e15*widflx(freq))
+        sSED(freq,0) = 1.e23*sSED(freq,0)/(3.2898e15*widflx(freq))
+  
+        ! --- Convert Angle-Dependent SEDs (imu > 0) to Standard Units ---
+        do imu = 1, nAngleBins
             ! find theta1 and theta2
             theta1 = int(viewPointTheta(imu)/dTheta)*dTheta
             theta2 = theta1+dTheta
             ! find phi1 and phi2
             phi1 = int(viewPointPhi(imu)/dPhi)*dPhi
             phi2 = phi1+dPhi
-
-!            SED(freq, imu) = SED(freq, imu)/(2.*Pi*3.08*3.08*abs(cos(theta1)-cos(theta2)))
-            SED(freq, imu) = SED(freq, imu)/(dPhi*3.08*3.08*abs(cos(theta1)-cos(theta2)))
-
+            
+            ! --- check ratio of IR luminosities ---
+            SEDratio = SUM(Luminosity(1:farIR_ind(1), imu))/SUM(Luminosity(1:farIR_ind(1), 0))
+                       
+            ! for whole simulated grid
+            SED(freq, imu) = SED(freq, imu)/(3.086*3.086)/(SEDratio*4*PI)
             SED(freq, imu) = 1.e23*SED(freq, imu)/(3.2898e15*widflx(freq))
 
-         end do
-
-         write(16,*) nuArray(freq), c/(nuArray(freq)*fr1Ryd)*1.e4, (SED(freq,imu), imu=0,nAngleBins )
-!         write(6,'(a1,1pg12.4,4es12.4)')"d",c/(nuArray(freq)*fr1Ryd)*1.e4,widflx(freq),SED(freq,0),sSED(freq,0),dSED(freq,0)
-
-!         write(116,*) nuArray(freq), c/(nuArray(freq)*fr1Ryd)*1.e4, sSED(freq,0)
-
+            ! for central source cell
+            sSED(freq, imu) = sSED(freq, imu)/(3.086*3.086)/(SEDratio*4*PI)
+            sSED(freq, imu) = 1.e23*sSED(freq, imu)/(3.2898e15*widflx(freq))
+        end do
+  
+        ! Write the processed data for this frequency bin to the file
+        write(16,*) nuArray(freq), lambda, (SED(freq,imu), imu=0,nAngleBins ), (sSED(freq,imu), imu=0,nAngleBins )
       end do
-
+  
+      ! --- Optional Equivalent Tau Calculation ---
       if (lgEquivalentTau .and. nIterateMC==1) then
-         SEDnoExt = SED(:,0)
+          SEDnoExt = SED(:,0)
       elseif (lgEquivalentTau .and. nIterateMC>1) then
-
-         open (unit=74,file='output/equivalentTau.out',action='write', position='rewind',&
-              & iostat=ios, status='unknown')
-         write (74,*) "# frequency (Ryd)  wavelength (um)    equivalentTau    SED"
-
-         do freq = 1, nbins
-            if (SEDnoExt(freq)>0. .and. SED(freq,0)>0.) then
-               equivalentTau(freq) = log(SEDnoExt(freq)/SED(freq,0))
-            else
-               equivalentTau(freq) = -1
-            end if
-
-            write(74,*) nuArray(freq), c/(nuArray(freq)*fr1Ryd)*1.e4, equivalentTau(freq), SEDnoExt(freq)
-
-         end do
-
-         close(74)
-
-
+          open (unit=74,file='output/equivalentTau.out',action='write', position='rewind',&
+                & iostat=ios, status='unknown')
+          write (74,*) "# frequency (Ryd)   wavelength (um)   equivalentTau   SED_no_extinction"
+  
+          do freq = 1, nbins
+             if (SEDnoExt(freq)>0. .and. SED(freq,0)>0.) then
+                 equivalentTau(freq) = log(SEDnoExt(freq)/SED(freq,0))
+             else
+                 equivalentTau(freq) = -1
+             end if
+             write(74,*) nuArray(freq), c/(nuArray(freq)*fr1Ryd)*1.e4, equivalentTau(freq), SEDnoExt(freq)
+          end do
+          close(74)
       end if
-
-
+  
+      ! --- Final Summary Output ---
       write(16,*) ' '
-      write(16,*) 'Total energy radiated out of the nebula [e36 erg/s]:', totalE
+      write(16,*) 'Total energy radiated out of the nebula [erg/s]:', totalE * 1.0e-36, ' (x 1e36)'
       print*, 'Total energy radiated out of the nebula [e36 erg/s]:', totalE, Lstar, nphotons
-!      write(16,*) 'All SEDs given per unit direction'
-!      write(16,*) 'To obtain total emission over all directions must multiply by Pi'
-
+  
+      write(16,*) ' '
+      write(16,*) 'Diagnostic Parameters:'
       write(16,*) 'dTheta: ', dTheta
       write(16,*) 'dPhi: ', dPhi
-
-
-      write(16,*) ' '
-      if (nuArray(1)<radio4p9GHzP) then
-         write(16,*) 'Flux at 4.9GHz (must multiply by 1.e36/(4 Pi D[cm]^2 to obtain units of [Jy]) :', &
-              & SED(radio4p9GHzP,0)*Pi*1.e23/(nuArray(radio4p9GHzP)*fr1Ryd)
-         print*, 'Flux at 4.9GHz (must multiply by 1.e36/(4 Pi D[cm]^2 to obtain units of [Jy]) :', &
-              & SED(radio4p9GHzP,0)*Pi*1.e23/(nuArray(radio4p9GHzP)*fr1Ryd)
-      end if
-
+      write(16,*) 'Final SEDratio: ', SEDratio
+  
+      ! --- Finalization and Cleanup ---
       close(16)
-!      close(116)
-
+  
       if (allocated(SED)) deallocate(SED)
       if (allocated(sSED)) deallocate(sSED)
-      if (allocated(dSED)) deallocate(dSED)
-
+  
       print*, 'out writeSED...'
-
+  
     end subroutine writeSED
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     subroutine writeContCube(grid, wave1,wave2)
       implicit none

@@ -23,6 +23,10 @@ module iteration_mod
 
        integer :: i, j, k                     ! counters
 
+       ! To perform message spliting in mpi
+       integer :: chunk_start, chunk_end, chunk_size, chunk, nCells
+       integer :: num_chunks, chunk_elements
+       real, allocatable :: temp_chunk(:,:,:)
 
        call iterateMC()
 
@@ -30,7 +34,6 @@ module iteration_mod
 
        recursive subroutine iterateMC()
            implicit none
-
            include 'mpif.h'
 
            ! local variables
@@ -60,7 +63,7 @@ module iteration_mod
            integer                :: ifreq, ian      ! counters
            integer                :: ios,iG          ! I/O error status
            integer(kind=8)        :: load,rest       !
-           integer                :: size            ! size for mpi
+           integer(kind=int64)    :: size            ! size for mpi
            integer                :: iCell           ! cell index including non-active
            integer                :: iStar           ! star index
            integer                :: ai              ! grain size counter
@@ -130,7 +133,7 @@ module iteration_mod
                  end do
                  if (taskid==0) print*, '! iterateMC: ionizationDriver out', iG
 
-                 allocate(opacityTemp(0:grid(iG)%nCells, nbins), stat = err)
+                 allocate(opacityTemp(0:grid(iG)%nCells, 1:nbins), stat = err)
                  if (err /= 0) then
                     print*, "! iterateMC: can't allocate array memory: opacityTemp ", iG
                     stop
@@ -355,7 +358,6 @@ module iteration_mod
               end if
 
               size =  (grid(iG)%nCells+1)*nbins
-
 
 
               if (lgGas) then
@@ -589,13 +591,13 @@ module iteration_mod
 
 
 
-              allocate(escapedPacketsTemp(0:grid(iG)%nCells, 0:nbins, 0:nAngleBins), stat = err)
-              if (err /= 0) then
-                 print*, "! iterateMC: can't allocate grid memory: escapedPacketsTemp", iG
-                 stop
-              end if
+!              allocate(escapedPacketsTemp(0:grid(iG)%nCells, 0:nbins, 0:nAngleBins), stat = err)
+!              if (err /= 0) then
+!                 print*, "! iterateMC: can't allocate grid memory: escapedPacketsTemp", iG
+!                 stop
+!              end if
 
-              escapedPacketsTemp  = 0.
+!              escapedPacketsTemp  = 0.
 
               allocate(JSteTemp(0:grid(iG)%nCells, nbins), stat = err)
               if (err /= 0) then
@@ -620,27 +622,53 @@ module iteration_mod
                  linePacketsTemp    = 0.
               end if
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Original
+!              size =  (grid(iG)%nCells+1)*(1+nbins)*(nAngleBins+1)
+              
+!              call mpi_allreduce(grid(iG)%escapedPackets, escapedPacketsTemp, size, &
+!                   & mpi_real, mpi_sum, mpi_comm_world, ierr)
+!              do i = 0, grid(iG)%nCells
+!                 do freq = 0, nbins
+!                    do imu = 0, nAngleBins
+!                       grid(iG)%escapedPackets(i, freq,imu) = escapedPacketsTemp(i, freq, imu)
+!
+!                    end do
+!                 end do
+!              end do
 
-              size =  (grid(iG)%nCells+1)*(1+nbins)*(nAngleBins+1)
 
-              call mpi_allreduce(grid(iG)%escapedPackets, escapedPacketsTemp, size, &
-                   & mpi_real, mpi_sum, mpi_comm_world, ierr)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Using message spliting
 
-              do i = 0, grid(iG)%nCells
-                 do freq = 0, nbins
-                    do imu = 0, nAngleBins
-                       grid(iG)%escapedPackets(i, freq,imu) = escapedPacketsTemp(i, freq, imu)
+              ! Dimensions of the array
+              nCells = grid(iG)%nCells + 1  ! First dimension size
+              chunk_size = MIN(grid(iG)%nx*grid(iG)%ny*grid(iG)%nz,1000000)  ! Maximum size for 32-bit count
+              num_chunks = ceiling(real(nCells) / real(chunk_size))
 
-                    end do
-                 end do
+              if (taskid==0) print*, '! iterateMC: chunk size = ',chunk_size
+              do chunk = 1, num_chunks
+                                
+                  chunk_start = (chunk - 1) * chunk_size  ! Start from 0, not 1
+                  chunk_end = min(chunk * chunk_size - 1, nCells - 1) ! End index, not count, and adjust for 0-indexing
+                                                    ! nCells is total count, so last index is nCells - 1
+                  chunk_elements = chunk_end - chunk_start + 1                   
+                  
+                  if (taskid==0) print*, '! iterateMC: Doing chunk ',chunk
+
+                  ! Slice the 3D array along the first dimension for MPI_Allreduce
+
+                  call mpi_allreduce(MPI_IN_PLACE, grid(iG)%escapedPackets(chunk_start:chunk_end, :, :), &
+                       chunk_elements * (nbins + 1) * (nAngleBins + 1), &
+                       & mpi_real, mpi_sum, mpi_comm_world, ierr)              
+
+                  if (ierr /= 0) then
+                      print *, "Error in MPI_Allreduce during chunk", chunk, "MPI Error Code:", ierr
+                      stop
+                  endif
+
               end do
 
-
-              if ( allocated(escapedPacketsTemp) ) deallocate(escapedPacketsTemp)
-
-!              if (taskid==0) call writeSED(grid)
-!              if (taskid==0 .and. contCube(1)>0. .and. contCube(2)>0. ) &
-!                   & call writeContCube(grid, contCube(1),contCube(2))
 
               size =  (grid(iG)%nCells+1)*nbins
 
@@ -735,7 +763,6 @@ module iteration_mod
            if (taskid==0) print*, " total Escaped Packets :",  totalEscaped
 
            if (taskid==0) call writeSED(grid)
-           print*,'Valores de contCube: ',contCube(1),contCube(2)
            if (taskid==0 .and. contCube(1)>0. .and. contCube(2)>0. ) &
                 & call writeContCube(grid, contCube(1),contCube(2))
 

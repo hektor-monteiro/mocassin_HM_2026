@@ -14,9 +14,9 @@ program MoCaSSiNwarm
     use output_mod
     use set_input_mod
     use xSec_mod
-
+    use readdata_mod
+    
     implicit none
-
     include 'mpif.h'
 
     type(grid_type) :: grid3D(maxGrids) ! the 3D Cartesian  grid
@@ -38,8 +38,13 @@ program MoCaSSiNwarm
 
     lgWarm = .true.
 
+!    ! read the input parameters of the simulation
+!    call readInput()
+
     if (taskid == 0) then
-        print*, "MOCASSIN 2005 warm Version ",VERSION
+        print*, "MOCASSIN version ",VERSION
+        print*, "Data directories: ",PREFIX,"/share/mocassin/data,"
+        print*, "                  ",PREFIX,"/share/mocassin/dustData"
         print*, " "
     end if
 
@@ -48,7 +53,10 @@ program MoCaSSiNwarm
     end if
 
     ! reset the 3D cartesian grid
-    call resetGrid(grid3D)
+     do iGrid = 1, nGrids
+       call resetGrid(grid3D(iGrid)) 
+    end do
+   call resetGrid(grid3D)
 
     call setStarPosition(grid3D(1)%xAxis,grid3D(1)%yAxis,grid3D(1)%zAxis,grid3D)
 
@@ -59,7 +67,10 @@ program MoCaSSiNwarm
     call setContinuum()
 
     ! prepare atomica data stuff
-    call makeElements()
+    if (lgGas) then
+      call makeElements()
+      call readData()
+    endif
 
     if (taskid == 0) then
         print*, "Total number of grids (mother+sub-grids): ", nGrids
@@ -79,7 +90,7 @@ program MoCaSSiNwarm
     call mpi_barrier(mpi_comm_world, ierr)
 
     ! start the Monte Carlo simulation
-    call MCIterationDriver(grid3D)
+    call MCIterationDriver(grid3D(1:nGrids))
 
     if (taskid ==  0 .and. .not.lgOutput) then
         ! determine final statistics

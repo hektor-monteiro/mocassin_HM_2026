@@ -78,12 +78,9 @@ module update_mod
         integer                        :: outShell     ! outer shell number (1 for k shell)
         integer                        :: nspU
         integer, parameter             ::  nTbins=300  ! number of enthalpy bins for T spike
-        integer, parameter             :: maxIterateGC&! limit to number of grain charge it
-             & = 100
-        integer, parameter             :: maxIterateX& ! limit to number of X-iterat ions
-             & = 25
-        integer, parameter             :: maxIterateT& ! limit to number of T-iterations
-             & = 25
+        integer, parameter             :: maxIterateGC = 100 ! limit to number of grain charge it
+        integer, parameter             :: maxIterateX = 50 ! limit to number of X-iterat ions
+        integer, parameter             :: maxIterateT = 50 ! limit to number of T-iterations
 
 
         ! check whether this cell is outside the nebula
@@ -336,193 +333,402 @@ module update_mod
 
     contains
 
-        recursive subroutine iterateT()
-            implicit none
+!        recursive subroutine iterateT()
+!            implicit none
 
-            ! local variables
-            integer                       :: isp, ai         ! counters
-            integer                       :: ispbig          ! counter
+!            ! local variables
+!            integer                       :: isp, ai         ! counters
+!            integer                       :: ispbig          ! counter
 
-            logical                       :: lgGCBConv       ! grain charge converged?
-            logical                       :: lgIBConv        ! converged?
+!            logical                       :: lgGCBConv       ! grain charge converged?
+!            logical                       :: lgIBConv        ! converged?
 
-            real                          :: coolInt         ! tot cooling integral [erg/s/Hden]
-            real                          :: heatInt         ! tot heating integral [erg/s/Hden]
+!            real                          :: coolInt         ! tot cooling integral [erg/s/Hden]
+!            real                          :: heatInt         ! tot heating integral [erg/s/Hden]
 
-            real, parameter               :: Xmax = 0.9999   ! max rel abundance
+!            real, parameter               :: Xmax = 0.9999   ! max rel abundance
 
-            ! step up T-iteration
-            nIterateT = nIterateT + 1
+!            ! step up T-iteration
+!            nIterateT = nIterateT + 1
 
-            ! calculate the recombination coefficients for this cell
-            call calcalpha()
+!            ! calculate the recombination coefficients for this cell
+!            call calcalpha()
 
-            ! initialize X iteration counter
-            nIterateX = 1
+!            ! initialize X iteration counter
+!            nIterateX = 1
 
-            ! calculate the ion abundances for the remaning ions
-            call ionBalance(lgIBConv)
+!            ! calculate the ion abundances for the remaning ions
+!            call ionBalance(lgIBConv)
 
-            ! calculate dust-gas interaction heating/cooling terms
-            if (lgDust .and. lgGas .and. lgPhotoelectric) then
-               do isp = 1, nSpeciesPart(nspU)
-                  do ai = 1, nsizes
-                     nIterateGC     = 0
-                     grainEmi       = 0.
-                     grainRec       = 0.
+!            ! calculate dust-gas interaction heating/cooling terms
+!            if (lgDust .and. lgGas .and. lgPhotoelectric) then
+!               do isp = 1, nSpeciesPart(nspU)
+!                  do ai = 1, nsizes
+!                  
+!                     if (grainRadius(ai) >= componentMinRadius(nspU, isp) .and. grainRadius(ai) <= componentMaxRadius(nspU, isp)) then
+!                     
+!                        nIterateGC     = 0
+!                        grainEmi       = 0.
+!                        grainRec       = 0.                     
 
-                     ispbig = isp+dustComPoint(nspU)-1
-                     call setGrainPotential(ispbig,ai,lgGCBConv)
+!                        ispbig = isp+dustComPoint(nspU)-1
+!                        call setGrainPotential(ispbig,ai,lgGCBConv)
+!                        call locate(nuArray, grainPot(isp,ai), grainPotP(isp,ai))
+!                        if (grainPotP(isp,ai) == 0) grainPotP = 1
+!                        
+!                     endif
 
-                     call locate(nuArray, grainPot(isp,ai), grainPotP(isp,ai))
-                     if (grainPotP(isp,ai) == 0) grainPotP = 1
+!                  end do
+!               end do
+!               
+!               call setPhotoelHeatCool()
 
-                  end do
-               end do
-               call setPhotoelHeatCool()
+!               call setDustGasCollHeatCool()
 
+!            end if
 
-               call setDustGasCollHeatCool()
 
-            end if
+!            ! solve thermal balance
+!            call thermBalance(heatInt, coolInt)
 
+!            ! Now calculate new Te
 
-            ! solve thermal balance
-            call thermBalance(heatInt, coolInt)
+!            ! calculate thResidual = heatInt - coolInt
+!            thResidual = heatInt - coolInt
+!!print*, cellp, thresidual, heatint, coolint
+!            if ( abs(thResidual) >= thLimit*heatInt ) then ! start convergence condition
 
-            ! Now calculate new Te
+!                if ( nIterateT < maxIterateT ) then ! start nIterateT condition
 
-            ! calculate thResidual = heatInt - coolInt
-            thResidual = heatInt - coolInt
-!print*, cellp, thresidual, heatint, coolint
-            if ( abs(thResidual) >= thLimit*heatInt ) then ! start convergence condition
+!                    if ( thResidual < 0) then
 
-                if ( nIterateT < maxIterateT ) then ! start nIterateT condition
+!                        thResidualLow = thResidual
+!                        Tlow          = TeUsed
 
-                    if ( thResidual < 0) then
+!                        if ( Thigh /= 0. ) then
 
-                        thResidualLow = thResidual
-                        Tlow          = TeUsed
+!                            TeUsed = Tlow-(Thigh-Tlow)*thResidualLow/&
+!                                 & (thResidualHigh-thResidualLow)
 
-                        if ( Thigh /= 0. ) then
+!                        else
 
-                            TeUsed = Tlow-(Thigh-Tlow)*thResidualLow/&
-                                 & (thResidualHigh-thResidualLow)
+!                            TeUsed = TeUsed/1.2
 
-                        else
+!                        end if
 
-                            TeUsed = TeUsed/1.2
+!                    else
 
-                        end if
+!                        thResidualHigh = thResidual
+!                        Thigh          = TeUsed
 
-                    else
+!                        if ( Tlow /= 0. ) then
 
-                        thResidualHigh = thResidual
-                        Thigh          = TeUsed
+!                            TeUsed = Tlow-(Thigh-Tlow)*thResidualLow/&
+!                                 & (thResidualHigh-thResidualLow)
 
-                        if ( Tlow /= 0. ) then
+!                        else
 
-                            TeUsed = Tlow-(Thigh-Tlow)*thResidualLow/&
-                                 & (thResidualHigh-thResidualLow)
+!                            TeUsed = TeUsed*1.2
 
-                        else
+!                        end if
 
-                            TeUsed = TeUsed*1.2
+!                    end if
 
-                        end if
 
-                    end if
+!                    if (nIterateT >= 6) then
+!                        if (abs(Thigh-Tlow) <= (0.002*(Thigh+Tlow)) ) then
 
+!                            if ( thResidual < 0 ) then
 
-                    if (nIterateT >= 6) then
-                        if (abs(Thigh-Tlow) <= (0.002*(Thigh+Tlow)) ) then
+!                                TeUsed = Thigh - 100.
+!                                 Thigh  = 0.
 
-                            if ( thResidual < 0 ) then
+!                            else
 
-                                TeUsed = Thigh - 100.
-                                 Thigh  = 0.
+!                                TeUsed = Tlow+100.
+!                                Tlow   = 0.
 
-                            else
+!                            end if
+!                        end if
+!                    end if
 
-                                TeUsed = Tlow+100.
-                                Tlow   = 0.
+!                    if (TeUsed <= 20.) TeUsed = 20.
 
-                            end if
-                        end if
-                    end if
+!                    ! next T-iteration
+!                    if (cellP == 9249) print*, nIterateT, TeUsed, '[', Tlow, Thigh, ']', (thResidual), thLimit * heatInt
 
-                    if (TeUsed <= 0.) TeUsed = 1.
+!                    call iterateT()
+!                    return
 
-                    ! next T-iteration
-                    call iterateT()
-                    return
+!                else ! if nIterateT > maxIterateT
 
-                else ! if nIterateT > maxIterateT
+!                    ! after maxIterateT number of iterations the temperature
+!                    ! is determined as follows
 
-                    ! after maxIterateT number of iterations the temperature
-                    ! is determined as follows
+!                    if ( Thigh == 0. ) then
 
-                    if ( Thigh == 0. ) then
+!                        TeUsed = Tlow
 
-                        TeUsed = Tlow
+!                    else
 
-                    else
+!                        if (Tlow == 0.) then
 
-                        if (Tlow == 0.) then
+!                            TeUsed = Thigh
 
-                            TeUsed = Thigh
+!                        else
 
-                        else
+!                            TeUsed = (Thigh+Tlow)*0.5
 
-                            TeUsed = (Thigh+Tlow)*0.5
+!                        end if
 
-                        end if
+!                    end if
 
-                    end if
 
+!                    if (lgTalk) print*, "! iterateT: [warning] no convergence after ", &
+!                         & nIterateT, " steps. (cell, T)", cellP,xP,yP,zP,TeUsed
 
-                    if (lgTalk) print*, "! iterateT: [warning] no convergence after ", &
-                         & nIterateT, " steps. (cell, T)", cellP,xP,yP,zP,TeUsed
+!                    grid%noTeBal = grid%noTeBal+1.
 
-                    grid%noTeBal = grid%noTeBal+1.
+!                    grid%lgBlack(cellP) = 1
 
-                    grid%lgBlack(cellP) = 1
+!                end if
 
-                end if
+!            else ! if thResidual < thLimit
 
-            else ! if thResidual < thLimit
+!                ! the T-iteration has converged
 
-                ! the T-iteration has converged
+!                if (lgTalk) print*, "! iterateT: [talk] convergence achieved after ",&
+!                     & nIterateT, " steps. (cell, T)", xP,yP,zP,TeUsed, grid%abFileIndex(xP,yP,zP)
 
-                if (lgTalk) print*, "! iterateT: [talk] convergence achieved after ",&
-                     & nIterateT, " steps. (cell, T)", xP,yP,zP,TeUsed, grid%abFileIndex(xP,yP,zP)
+!            end if ! end convergence condition
 
-            end if ! end convergence condition
+!            if (.not.lgIBConv) then
+!               grid%noIonBal = grid%noIonBal+1
+!               grid%lgBlack(cellP) = 1
+!            end if
 
-            if (.not.lgIBConv) then
-               grid%noIonBal = grid%noIonBal+1
-               grid%lgBlack(cellP) = 1
-            end if
+!            grid%Te(cellP)         = TeUsed
 
-            grid%Te(cellP)         = TeUsed
+!            ! determine if the model has converged at this cell
+!            deltaXHI = (grid%ionDen(cellP,elementXref(1),1) - XOldHI) / XOldHI
+!            if ( abs(deltaXHI) <= XHILimit ) then
+!               grid%lgConverged(cellP) = 1
+!            else
+!               grid%lgConverged(cellP) = 0
+!            end if
 
-            ! determine if the model has converged at this cell
-            deltaXHI = (grid%ionDen(cellP,elementXref(1),1) - XOldHI) / XOldHI
-            if ( abs(deltaXHI) <= XHILimit ) then
-               grid%lgConverged(cellP) = 1
+!            if (lgTalk) print*, "iterateT: [talk] cell", xP,yP,zP, "; converged?",&
+!                 & grid%lgConverged(cellP), "; X(H0): ", &
+!                 & grid%ionDen(cellP,elementXref(1),1), &
+!                 & "; X(H0) old: ", XOldHI,"; dX(H0): ", deltaXHI
+
+!            ! this was added to help implementing MPI comunication
+!            TeTemp(cellP)          = TeUsed
+
+!        end subroutine iterateT
+!        
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine iterateT()
+    implicit none
+
+    !================================================================!
+    ! Find equilibrium Te using secant method. Adapted from original
+    ! to use DO loop instead of recursion for better readability
+    !================================================================!
+
+    !================================================================!
+    ! LOCAL VARIABLES
+    !================================================================!
+    integer :: isp, ai              ! Dust species and size counters
+    integer :: ispbig               ! Pointer for dust component
+    integer :: nIterateT            ! Temperature iteration counter
+
+    logical :: lgGCBConv            ! Grain charge balance converged?
+    logical :: lgIBConv             ! Ionization balance converged?
+    logical :: lgTConverged         ! Thermal balance converged?
+
+    real :: coolInt                 ! Total cooling rate [erg/s/Hden]
+    real :: heatInt                 ! Total heating rate [erg/s/Hden]
+    real :: thResidual              ! Thermal residual (Heating - Cooling)
+    real :: thResidualLow           ! Residual at Tlow
+    real :: thResidualHigh          ! Residual at Thigh
+    real :: deltaXHI                ! Fractional change in neutral Hydrogen
+
+    !================================================================!
+    ! INITIALIZATION
+    !================================================================!
+    ! Initialize flags and bracketing values for the temperature search.
+    lgTConverged = .false.
+    Tlow = 0.0
+    Thigh = 0.0
+    thResidualLow = 0.0
+    thResidualHigh = 0.0
+
+    !================================================================!
+    ! MAIN ITERATION LOOP
+    !----------------------------------------------------------------!
+    ! This loop iteratively seeks the temperature where heating equals
+    ! cooling. It will run up to 'maxIterateT' times.
+    !================================================================!
+    DO nIterateT = 1, maxIterateT
+
+        ! STEP 1: CALCULATE PHYSICAL STATE FOR THE CURRENT TEMPERATURE 'TeUsed'
+        !----------------------------------------------------------------
+        call calcalpha()
+        nIterateX = 1 ! Reset ionization balance counter for this T-step
+        call ionBalance(lgIBConv)
+
+
+        ! STEP 2: CALCULATE DUST-RELATED HEATING AND COOLING
+        !----------------------------------------------------------------
+        ! This block executes only if dust physics are enabled.
+        if (lgDust .and. lgGas .and. lgPhotoelectric) then
+            ! Loop over all dust components and grain sizes
+            do isp = 1, nSpeciesPart(nspU)
+                do ai = 1, nsizes
+                    if (grainRadius(ai) >= componentMinRadius(nspU, isp) .and. grainRadius(ai) <= componentMaxRadius(nspU, isp)) then
+                        
+                        ! Calculate the grain's electric potential (charge)
+                        nIterateGC     = 0
+                        grainEmi       = 0.
+                        grainRec       = 0.                     
+
+                        ispbig = isp+dustComPoint(nspU)-1
+                        call setGrainPotential(ispbig,ai,lgGCBConv)
+                        call locate(nuArray, grainPot(isp,ai), grainPotP(isp,ai))
+                        if (grainPotP(isp,ai) == 0) grainPotP = 1
+
+                    endif
+                end do
+            end do
+            
+            ! Sum up the photoelectric and collisional heating/cooling from dust
+            call setPhotoelHeatCool()
+            call setDustGasCollHeatCool()
+        end if
+
+
+        ! STEP 3: SOLVE THERMAL BALANCE AND CHECK FOR CONVERGENCE
+        !----------------------------------------------------------------
+        call thermBalance(heatInt, coolInt)
+        thResidual = heatInt - coolInt
+
+        ! Convergence condition: Is the residual smaller than a fraction of the heating?
+        if (abs(thResidual) < thLimit * heatInt) then
+            lgTConverged = .true.
+            if (lgTalk) print*, "! iterateT: [talk] Convergence achieved after ", &
+                & nIterateT, " steps. (cell, T)", xP, yP, zP, TeUsed
+            exit ! Exit the loop, we found the temperature
+        end if
+
+
+        ! STEP 4: UPDATE TEMPERATURE GUESS USING SECANT METHOD
+        !----------------------------------------------------------------
+        ! If not converged, calculate a better temperature for the next iteration.
+        ! This method uses the last two points to extrapolate to the root (thResidual = 0).
+
+        if (thResidual < 0.0) then  ! Net cooling: Current temp is too high, it becomes the new upper bound 'Thigh'
+            thResidualHigh = thResidual
+            Thigh = TeUsed
+        else                        ! Net heating: Current temp is too low, it becomes the new lower bound 'Tlow'
+            thResidualLow = thResidual
+            Tlow = TeUsed
+        end if
+
+        ! Calculate the next temperature guess
+        if (Tlow /= 0.0 .and. Thigh /= 0.0) then
+            ! Secant method: Use both bounds to find the new temperature
+            TeUsed = Tlow - (Thigh - Tlow) * thResidualLow / (thResidualHigh - thResidualLow)
+        else
+            ! Bracketing search: If one bound is missing, adjust by a fixed factor
+            if (thResidual < 0.0) then
+                TeUsed = TeUsed / 1.2 ! Too hot, cool it down
             else
-               grid%lgConverged(cellP) = 0
+                TeUsed = TeUsed * 1.2 ! Too cold, heat it up
             end if
+        end if
+        
+        ! --- Stall Prevention Logic ---
+        ! If the temperature bounds get very close but don't converge,
+        ! nudge the temperature to break out of the stall.
+        if (nIterateT >= 6) then
+            if (abs(Thigh - Tlow) <= (0.002*(Thigh+Tlow))) then
+                if (thResidual < 0.0) then
+                    TeUsed = Tlow + 100. ! Nudge up from the lower bound
+                    Tlow = 0.0          ! Reset the bracket
+                else
+                    TeUsed = Thigh - 100. ! Nudge down from the upper bound
+                    Thigh = 0.0         ! Reset the bracket
+                end if
+            end if
+        end if
 
-            if (lgTalk) print*, "iterateT: [talk] cell", xP,yP,zP, "; converged?",&
-                 & grid%lgConverged(cellP), "; X(H0): ", &
-                 & grid%ionDen(cellP,elementXref(1),1), &
-                 & "; X(H0) old: ", XOldHI,"; dX(H0): ", deltaXHI
+        ! Ensure temperature doesn't become non-physical
+        if (TeUsed < 10.) TeUsed = 10.
+        ! Ensure temperature doesn't go beyond atomic data limit for H
+        if (TeUsed > 30000.) TeUsed = 30000.
+        
+        if (cellP == 9249) print*, nIterateT, TeUsed, '[', Tlow, Thigh, ']', (thResidual), thLimit * heatInt
 
-            ! this was added to help implementing MPI comunication
-            TeTemp(cellP)          = TeUsed
+    END DO ! End of main iteration loop
 
-        end subroutine iterateT
+    !================================================================!
+    ! POST-PROCESSING AND FINALIZATION
+    !----------------------------------------------------------------!
+    ! This section executes after the loop finishes, either by
+    ! converging (exit) or by reaching the maximum iteration limit.
+    !================================================================!
+
+    ! --- Handle non-converged case ---
+    if (.not. lgTConverged) then
+        if (lgTalk) print*, "! iterateT: [warning] No convergence after ", &
+            & maxIterateT, " steps. (cell, T)", cellP, xP, yP, zP, TeUsed
+        
+        ! If we failed to converge, set temperature to the best available estimate
+        if (Thigh == 0.0) then
+            TeUsed = Tlow
+        else if (Tlow == 0.0) then
+            TeUsed = Thigh
+        else
+            TeUsed = (Thigh + Tlow) * 0.5
+        end if
+        
+        grid%noTeBal = grid%noTeBal + 1
+        grid%lgBlack(cellP) = 1 ! Flag this cell as problematic
+    end if
+    
+    if (TeUsed >= 30000.) grid%lgBlack(cellP) = 1 ! Flag this cell as problematic
+    
+    ! --- Update grid values and check overall model convergence ---
+    grid%Te(cellP) = TeUsed
+    
+    if (.not. lgIBConv) then
+        grid%noIonBal = grid%noIonBal + 1
+        grid%lgBlack(cellP) = 1 ! Flag cell if ionization balance failed
+    end if
+
+    ! Determine if the entire cell model has converged by checking H ionization
+    deltaXHI = (grid%ionDen(cellP, elementXref(1), 1) - XOldHI) / XOldHI
+    if (abs(deltaXHI) <= XHILimit) then
+        grid%lgConverged(cellP) = 1
+    else
+        grid%lgConverged(cellP) = 0
+    end if
+
+    if (lgTalk) print*, "iterateT: [talk] cell", xP, yP, zP, "; converged?", &
+        & grid%lgConverged(cellP), "; X(H0): ", &
+        & grid%ionDen(cellP, elementXref(1), 1)
+
+    ! This was added to help implementing MPI communication
+    TeTemp(cellP) = TeUsed
+    
+    if (cellP == 9249) print*, nIterateT, TeUsed, '[', Tlow, Thigh, ']', (thResidual), thLimit * heatInt
+
+
+end subroutine iterateT
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         recursive subroutine setGrainPotential(iSp, ai, lgGCBConv)
           implicit none
@@ -612,6 +818,10 @@ module update_mod
 
           integer, intent(in) :: isp, ai
           integer :: ifreq, ip
+          integer :: global_isp ! <<-- DECLARE GLOBAL INDEX
+
+          ! Calculate the correct global index for the species
+          global_isp = dustComPoint(nspU) + isp - 1
 
           getGrainEmission=0.
 
@@ -642,7 +852,7 @@ module update_mod
 
              photFlux = photFlux*fourPi
 
-             Qa = XSecArray(dustAbsXsecP(isp,ai)+ifreq-1)/(1.e-8*grainRadius(ai)**2)
+             Qa = XSecArray(dustAbsXsecP(global_isp,ai)+ifreq-1)/(1.e-8*grainRadius(ai)**2)
 
              getGrainEmission = getGrainEmission+Yhat*photFlux*Qa
 
@@ -739,6 +949,7 @@ module update_mod
           real    :: Qa, photFlux, EY, Yhat,Yn,th
 
           integer :: ns,na,ifreq,thP
+          integer :: global_ns ! DECLARE GLOBAL INDEX
 
           ! calculate the cooling of dust by photoelectric emission
           !  and heating of gas
@@ -747,54 +958,48 @@ module update_mod
           photoelHeat_d=0.
           photoelHeat_g=0.
           do ns = 1, nSpeciesPart(nspU)
+             ! Calculate the correct global index for the species
+             global_ns = dustComPoint(nspU) + ns - 1
+
              do na = 1, nSizes
+             
+                if (grainRadius(na) >= componentMinRadius(nspU, ns) .and. grainRadius(na) <= componentMaxRadius(nspU, ns)) then
 
-
-                if (grainPotP(ns,na) <= 0) then
-                   print*, "! setPhotoelHeatCool irregular grain potential index", &
-                        grainPotP(ns,na), grainPot(ns,na)
-                   stop
-                end if
-
-                th = max(grainVn(ns)+grainPot(ns,na), grainVn(ns))
-                call locate(nuArray,th,thP)
-                if(thP<=0) thP=1
-
-                do ifreq = thP, nbins
-
-!                do ifreq = grainPotP(ns,na), nbins
-
-                   Yn = min(Y0*(1.-grainVn(ns)/nuArray(ifreq)), Y1)
-
-
-                   Yhat = Yn*min(1., max(0.,1.-grainPot(ns,na)/(nuArray(ifreq)-grainVn(ns))))
-
-                   if (.not. lgDebug) then
-!                      photFlux = (grid%JPEots(cellP,ifreq) + &
-!                           & grid%Jste(cellP,ifreq))/(hcRyd*nuArray(ifreq))
-                      photFlux = grid%Jste(cellP,ifreq)/(hcRyd*nuArray(ifreq))
-                   else
-!                      photFlux = (grid%JPEots(cellP,ifreq) + grid%Jste(cellP,ifreq)+&
-!                           & grid%Jdif(cellP,ifreq))/(hcRyd*nuArray(ifreq))
-                      photFlux = (grid%Jste(cellP,ifreq)+grid%Jdif(cellP,ifreq))/(hcRyd*nuArray(ifreq))
-
+                   if (grainPotP(ns,na) <= 0) then
+                      print*, "! setPhotoelHeatCool irregular grain potential index", &
+                           grainPotP(ns,na), grainPot(ns,na)
+                      stop
                    end if
 
-                   photFlux = photFLux
+                   th = max(grainVn(global_ns)+grainPot(ns,na), grainVn(global_ns))
+                   call locate(nuArray,th,thP)
+                   if(thP<=0) thP=1
 
-                   Qa = XSecArray(dustAbsXsecP(ns,na)+ifreq-1)
+                   do ifreq = thP, nbins
 
-                   EY = Yn*0.5* min(nuArray(ifreq)-grainVn(ns),&
-                        & max(0., ((nuArray(ifreq)-grainVn(ns))**2-grainPot(ns,na)**2)/&
-                        & (nuArray(ifreq)-grainVn(ns))))
+                      Yn = min(Y0*(1.-grainVn(global_ns)/nuArray(ifreq)), Y1)
+                      Yhat = Yn*min(1., max(0.,1.-grainPot(ns,na)/(nuArray(ifreq)-grainVn(global_ns))))
 
-!                   photoelHeat_d(ns,na) = photoelHeat_d(ns,na)+Qa*photFlux*EY*hcRyd/Pi
-                   photoelHeat_d(ns,na) = photoelHeat_d(ns,na)+Qa*photFlux*EY*hcRyd/Pi
+                      if (.not. lgDebug) then
+                         photFlux = grid%Jste(cellP,ifreq)/(hcRyd*nuArray(ifreq))
+                      else
+                         photFlux = (grid%Jste(cellP,ifreq)+grid%Jdif(cellP,ifreq))/(hcRyd*nuArray(ifreq))
+                      end if
 
-                   photoelHeat_g = photoelHeat_g+Qa*photFlux*(EY-Yhat*grainPot(ns,na))*&
-                        & grainAbun(nspU,ns)*grainWeight(na)
+                      photFlux = photFLux
+                      Qa = XSecArray(dustAbsXsecP(global_ns,na)+ifreq-1)
+                      EY = Yn*0.5* min(nuArray(ifreq)-grainVn(global_ns),&
+                           & max(0., ((nuArray(ifreq)-grainVn(global_ns))**2-grainPot(ns,na)**2)/&
+                           & (nuArray(ifreq)-grainVn(ns))))
 
-                end do
+                      photoelHeat_d(ns,na) = photoelHeat_d(ns,na)+Qa*photFlux*EY*hcRyd/Pi
+                      photoelHeat_g = photoelHeat_g+Qa*photFlux*(EY-Yhat*grainPot(ns,na))*&
+                           & grainAbun(nspU,ns)*grainWeight(na)
+
+                   end do
+                   
+                endif
+                   
              end do
           end do
 
@@ -814,6 +1019,7 @@ module update_mod
           integer :: ss(30)
           real :: vmean, mcp ! colliding particle mean velocity and mean particle mass
           integer :: nelectrons, istage, ns, na
+          integer :: global_ns ! <<-- DECLARE GLOBAL INDEX
 
           ! outer shell array
           ss = (/1,1,2,2,3,3,3,3,3,3,4,4,5,5,5,5,5,5,&
@@ -851,39 +1057,50 @@ module update_mod
                       end if
 
                       do ns = 1, nSpeciesPart(nspU)
+                      
+                         ! <<-- CALCULATE THE GLOBAL INDEX
+                         global_ns = dustComPoint(nspU) + ns - 1
+                      
                          if (istage == 1) then
-                            S = 2*mcp*MsurfAtom(ns)/(mcp+MsurfAtom(ns))**2
+                            S = 2*mcp*MsurfAtom(global_ns)/(mcp+MsurfAtom(global_ns))**2
                          else
                             S = 1.
                          end if
+                         
                          do na = 1, nSizes
+                         
+                            if (grainRadius(na) >= componentMinRadius(nspU, ns) .and. grainRadius(na) <= componentMaxRadius(nspU, ns)) then
 
-                            psi = Z*grainPot(ns,na)/kT
-                            if (psi <= 0. ) then
-                               eta = 1.-psi
-                               xi = 1. - psi/2.
-                            else
-                               eta = exp(-psi)
-                               xi = (1.+psi/2.) * eta
-                            end if
+                               psi = Z*grainPot(ns,na)/kT
+                               if (psi <= 0. ) then
+                                  eta = 1.-psi
+                                  xi = 1. - psi/2.
+                               else
+                                  eta = exp(-psi)
+                                  xi = (1.+psi/2.) * eta
+                               end if
 
-                            gasDustColl_d(ns,na) = gasDustColl_d(ns,na)+&
-                                 & ionDenUsed(elementXref(elem),istage)*&
-                                 & grid%elemAbun(grid%abFileIndex(xP,yP,zP),elem)*&
-                                 & grid%Hden(cellP)*&
-                                 & Pi*grainRadius(na)*grainRadius(na)*1.e-8*&
-                                 & S*vmean*(2.*kT*Ryd2erg*xi-eta*&
-                                 & (Z*grainPot(ns,na)*Ryd2erg-IPerg+&
-                                 & 2.*kBoltzmann*grid%Tdust(ns,na,cellP)))
+                               gasDustColl_d(ns,na) = gasDustColl_d(ns,na)+&
+                                    & ionDenUsed(elementXref(elem),istage)*&
+                                    & grid%elemAbun(grid%abFileIndex(xP,yP,zP),elem)*&
+                                    & grid%Hden(cellP)*&
+                                    & Pi*grainRadius(na)*grainRadius(na)*1.e-8*&
+                                    & S*vmean*(2.*kT*Ryd2erg*xi-eta*&
+                                    & (Z*grainPot(ns,na)*Ryd2erg-IPerg+&
+                                    & 2.*kBoltzmann*grid%Tdust(ns,na,cellP)))
 
-                            gasDustColl_g = gasDustColl_g + &
-                                 & ionDenUsed(elementXref(elem),istage)*&
-                                 & grainWeight(na)*grainAbun(nspU,ns)*grid%Ndust(cellP)*&
-                                 & grid%elemAbun(grid%abFileIndex(xP,yP,zP),elem)*&
-                                 & Pi*grainRadius(na)*grainRadius(na)*1.e-8*&
-                                 & S*vmean*(2.*kT*Ryd2erg*xi-eta*2.*kBoltzmann*&
-                                 & grid%Tdust(ns,na,cellP))
+                               gasDustColl_g = gasDustColl_g + &
+                                    & ionDenUsed(elementXref(elem),istage)*&
+                                    & grainWeight(na)*grainAbun(nspU,ns)*grid%Ndust(cellP)*&
+                                    & grid%elemAbun(grid%abFileIndex(xP,yP,zP),elem)*&
+                                    & Pi*grainRadius(na)*grainRadius(na)*1.e-8*&
+                                    & S*vmean*(2.*kT*Ryd2erg*xi-eta*2.*kBoltzmann*&
+                                    & grid%Tdust(ns,na,cellP))
+                                    
+                            endif
+                            
                          end do
+                         
                       end do
                    end do
                 end if
@@ -895,29 +1112,33 @@ module update_mod
                 S = 1.
                 Z=-1.
                 do na = 1, nSizes
+                
+                   if (grainRadius(na) >= componentMinRadius(nspU, ns) .and. grainRadius(na) <= componentMaxRadius(nspU, ns)) then
 
+                      psi = Z*grainPot(ns,na)/kT
+                      if (psi <= 0. ) then
+                         eta = 1.-psi
+                         xi = 1. - psi/2.
+                      else
+                         eta = exp(-psi)
+                         xi = (1.+psi/2.) * eta
+                      end if
 
-                   psi = Z*grainPot(ns,na)/kT
-                   if (psi <= 0. ) then
-                      eta = 1.-psi
-                      xi = 1. - psi/2.
-                   else
-                      eta = exp(-psi)
-                      xi = (1.+psi/2.) * eta
-                   end if
+                      gasDustColl_d(ns,na) = gasDustColl_d(ns,na)+&
+                           & NeUsed* &
+                           & Pi*grainRadius(na)*grainRadius(na)*1.e-8*&
+                           & S*vmean*(2.*kT*Ryd2erg*xi-eta*&
+                           & (Z*grainPot(ns,na)*ryd2erg))
 
-                   gasDustColl_d(ns,na) = gasDustColl_d(ns,na)+&
-                        & NeUsed* &
-                        & Pi*grainRadius(na)*grainRadius(na)*1.e-8*&
-                        & S*vmean*(2.*kT*Ryd2erg*xi-eta*&
-                        & (Z*grainPot(ns,na)*ryd2erg))
-
-                   gasDustColl_g = gasDustColl_g + &
-                        & NeUsed* &
-                        & grainWeight(na)*grainAbun(nspU, ns)*grid%Ndust(cellP)*&
-                        & Pi*grainRadius(na)*grainRadius(na)*1.e-8*&
-                        & S*vmean*(2.*kT*Ryd2erg*xi)/&
-                        & grid%Hden(cellP)
+                      gasDustColl_g = gasDustColl_g + &
+                           & NeUsed* &
+                           & grainWeight(na)*grainAbun(nspU, ns)*grid%Ndust(cellP)*&
+                           & Pi*grainRadius(na)*grainRadius(na)*1.e-8*&
+                           & S*vmean*(2.*kT*Ryd2erg*xi)/&
+                           & grid%Hden(cellP)
+                      
+                   endif
+                   
                 end do
              end do
 
@@ -1437,8 +1658,8 @@ module update_mod
             chex(18,2,:) = (/1.e-5  , 0.   , 0.    , 0./) ! Ar+
             chex(18,3,:) = (/4.57   , 0.27 , -0.18 , -1.57/)! Ar+2
             chex(18,4,:) = (/6.37   , 2.12 , 10.21 , -6.22/)! Ar+3
-            chex(18,3,:) = (/3.17e-2, 2.12 , 12.06 , -0.40/)! Ca+2
-            chex(18,4,:) = (/2.68   , 0.69 , -0.68 , -4.47/)! Ca+3
+            chex(20,3,:) = (/3.17e-2, 2.12 , 12.06 , -0.40/)! Ca+2
+            chex(20,4,:) = (/2.68   , 0.69 , -0.68 , -4.47/)! Ca+3
             chex(26,2,:) = (/1.26   , 7.72e-2, -0.41, -7.31/)! Fe+
             chex(26,3,:) = (/3.42   , 0.51 , -2.06 , -8.99/)! Fe+2.
 
@@ -1619,6 +1840,301 @@ module update_mod
             NeTemp(cellP) = NeUsed
 
         end subroutine ionBalance
+        
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!subroutine ionBalance(lgConv)
+!        implicit none
+
+!        logical, intent(out)  :: lgConv      ! did ion bal converge?
+
+!        ! local variables
+!        real                  :: collIon     ! collisional ionization
+!        real                  :: collIonH     ! collisional ionization of H
+!        real                  :: correction  ! used in lgNeInput = .t.
+!        real                  :: deltaHI     ! delta(X(H0))
+!        real                  :: deltaHeI    ! delta(X(He0))
+!        real                  :: deltaHeII   ! delta(X(HeII))
+!        real                  :: expFact     ! exponential factor
+!        real                  :: t4          ! TeUsed/10000.
+!        real                  :: HIOld       ! X(H0) from last iteration
+!        real                  :: HeIOld      ! X(He0) from last iteration
+!        real                  :: HeIIOld     ! X(He+) from last iteration
+!        real, parameter       :: limit = 0.01 ! convergence limit
+
+!        integer               :: elem, ion   ! element and ion counters
+!        integer               :: g0,g1       ! stat weights
+!        integer               :: i           ! counter
+!        integer               :: nElec       ! of e's in the ion
+!        integer               :: outShell    ! byproduct of proc to get stat weights
+!        integer               :: nIterateX   ! iteration counter
+
+!        real                  :: revRate     ! reverse charge exchange rate
+
+!        double precision, dimension(nELements) :: &
+!             & denominator    ! denominator of final ion abundance
+
+!        real, dimension(nElements, nstages) :: &
+!             & deltaE_k       ! deltaE/k [K]
+
+!        double precision, dimension(nElements, nstages) :: &
+!             & ionRatio, &    ! X(i+1)/X(+i)
+!             & ionProd        ! ionRatio products
+!        real, dimension(nElements, nstages,4) :: &
+!             & chex           ! ch exchange coeff in cm^3/s
+
+
+!        !================================================================!
+!        ! START OF THE MAIN ITERATIVE LOOP                             
+!        ! This loop replaces the original recursive structure. It will 
+!        ! continue until the ionic fractions converge or the maximum 
+!        ! number of iterations is reached.
+!        !================================================================!
+!        nIterateX = 0 ! Initialize iteration counter
+!        lgConv    = .false.
+
+!        DO
+!            ! initialize variables for the current iteration
+!            correction  = 0.
+!            ionRatio    = 0.
+!            ionProd     = 1.
+!            denominator = 1.
+
+!            ! Store the ion densities from the previous step to check for convergence later.
+!            HIOld   = ionDenUsed(elementXref(1),1)
+!            HeIOld  = ionDenUsed(elementXref(2),1)
+!            HeIIOld = ionDenUsed(elementXref(2),2)
+!            
+!            ! take into account collisional ionization of H
+!            ! Drake & Ulrich, ApJS42(1980)351
+!            expFact = 157893.94/TeUsed
+!            if (expFact > 75.) then
+!                ! prevents underflow of exponential factor in collIonH
+!                expFact = 75.
+!            end if
+!            collIon = 2.75E-16*TeUsed*sqrt(TeUsed)*&
+!                    & (157893.94/TeUsed+2.)*exp(-expFact)
+
+
+!            ! Initialize charge exchange coefficients.
+!            ! The set of charge exchange coeffs is not complete; the following might need
+!            ! to be changed when a more complete set is available
+!            chex      = 0.
+!            deltaE_k  = 0.
+
+!            chex(2,1,:)  = (/7.47e-6, 2.06, 9.93,-3.89/)! He0
+!            chex(2,2,:)  = (/1.e-5  , 0.  , 0.  , 0./)  ! He+
+!            chex(3,2,:)  = (/1.26   , 0.96,3.02 ,-0.65/)! Li+
+!            chex(3,3,:)  = (/1.e-5  , 0.  , 0.  , 0. /) ! Li+2
+!            chex(4,2,:)  = (/1.e-5  , 0.  , 0.  , 0. /) ! Be+
+!            chex(4,3,:)  = (/1.e-5  , 0.  , 0.  , 0. /) ! Be+2
+!            chex(4,4,:)  = (/5.17   , 0.82, -.69, -1.12 /)! Be+3
+!            chex(5,2,:)  = (/2.e-2  , 0.  , 0.  , 0. /) ! B+
+!            chex(5,3,:)  = (/1.e-5  , 0.  , 0.  , 0. /) ! B+2
+!            chex(5,4,:)  = (/5.27e-1, 0.76,-0.63,-1.17/)! B+3
+!            chex(6,1,:)  = (/1.76e-9, 8.33, 4278.78, -6.41/)! C0
+!            chex(6,2,:)  = (/1.67e-4, 2.79, 304.72, -4.07/)! C+
+!            chex(6,3,:)  = (/3.25   , 0.21, 0.19, -3.29/)! C+2
+!            chex(6,4,:)  = (/332.46 ,-0.11,-0.995,-1.58e-3/)! C+3
+!            chex(7,1,:)  = (/1.01e-3,-0.29,-0.92, -8.38/)! N0
+!            chex(7,2,:)  = (/3.05e-1, 0.60, 2.65, -0.93/)! N+
+!            chex(7,3,:)  = (/4.54   , 0.57,-0.65, -0.89/)! N2+
+!            chex(7,4,:)  = (/3.28   , 0.52,-0.52, -0.19/)! N3+
+!            chex(8,1,:)  = (/1.04   , 3.15e-2, -0.61, -9.73/)! O0
+!            chex(8,2,:)  = (/1.04   , 0.27, 2.02, -5.92/)! O+
+!            chex(8,3,:)  = (/3.98   , 0.26, 0.56, -2.62/)! O2+
+!            chex(8,4,:)  = (/2.52e-1, 0.63, 2.08, -4.16/)! O3+
+!            chex(9,2,:)  = (/1.e-5  , 0.  , 0.  , 0./) ! F+
+!            chex(9,3,:)  = (/9.86   , 0.29,-0.21,-1.15/) ! F+2
+!            chex(9,4,:)  = (/7.15e-1, 1.21,-0.70,-0.85/) ! F3+
+!            chex(10,2,:) = (/1.e-5  , 0.  , 0.  , 0.  /) ! Ne+
+!            chex(10,3,:) = (/14.73  , 4.52e-2, -0.84, -0.31 /) ! Ne+2
+!            chex(10,4,:) = (/6.47   , 0.54 , 3.59 , -5.22 /) ! Ne+3
+!            chex(11,2,:) = (/1.e-5  , 0.   , 0.  , 0. /) ! Na+
+!            chex(11,3,:) = (/1.33   , 1.15 , 1.20 , -0.32 /)! Na+2
+!            chex(11,4,:) = (/1.01e-1, 1.34 , 10.05, -6.41 /)! Na+3
+!            chex(12,2,:) = (/8.58e-5, 2.49e-3, 2.93e-2, -4.33 /)! Mg+
+!            chex(12,3,:) = (/6.49   , 0.53 , 2.82, -7.63 /) ! Mg+2
+!            chex(12,4,:) = (/6.36   , 0.55 , 3.86, -5.19 /) ! Mg+3
+!            chex(13,2,:) = (/1.e-5  , 0.   , 0.  , 0./) ! Al+
+!            chex(13,3,:) = (/7.11e-5, 4.12 , 1.72e4, -22.24/)! Al+2
+!            chex(13,4,:) = (/7.52e-1, 0.77 , 6.24, -5.67/) ! Al+3
+!            chex(14,2,:) = (/1.23   , 0.24 , 3.17, 4.18e-3/) ! Si+
+!            chex(14,3,:) = (/4.900e-1, -8.74e-2, -0.36, -0.79/)! Si+2
+!            chex(14,4,:) = (/7.58   , 0.37 , 1.06, -4.09/)! Si+3
+!            chex(16,1,:) = (/3.82e-7, 11.10, 2.57e4, -8.22/)! S0
+!            chex(16,2,:) = (/1.e-5  , 0.   , 0.  ,0. /)! S+
+!            chex(16,3,:) = (/2.29   , 4.02e-2, 1.59, -6.06/)! S+2
+!            chex(16,4,:) = (/6.44   , 0.13 , 2.69 , -5.69/)! S+3
+!            chex(18,2,:) = (/1.e-5  , 0.   , 0.  , 0./) ! Ar+
+!            chex(18,3,:) = (/4.57   , 0.27 , -0.18 , -1.57/)! Ar+2
+!            chex(18,4,:) = (/6.37   , 2.12 , 10.21 , -6.22/)! Ar+3
+!            
+!            ! BUG NOTE: The following lines for Ca use index 18 (Argon), overwriting the Argon values.
+!            ! The index should likely be 20 for Calcium.
+!            chex(20,3,:) = (/3.17e-2, 2.12 , 12.06 , -0.40/)! Ca+2
+!            chex(20,4,:) = (/2.68   , 0.69 , -0.68 , -4.47/)! Ca+3
+
+!            chex(26,2,:) = (/1.26   , 7.72e-2, -0.41, -7.31/)! Fe+
+!            chex(26,3,:) = (/3.42   , 0.51 , -2.06 , -8.99/)! Fe+2.
+
+!            deltaE_k(7,1) = 10863.
+!            deltaE_k(8,1) = 2205.
+
+!            chex(:,:,1) = chex(:,:,1)*1.e-9
+!            t4 = TeUsed/10000.
+
+!            ! Calculate the ion ratio X(i+1)/X(i) for each species.
+!            ! This is the core of the ionization balance, where the ratio of
+!            ! ionization rates to recombination rates is computed.
+!            do elem = 1, nElements
+!                do ion = 1, min(elem, nstages-1)
+!                    if (.not.lgElementOn(elem)) exit
+
+!                    ! Calculate temperature-dependent charge exchange rate
+!                    chex(elem,ion,1) = chex(elem,ion,1)*(t4**chex(elem,ion,2))*&
+!                                     & (1.+chex(elem,ion,3)*exp(chex(elem,ion,4)*t4))
+
+!                    if (chex(elem,ion,1) < 0. ) chex(elem,ion,1) = 0.
+!                    if (TeUsed < 6000. .or. TeUsed>5.e4) chex(elem,ion,1) = 0.
+
+!                    nElec = elem - ion +1
+!                    call getOuterShell(elem, nElec, outShell, g0, g1)
+
+!                    ! calculate the reverse charge exchange rate
+!                    if ( deltaE_k(elem,ion) > 1.) then
+!                        revRate = chex(elem,ion,1) * &
+!                                & (1.-grid%ionDen(cellP, &
+!                                & elementXref(1),1))*grid%Hden(cellP)*&
+!                                & 2. * exp(-deltaE_k(elem,ion)/TeUsed)/(real(g0)/real(g1))
+!                    else
+!                        revRate = 0.
+!                    end if
+
+!                    if ( (elem>1) .or. (ion>1) ) collIon = 0.
+
+!                    ! calculate the X(i+1)/X(i) ratio
+!                    if (lgDebug) then
+!                        ionRatio(elem,ion) = (nPhotoSte(elem,ion)+nPhotoDif(elem,ion)+&
+!                                 & collIon+revRate)/&
+!                                 & (NeUsed*alphaTot(elem,ion)&
+!                                 & +chex(elem,ion,1)*grid%Hden(grid%active(xP,yp,zP)) * &
+!                                 & grid%ionDen(cellP,elementXref(1),1))
+!                    else
+!                        ionRatio(elem,ion) = (nPhotoSte(elem,ion)+&
+!                                 & collIon+revRate)/&
+!                                 & (NeUsed*alphaTot(elem,ion)&
+!                                 & +chex(elem,ion,1)*grid%Hden(grid%active(xP,yp,zP)) * &
+!                                 & grid%ionDen(cellP,elementXref(1),1))
+!                    end if
+!                end do
+!            end do
+
+!            ! Calculate the products of ionRatio for each element. This product,
+!            ! Prod[X(j+1)/X(j)], gives the ratio X(i+1)/X(0).
+!            do elem = 1, nElements
+!                do ion = 1, min(elem, nstages-1)
+!                   if (.not.lgElementOn(elem)) exit
+!                   do i = 1, ion
+!                       ionProd(elem, ion) = ionProd(elem,ion)*ionRatio(elem, i)
+!                   end do
+!                end do
+!            end do
+
+!            ! Calculate denominators for final ion abundances.
+!            ! The denominator is 1 + Sum[ Prod[X(j+1)/X(j)] ]
+!            do elem = 1, nElements
+!                do ion = 1, min(elem, nstages-1)
+!                    if (.not.lgElementOn(elem)) exit
+!                    denominator(elem) = denominator(elem) + ionProd(elem, ion)
+!                end do
+!            end do
+
+!            ! Calculate the new fractional abundances for all ions.
+!            ! X(0) = 1 / denominator
+!            ! X(i) = (Prod[...]) / denominator
+!            do elem = 1, nElements
+!                do ion = 1, min(elem+1, nstages)
+!                    if (.not.lgElementOn(elem)) exit
+!                    if (ion == 1) then
+!                        grid%ionDen(cellP,elementXref(elem),ion) = real(1.0/denominator(elem))
+!                    else
+!                        grid%ionDen(cellP,elementXref(elem),ion) = &
+!                             & real(ionProd(elem, ion-1)/denominator(elem))
+!                    end if
+
+!                    if (grid%ionDen(cellP,elementXref(elem),ion) > xMax) &
+!                         & grid%ionDen(cellP,elementXref(elem),ion) = xMax
+!                    if (grid%ionDen(cellP,elementXref(elem),ion) < 1.e-20) &
+!                         & grid%ionDen(cellP,elementXref(elem),ion) = 1.e-20
+
+!                    ionDenUsed(elementXref(elem), ion) = &
+!                         & grid%ionDen(cellP,elementXref(elem),ion)
+!                    ionDenTemp(cellP,elementXref(elem),ion) = &
+!                         & grid%ionDen(cellP,elementXref(elem),ion)
+!                end do
+!            end do
+
+!            ! Calculate new electron density (Ne) based on the new ion fractions.
+!            ! This new Ne will be used in the next iteration.
+!            NeUsed = 0.
+!            do elem = 1, nElements
+!                do ion = 2, min(elem+1, nstages)
+!                    if (lgElementOn(elem)) then
+!                      if( ionDenUsed(elementXref(elem),ion) >= 1.e-10) &
+!                           & NeUsed = NeUsed + (ion-1)*&
+!                           &grid%elemAbun(grid%abFileIndex(xP,yP,zP),elem)*&
+!                           &ionDenUsed(elementXref(elem), ion)
+!                    end if
+!                end do
+!            end do
+!            
+!            NeUsed = NeUsed * grid%Hden(cellP)
+!            
+!            if (NeUsed==0. .and.lgTalk) print*, '! ionBalance [warning]: cell ', xP,yP,zP, &
+!                 &'; NeUsed = ',  NeUsed
+!            if (NeUsed == 0.) NeUsed = 1.
+
+!            if (LgNeInput) then
+!                correction = NeUsed/grid%NeInput(cellP)
+!                grid%Hden(cellP) = grid%Hden(cellP)/correction
+!            end if
+
+!            NeTemp(cellP) = NeUsed
+!            grid%Ne(cellP) = NeUsed
+
+!            ! Calculate the relative change (residuals) in the key ion fractions.
+!            deltaHI   = (ionDenUsed(elementXref(1),1) - HIOld)   / HIOld
+!            deltaHeI  = (ionDenUsed(elementXref(2),1) - HeIOld)  / HeIOld
+!            deltaHeII = (ionDenUsed(elementXref(2),2) - HeIIOld) / HeIIOld
+!            
+!            !================================================================!
+!            ! CONVERGENCE CHECK                                              
+!            !================================================================!
+!            
+!            ! If the changes are small enough, convergence is achieved.
+!            if ( (abs(deltaHI) <= limit) .and. (abs(deltaHeI) <= limit) .and. &
+!                 (abs(deltaHeII) <= limit) ) then
+!                lgConv = .true.
+!                EXIT ! Exit the DO loop
+!            end if
+!            
+!            nIterateX = nIterateX + 1
+!            
+!            ! If the maximum number of iterations is reached, exit the loop.
+!            if (nIterateX >= maxIterateX) then
+!                if (lgTalk)  print*, "! ionBalance: [warning] convergence not reached after ", &
+!                     &maxIterateX, " steps. Finishing up..."
+!                lgConv = .false.
+!                EXIT ! Exit the DO loop
+!            end if
+!            
+!        END DO ! End of the main iterative loop
+
+!        ! this was added to help MPI implementation
+!        NeTemp(cellP) = NeUsed
+
+!      end subroutine ionBalance
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         subroutine calcAlpha()
             implicit none
@@ -1842,6 +2358,7 @@ module update_mod
 
             integer :: nS, i, ai ! counters
             integer :: iT        ! pointer to dust temp in dust temp array
+            integer :: global_nS ! pointer index for dust component
 
             ! radiation field at this location
             if (lgDebug) then
@@ -1860,83 +2377,97 @@ module update_mod
             ! calculate absorption integrals for each species
             do nS = 1, nSpeciesPart(nspU)
 
+               ! CALCULATE THE GLOBAL INDEX
+               global_nS = dustComPoint(nspU) + nS - 1 
+
+               ! Only proceed with calculations if the grain species actually exists in this cell.
+               if (grainAbun(nspU, nS) > 1.e-20) then
+
                do ai = 1, nSizes
 
-                  dustAbsIntegral=0.
-                  if (lgTraceHeating.and.taskid==0) dabs=0.
+                  if (grainRadius(ai) >= componentMinRadius(nspU, ns) .and. grainRadius(ai) <= componentMaxRadius(nspU, ns)) then
+                  
+                     dustAbsIntegral=0.
+                                    
+                     if (lgTraceHeating.and.taskid==0) dabs=0.
 
-                  do i = 1, nbins
-                     dustAbsIntegral = dustAbsIntegral+xSecArray(dustAbsXsecP(nS,ai)+i-1)*radField(i)
-                     if (lgTraceHeating.and.taskid==0) then
-                        dabs = dabs+xSecArray(dustAbsXsecP(nS,ai)+i-1)*radField(i)
+                     do i = 1, nbins
+                        dustAbsIntegral = dustAbsIntegral+xSecArray(dustAbsXsecP(global_nS,ai)+i-1)*radField(i)
+                        if (lgTraceHeating.and.taskid==0) then
+                           dabs = dabs+xSecArray(dustAbsXsecP(global_nS,ai)+i-1)*radField(i)
+                        end if
+                     end do
+
+                     if (lgGas .and. convPercent>=resLinesTransfer .and. (.not.lgResLinesFirst) .and. &
+                          & (.not.nIterateMC==1) ) then
+                        dustHeatingBudget(grid%abFileIndex(xp,yp,zp),0) = dustHeatingBudget(grid%abFileIndex(xp,yp,zp),0)+&
+                             & dustAbsIntegral*grainWeight(ai)*grainAbun(nspU,nS)*grid%Ndust(cellP)
+                        dustHeatingBudget(0,0) = dustHeatingBudget(0,0)+&
+                             & dustAbsIntegral*grainWeight(ai)*grainAbun(nspU,nS)*grid%Ndust(cellP)
+                        resLineHeat = resLineHeating(ai,ns,nspU)
+                        dustAbsIntegral = dustAbsIntegral+resLineHeat
                      end if
-                  end do
 
-                  if (lgGas .and. convPercent>=resLinesTransfer .and. (.not.lgResLinesFirst) .and. &
-                       & (.not.nIterateMC==1) ) then
-                     dustHeatingBudget(grid%abFileIndex(xp,yp,zp),0) = dustHeatingBudget(grid%abFileIndex(xp,yp,zp),0)+&
-                          & dustAbsIntegral*grainWeight(ai)*grainAbun(nspU,nS)*grid%Ndust(cellP)
-                     dustHeatingBudget(0,0) = dustHeatingBudget(0,0)+&
-                          & dustAbsIntegral*grainWeight(ai)*grainAbun(nspU,nS)*grid%Ndust(cellP)
-                     resLineHeat = resLineHeating(ai,ns,nspU)
-                     dustAbsIntegral = dustAbsIntegral+resLineHeat
-                  end if
-
-                  if (lgGas .and. lgPhotoelectric) then
-                     dustAbsIntegral = dustAbsIntegral+gasDustColl_d(nS,ai)-&
-                          & photoelHeat_d(nS,ai)
-                  end if
-
-                  if (lgTraceHeating.and.taskid==0) then
-                     write(57,*) 'Dust Species: ', ns, ai
-                     write(57,*) 'Abs of cont rad field  ', dabs
-                     write(57,*) 'Res Lines Heating: ', reslineheat
                      if (lgGas .and. lgPhotoelectric) then
-
-                        write(57,*) 'Grain potential ', grainPot(ns,ai)
-                        write(57,*) 'Gas-dust collision heat', gasDustColl_d(nS,ai)
-                        write(57,*) 'Photoelctric cooling: ', photoelHeat_d(nS,ai)
+                        dustAbsIntegral = dustAbsIntegral+gasDustColl_d(nS,ai)-&
+                             & photoelHeat_d(nS,ai)
                      end if
-                  end if
 
-                  call locate(dustEmIntegral(nS,ai,:), dustAbsIntegral, iT)
+                     if (lgTraceHeating.and.taskid==0) then
+                        write(57,*) 'Dust Species: ', ns, ai
+                        write(57,*) 'Abs of cont rad field  ', dabs
+                        write(57,*) 'Res Lines Heating: ', reslineheat
+                        if (lgGas .and. lgPhotoelectric) then
 
-                  if (iT<=0 .and. lgTalk) then
-                     print*, "getDustT: [warning] temperature of grain = 0. K!!!!"
-                     print*, cellP
-                     print*, nS, dustAbsIntegral
-                     print*, dustEmIntegral(nS,ai,1)
-                     !stop
-                     iT=1
-                     grid%Tdust(nS,ai,cellP) = 1.
-                  else if (iT>=nTemps) then
-                     grid%Tdust(nS,ai,cellP) = real(nTemps)
-                  else
-                     grid%Tdust(nS,ai,cellP) = real(iT) + &
-                          & (dustAbsIntegral-dustEmIntegral(nS,ai,iT))*&
-                          & (real(iT+1)-real(iT))/(dustEmIntegral(nS,ai,iT+1)-&
-                          & dustEmIntegral(nS,ai,iT))
-                  end if
+                           write(57,*) 'Grain potential ', grainPot(ns,ai)
+                           write(57,*) 'Gas-dust collision heat', gasDustColl_d(nS,ai)
+                           write(57,*) 'Photoelctric cooling: ', photoelHeat_d(nS,ai)
+                        end if
+                     end if
 
-                  if (lgTraceHeating.and.taskid==0) then
-                     write(57,*) 'Radiative cooling: ', dustEmIntegral(ns,ai,iT)
-                     write(57,*) 'Grain temperature: ', grid%Tdust(nS,ai,cellP), &
-                          & " species ", grainLabel(nS), " size:", grainRadius(ai)
+                     call locate(dustEmIntegral(global_nS,ai,:), dustAbsIntegral, iT)
 
-                  end if
+                     if (iT<=0 .and. lgTalk) then
+                        print*, "getDustT: [warning] temperature of grain = 0. K!!!!"
+                        print*, cellP
+                        print*, nS, dustAbsIntegral
+                        print*, dustEmIntegral(global_nS,ai,1)
+                        !stop
+                        iT=1
+                        grid%Tdust(nS,ai,cellP) = 1.
+                     else if (iT>=nTemps) then
+                        grid%Tdust(nS,ai,cellP) = real(nTemps)
+                     else
+                        !if(nspU == 2) print*, nspU,nS,ai,iT, grainAbun(nspU,nS), dustAbsIntegral, xSecArray(dustAbsXsecP(global_nS,ai)+i-1)
+                        grid%Tdust(nS,ai,cellP) = real(iT) + &
+                             & (dustAbsIntegral-dustEmIntegral(global_nS,ai,iT))*&
+                             & (real(iT+1)-real(iT))/(dustEmIntegral(global_nS,ai,iT+1)-&
+                             & dustEmIntegral(global_nS,ai,iT))
+                     end if
 
-                  if (lgTalk) &
-                       & print*, "! getDustT: [talk] cell ", xP,yP,zP,"; Grain temperature: "&
-                       &, grid%Tdust(nS,ai,cellP), " species ", grainLabel(nS), " size:", grainRadius(ai)
+                     if (lgTraceHeating.and.taskid==0) then
+                        write(57,*) 'Radiative cooling: ', dustEmIntegral(global_nS,ai,iT)
+                        write(57,*) 'Grain temperature: ', grid%Tdust(nS,ai,cellP), &
+                             & " species ", grainLabel(nS), " size:", grainRadius(ai)
 
-                  ! find weighted mean
-                  grid%Tdust(nS,0,cellP) = grid%Tdust(nS,0,cellP)+&
-                       & grid%Tdust(nS,ai,cellP)*grainWeight(ai)
+                     end if
+
+                     if (lgTalk) &
+                          & print*, "! getDustT: [talk] cell ", xP,yP,zP,"; Grain temperature: "&
+                          &, grid%Tdust(nS,ai,cellP), " species ", grainLabel(global_nS), " size:", grainRadius(ai)
+
+                     ! find weighted mean
+                     grid%Tdust(nS,0,cellP) = grid%Tdust(nS,0,cellP)+&
+                          & grid%Tdust(nS,ai,cellP)*grainWeight(ai)
+                          
+                  endif
 
                end do
 
                grid%Tdust(0,0,cellP) = grid%Tdust(0,0,cellP)+&
                     & grid%Tdust(nS,0,cellP)*grainAbun(nspU,nS)
+                    
+               endif ! *** END OF IF for zero grain abundance ***
 
             end do
 
@@ -1957,6 +2488,11 @@ module update_mod
 
             integer             :: iL      ! line counter
             integer             :: imul    ! multiplet counter
+
+            integer               :: global_speciesP ! DECLARE GLOBAL INDEX
+
+            ! Calculate the correct global index for the species
+            global_speciesP = dustComPoint(icompP) + speciesP - 1
 
             resLineHeating = 0.
             do iL = 1, nResLines
@@ -2004,9 +2540,9 @@ module update_mod
 
                heat = Gline*grid%Hden(cellP)* &
                     & (1.-grid%fEscapeResPhotons(cellP, iL))*&
-                    & xSecArray(dustAbsXSecP(speciesP,sizeP)+resLine(iL)%nuP-1)/&
+                    & xSecArray(dustAbsXSecP(global_speciesP,sizeP)+resLine(iL)%nuP-1)/&
                     & (grid%Ndust(cellP)*&
-                    & absOpacSpecies(speciesP,resLine(iL)%nuP))
+                    & absOpacSpecies(global_speciesP,resLine(iL)%nuP))
 
                ! Harrington Monk and Clegg 1988 (section 3.2)
                resLineHeating = resLineHeating + heat
