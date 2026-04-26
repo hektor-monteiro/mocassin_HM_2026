@@ -1,0 +1,48 @@
+autoPackets 0.20 1.5 2e18
+TStellar 200000. 
+TeStart 20000.
+contShape  blackbody
+multiChemistry 2 "input/abunPN150.in" "input/abunPN150.in"
+densityFile "input/test_gas_2D_21x21x21.dat"
+maxIterateMC  15 90.
+nPhotons 1e7
+nx 11
+ny 11
+nz 11
+nbins 700
+LStar 70.
+nuMax 15.
+nuMin 1.001e-6
+Rin 1.0e15
+Rout 8.0e17
+convLimit 0.05
+dustFile  'input/dust_species.dat' 'input/dust_sizes.dat' 
+Ndust file "input/test_dust_2D_21x21x21.dat"
+inclination 1 1.57 0. 
+resLinesTransfer 50.
+2D
+symmetricXYZ
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

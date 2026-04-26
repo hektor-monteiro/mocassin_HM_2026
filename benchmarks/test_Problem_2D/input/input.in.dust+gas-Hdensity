@@ -1,0 +1,46 @@
+autoPackets 0.20 1.5 2e18
+TStellar 150000.
+contShape  blackbody
+TeStart 12000.
+nebComposition "input/abunPN150.in"
+Hdensity 3000.
+maxIterateMC  15 90.
+nPhotons 1e7
+nx 21
+ny 21
+nz 21
+nbins 700
+LStar 70.
+nuMax 15.
+nuMin 1.001e-6
+Rin 1.e15
+Rout 4.07e17
+edges 3.888e17 3.888e17 3.888e17
+convLimit 0.05
+dustFile 'input/dustmix.dat' 'input/dust_grainsizes.dat' 
+MdMg 'constant' 0.005
+inclination 1 1.57 0. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
