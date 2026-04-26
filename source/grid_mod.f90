@@ -2861,8 +2861,9 @@ function getVolume(grid, xP, yP, zP)
   real                        :: getVolume     ! volume of the cell [e45 cm^3]
 
   ! local variables
-  real :: dx, dy, dz         ! cartesian axes increments in [cm]
+  real :: dx, dy, dz, dr         ! cartesian axes increments in [cm]
   real :: factor
+  real :: radius
 
   if (lg1D) then
     if (nGrids > 1) then
@@ -2881,6 +2882,45 @@ function getVolume(grid, xP, yP, zP)
     end if
     getVolume = getVolume/8.
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ else if (lg2D .and. lgSymmetricXYZ) then
+    ! ===== 2D AXISYMMETRIC MODE =====
+
+    ! 1. Calculate radial distance increment (dr) FIRST
+    if (xP == 1) then
+      dr = (grid%xAxis(2) - grid%xAxis(1)) / 2.
+    else if (xP == grid%nx) then
+      dr = (grid%xAxis(grid%nx) - grid%xAxis(grid%nx-1)) / 2.
+    else
+      dr = (grid%xAxis(xP+1) - grid%xAxis(xP-1)) / 2.
+    end if
+    dr = dr / 1.e15
+    
+    ! 2. Calculate vertical distance increment (dz)
+    if (zP == 1) then
+      dz = (grid%zAxis(2) - grid%zAxis(1)) / 2.
+    else if (zP == grid%nz) then
+      dz = (grid%zAxis(grid%nz) - grid%zAxis(grid%nz-1)) / 2.
+    else
+      dz = (grid%zAxis(zP+1) - grid%zAxis(zP-1)) / 2.
+    end if
+    dz = dz / 1.e15
+    
+    ! 3. Calculate radius from (x,y) coordinates
+    radius = sqrt((grid%xAxis(xP)/1.e15)**2 + (grid%yAxis(yP)/1.e15)**2)
+    
+    ! 4. Force a minimum effective radius for the central axis
+    if (radius == 0.0) then
+      radius = dr / 8.0
+    end if
+    
+    ! 5. Cylindrical volume element (in units of 1e45 cm^3)
+    getVolume = 2.0 * Pi * radius * dr * dz
+    
+  else if (lg2D .and. .not.lgSymmetricXYZ) then
+    print*, "! getVolume: 2D mode requires lgSymmetricXYZ=.true."
+    stop
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   else
     ! Determine the factor based on lgSymmetricXYZ
     if (lgSymmetricXYZ) then
