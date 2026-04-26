@@ -6,9 +6,9 @@ multiChemistry 2 "input/abunPN150.in" "input/abunPN150.in"
 densityFile "input/test_gas_2D_21x21x21.dat"
 maxIterateMC  15 90.
 nPhotons 1e7
-nx 11
-ny 11
-nz 11
+nx 21
+ny 21
+nz 21
 nbins 700
 LStar 70.
 nuMax 15.
