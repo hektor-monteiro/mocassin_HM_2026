@@ -58,7 +58,7 @@ else:
     do_x8 = False
 
 # define inclination angle
-incl_angle = 0.
+incl_angle = 40.
 
 ############################################################
 # Reading Grid Structure
@@ -102,6 +102,7 @@ if do_x8:
     Ne = cube_rot(make_cube(Ne),incl_angle,0,0,order=1)
     H0 = cube_rot(make_cube(H0),incl_angle,0,0,order=1)
 
+
 print('Peak density in H0: ',H0.max())
 
 f,ax = plt.subplots(1,3,figsize=(11,3))
@@ -120,18 +121,19 @@ ax[2].axis('off')
 plt.tight_layout()
 plt.savefig(model_dir+'figs/projected_H0_Ne_Te_mod.png', dpi=300)
 
-
+ind_cut = H0.shape[0]//2
+    
 f,ax = plt.subplots(1,3,figsize=(11,3))
-p1 = ax[0].imshow(H0[H0.shape[0]//2,:,:], origin='lower',norm=LogNorm(vmin=500))
+p1 = ax[0].imshow(H0[ind_cut,:,:], origin='lower',norm=LogNorm(vmin=500))
 f.colorbar(p1, ax=ax[0])
 ax[0].set_title('H density ($cm^{-3}$)')
 ax[0].axis('off')
-p2 = ax[1].imshow(Ne[H0.shape[0]//2,:,:], origin='lower',norm=LogNorm(vmin=500))
+p2 = ax[1].imshow(Ne[ind_cut,:,:], origin='lower',norm=LogNorm(vmin=500))
 f.colorbar(p2, ax=ax[1])
 #ax[1].contour(H0,colors='w')
 ax[1].set_title('Ne ($cm^{-3}$)')
 ax[1].axis('off')
-p3 = ax[2].imshow(Te[H0.shape[0]//2,:,:], origin='lower',norm=LogNorm(vmin=8000))
+p3 = ax[2].imshow(Te[ind_cut,:,:], origin='lower',norm=LogNorm(vmin=8000))
 f.colorbar(p3, ax=ax[2])
 ax[2].set_title('Te (K)')
 ax[2].axis('off')

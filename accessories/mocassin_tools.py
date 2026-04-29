@@ -275,9 +275,9 @@ def make_cube(cube):
 
 def cube_rot(data,xangle,yangle,zangle,order=1):
     
-    cube1 = rotate(data,zangle, axes=(0,1),prefilter=False, reshape=True)
-    cube2 = rotate(cube1,yangle, axes=(1,2),prefilter=False, reshape=True)
-    cube3 = rotate(cube2,xangle, axes=(0,2),prefilter=False, reshape=True)
+    cube1 = rotate(data,zangle, axes=(0,1),prefilter=False, reshape=False, order=order)
+    cube2 = rotate(cube1,yangle, axes=(1,2),prefilter=False, reshape=False, order=order)
+    cube3 = rotate(cube2,xangle, axes=(0,2),prefilter=False, reshape=False, order=order)
     
     return cube3
 
