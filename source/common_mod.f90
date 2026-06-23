@@ -160,8 +160,9 @@ module common_mod
 
 
     ! slit stuff
-    real :: dxSlit = 0.
-    real :: dySlit = 0.
+    character(len=1) :: slitAxis = 'z'
+    real :: d1Slit = 0.
+    real :: d2Slit = 0.
 
     ! photoionization data
     real, dimension(5,30,30) :: CF=0.

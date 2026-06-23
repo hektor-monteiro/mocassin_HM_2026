@@ -235,8 +235,8 @@ module set_input_mod
                !print*, keyword, fillingFactor
             case ("slit")
                backspace 10
-               read(unit=10, fmt=*, iostat=ios) keyword, dxSlit, dySlit
-               !print*, keyword, dxSlit, dySlit
+               read(unit=10, fmt=*, iostat=ios) keyword, slitAxis, d1Slit, d2Slit
+               !print*, keyword, slitAxis, d1Slit, d2Slit
             case ("inputNe")
                backspace 10
                read(unit=10, fmt=*, iostat=ios) keyword

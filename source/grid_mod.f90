@@ -2805,7 +2805,7 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
            write(40,*) '"',abundanceFile(i),'"'
         end do
         write(40, *) lgOutput, ' lgOutput'
-        write(40, *) dxSlit,dySlit,' dxSlit,dySlit'
+        write(40, *) slitAxis, d1Slit, d2Slit, ' slitAxis, d1Slit, d2Slit'
         write(40, *) lgDust, lgDustConstant, ' lgDust, lgDustConstant'
         write(40, *) lgMultiDustChemistry, nDustCOmponents, ' lgMultiDustChemistry, nDustComponents'
         if (lgDust) then
@@ -3025,7 +3025,7 @@ end function getVolume
          read(77, *) abundanceFile(i)
       end do
       read(77, *) lgOutput
-      read(77, *) dxSlit, dySlit
+      read(77, *) slitAxis, d1Slit, d2Slit
       read(77, *) lgDust, lgDustConstant
       read(77, *) lgMultiDustChemistry, nDustComponents
       allocate(dustSpeciesFile(1:nDustComponents))
@@ -3095,7 +3095,7 @@ end function getVolume
          print*,  nAbComponents, ' nAbComponents'
          print*,  lgMultiChemistry, ' ',abundanceFile, ' lgMultiChemistry, abundanceFile'
          print*,  lgOutput, ' lgOutput'
-         print*,  dxSlit, dySlit, ' dxSlit, dySlit'
+         print*,  slitAxis, d1Slit, d2Slit, ' slitAxis, d1Slit, d2Slit'
          print*,  lgDust, lgDustConstant, ' lgDust, lgDustConstant'
          print*,  lgMultiDustChemistry, nDustComponents, ' lgMultiDustChemistry, nDustComponents'
          do i =1 , nDustComponents

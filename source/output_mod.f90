@@ -306,10 +306,28 @@ module output_mod
                     end if
 
                     ! slit condition
-                    if (dxSlit > 0. .and. dySlit > 0.) then
-                       if ( (abs(grid(iG)%xAxis(i))<=dxSlit/2.) .and. &
-                            (abs(grid(iG)%yAxis(i))<=dySlit/2.) ) then
-                          lgInSlit = .true.
+                    if (d1Slit > 0. .and. d2Slit > 0.) then
+                       if (slitAxis == 'z' .or. slitAxis == 'Z') then
+                          if ( (abs(grid(iG)%xAxis(i))<=d1Slit/2.) .and. &
+                               (abs(grid(iG)%yAxis(j))<=d2Slit/2.) ) then
+                             lgInSlit = .true.
+                          else
+                             lgInSlit = .false.
+                          end if
+                       else if (slitAxis == 'y' .or. slitAxis == 'Y') then
+                          if ( (abs(grid(iG)%xAxis(i))<=d1Slit/2.) .and. &
+                               (abs(grid(iG)%zAxis(k))<=d2Slit/2.) ) then
+                             lgInSlit = .true.
+                          else
+                             lgInSlit = .false.
+                          end if
+                       else if (slitAxis == 'x' .or. slitAxis == 'X') then
+                          if ( (abs(grid(iG)%yAxis(j))<=d1Slit/2.) .and. &
+                               (abs(grid(iG)%zAxis(k))<=d2Slit/2.) ) then
+                             lgInSlit = .true.
+                          else
+                             lgInSlit = .false.
+                          end if
                        else
                           lgInSlit = .false.
                        end if
