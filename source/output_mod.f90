@@ -306,17 +306,20 @@ module output_mod
                     end if
 
                     ! slit condition
-                    if (dxSlit > 0. .and. dySlit > 0.) then
-                       if ( (abs(grid(iG)%xAxis(i))<=dxSlit/2.) .and. &
-                            (abs(grid(iG)%yAxis(i))<=dySlit/2.) ) then
-                          lgInSlit = .true.
+                       if (slitAxis == 'z' .or. slitAxis == 'Z') then
+                          lgInSlit = (abs(grid(iG)%xAxis(i)) <= d1Slit/2.) .and. &
+                                     (abs(grid(iG)%yAxis(j)) <= d2Slit/2.)
+                       else if (slitAxis == 'y' .or. slitAxis == 'Y') then
+                          lgInSlit = (abs(grid(iG)%xAxis(i)) <= d1Slit/2.) .and. &
+                                     (abs(grid(iG)%zAxis(k)) <= d2Slit/2.)
+                       else if (slitAxis == 'x' .or. slitAxis == 'X') then
+                          lgInSlit = (abs(grid(iG)%yAxis(j)) <= d1Slit/2.) .and. &
+                                     (abs(grid(iG)%zAxis(k)) <= d2Slit/2.)
                        else
                           lgInSlit = .false.
                        end if
-                    else
-                       lgInSlit = .true.
-                    end if
-!print*, grid(iG)%active(i, j, k)
+
+
                     ! check this cell is in the ionized region
                     if ((grid(iG)%active(i, j, k)>0)) then
                        if (grid(iG)%lgBlack(grid(iG)%active(i,j,k))<1 .and. lgInSlit ) then
