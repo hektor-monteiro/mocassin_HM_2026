@@ -652,13 +652,13 @@ Default value: \fB101.\fR
 
 
 .TP
-.B slit real1 real2
+.B slit axis real1 real2
 
-This keyword will cause the results in lineFlux.out, temperature.out and ionratio.out to be integrated over only those cell that fall under the projection of a slit aligned along the z-axis of the grid. The slit x and y dimensions (in [cm]) are defined by real1 and real2 respectively.
-If real1 and real2 have value 0. or if they are omitted, no slit is used
+This keyword will cause the results in lineFlux.out, temperature.out and ionratio.out to be integrated over only those cell that fall under the projection of a slit aligned along the specified axis ('x', 'y', or 'z') of the grid. The dimensions of the slit (in [cm]) along the remaining two orthogonal axes are defined by real1 and real2 respectively.
+If real1 and real2 have value 0. or if the slit keyword is omitted, no slit is used
 and the results are integrated over the whole active volume.
 
-Default value: \fB0., 0.\fR
+Default value: \fB'z', 0., 0.\fR
 
 
 
