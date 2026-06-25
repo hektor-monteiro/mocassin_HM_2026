@@ -236,7 +236,7 @@ module set_input_mod
             case ("slit")
                backspace 10
                read(unit=10, fmt=*, iostat=ios) keyword, slitAxis, d1Slit, d2Slit
-               print*, "Using slit. Integrating in ", slitAxis
+               print*, "Using slit. Integrating ialong ", slitAxis, " axis."
                if (ios /= 0) then
                   print*, "! readInput: error reading slit parameters."
                   stop

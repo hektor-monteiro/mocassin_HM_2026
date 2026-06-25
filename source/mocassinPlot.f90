@@ -54,7 +54,8 @@ program MoCaSSiNplot
     integer         :: yP             !
 
     logical         :: lgContinuum    !
-
+    logical         :: lgInSlit       !is this cell within the slit?
+    
     call mpi_init(ierr)
     call mpi_comm_rank(MPI_COMM_WORLD, taskid, ierr)
     call mpi_comm_size(MPI_COMM_WORLD, numtasks, ierr)
@@ -176,8 +177,24 @@ program MoCaSSiNplot
 
                 if (taskid ==0) write(29, *) grid3D(iG)%xAxis(i),grid3D(iG)%yAxis(j),grid3D(iG)%zAxis(k),dV
 
+                ! slit condition
+                if (d1Slit == 0. .and. d2Slit == 0.) then
+                   lgInSlit = .true.
+                else if (slitAxis == 'z' .or. slitAxis == 'Z') then
+                   lgInSlit = (abs(grid3D(iG)%xAxis(i)) <= d1Slit/2.) .and. &
+                              (abs(grid3D(iG)%yAxis(j)) <= d2Slit/2.)
+                else if (slitAxis == 'y' .or. slitAxis == 'Y') then
+                   lgInSlit = (abs(grid3D(iG)%xAxis(i)) <= d1Slit/2.) .and. &
+                              (abs(grid3D(iG)%zAxis(k)) <= d2Slit/2.)
+                else if (slitAxis == 'x' .or. slitAxis == 'X') then
+                   lgInSlit = (abs(grid3D(iG)%yAxis(j)) <= d1Slit/2.) .and. &
+                              (abs(grid3D(iG)%zAxis(k)) <= d2Slit/2.)
+                else
+                   lgInSlit = .true.
+                end if
+
                 ! check this cell is in the ionized region
-                if (grid3D(iG)%active(i,j,k) >0) then
+                if (grid3D(iG)%active(i,j,k) >0 .and. lgInSlit) then
 
                    ! find the physical properties of this cell
                    HdenUsed        = grid3D(iG)%Hden(grid3D(iG)%active(i,j,k))
