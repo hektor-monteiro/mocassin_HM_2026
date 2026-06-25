@@ -58,7 +58,7 @@ else:
     do_x8 = False
 
 # define inclination angle
-incl_angle = 40.
+incl_angle = 0.
 
 ############################################################
 # Reading Grid Structure

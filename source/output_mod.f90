@@ -316,7 +316,7 @@ module output_mod
                           lgInSlit = (abs(grid(iG)%yAxis(j)) <= d1Slit/2.) .and. &
                                      (abs(grid(iG)%zAxis(k)) <= d2Slit/2.)
                        else
-                          lgInSlit = .false.
+                          lgInSlit = .True.
                        end if
 
 

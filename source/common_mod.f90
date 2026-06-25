@@ -160,7 +160,7 @@ module common_mod
 
 
     ! slit stuff
-    character(len=1) :: slitAxis = 'z'
+    character(len=1) :: slitAxis = 'N'
     real :: d1Slit = 0.
     real :: d2Slit = 0.
     
