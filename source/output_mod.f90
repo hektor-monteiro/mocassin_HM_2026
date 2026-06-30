@@ -30,6 +30,8 @@ module output_mod
         integer                     :: totLinePackets    ! total number of line packets
         integer                     :: totEscapedPackets ! total number of esc packets
         integer                     :: ypLoc
+        integer                     :: pass_idx, num_passes
+        logical                     :: isSlitPass
 
 
         real, allocatable               :: cMap(:)           ! local c-value
@@ -187,6 +189,16 @@ module output_mod
         end if
 
 
+
+        if (slitAxis /= 'N' .and. slitAxis /= 'n') then
+           num_passes = 2
+        else
+           num_passes = 1
+        end if
+
+        do pass_idx = 1, num_passes
+           isSlitPass = (pass_idx == 2)
+
         denominatorIon  = 0.
         denominatorTe   = 0.
         g               = 0.
@@ -306,6 +318,7 @@ module output_mod
                     end if
 
                     ! slit condition
+                    if (isSlitPass) then
                        if (slitAxis == 'z' .or. slitAxis == 'Z') then
                           lgInSlit = (abs(grid(iG)%xAxis(i)) <= d1Slit/2.) .and. &
                                      (abs(grid(iG)%yAxis(j)) <= d2Slit/2.)
@@ -318,6 +331,9 @@ module output_mod
                        else
                           lgInSlit = .True.
                        end if
+                    else
+                       lgInSlit = .True.
+                    end if
 
 
                     ! check this cell is in the ionized region
@@ -923,13 +939,21 @@ endif
 
         ! write the lineFlux.out file
         if (present(extMap)) then
-           open(unit=10, status='unknown', position='rewind', file='output/lineFlux.ext', action="write", iostat=ios)
+           if (isSlitPass) then
+              open(unit=10, status='unknown', position='rewind', file='output/lineFlux-slit.ext', action="write", iostat=ios)
+           else
+              open(unit=10, status='unknown', position='rewind', file='output/lineFlux.ext', action="write", iostat=ios)
+           end if
            if (ios /= 0) then
               print*, "! outputGas: can't open file for writing: output/lineFlux.ext"
               stop
            end if
         else
-           open(unit=10, status='unknown', position='rewind', file='output/lineFlux.out', action="write",iostat=ios)
+           if (isSlitPass) then
+              open(unit=10, status='unknown', position='rewind', file='output/lineFlux-slit.out', action="write",iostat=ios)
+           else
+              open(unit=10, status='unknown', position='rewind', file='output/lineFlux.out', action="write",iostat=ios)
+           end if
            if (ios /= 0) then
               print*, "! outputGas: can't open file for writing: output/lineFlux.out"
               stop
@@ -1246,6 +1270,8 @@ endif
         ! close lineFlux.out file
         close(10)
 
+        if (.not. isSlitPass) then
+
         ! write the temperature.out file
         open(unit=20, status='unknown', position='rewind', file='output/temperature.out', action="write",iostat=ios)
         if (ios /= 0) then
@@ -1354,6 +1380,9 @@ endif
         close(27)
         close(30)
         close(60)
+        end if
+
+        end do ! end of pass_idx loop
 
         if (allocated(HIVol)) deallocate(HIVol)
         if (allocated(HeIVol)) deallocate(HeIVol)
