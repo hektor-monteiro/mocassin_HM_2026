@@ -88,6 +88,18 @@ if (nx == ny == nz or Rout == 0):
     Rout = np.abs(Z).max() 
 
 ############################################################
+# if Slit keyword is used, read slit mask
+
+if any('slit' in sublista for sublista in moc_pars):
+    doSlit = True
+    slitMask = np.loadtxt(model_dir+'output/slitMask.out')
+    slitMask = np.reshape(slitMask,(nx,ny,nz))
+
+if do_x8:
+    slitMask = cube_rot(make_cube(slitMask),incl_angle,0,0,order=1)
+
+    
+############################################################
 # reading  electron temperatures, electron densities and hydrogen densities
 
 print ('Reading Ne and Te Structure ...')
@@ -254,6 +266,10 @@ for line in plot_lines:
     #ax.imshow((line_maps[ind[0][0]]+1.0e-16)/line_maps[ind[0][0]].max(), vmin=1.e-8,vmax=0.6)
     ax.set_title(str(line))
     cont += 1
+    
+    if doSlit:
+        ax.contour(slitMask.sum(axis=0), levels=[1.],colors='C1')
+        
 plt.tight_layout()
 plt.savefig(model_dir+'figs/model_linemaps-log.png', dpi=300)
 
