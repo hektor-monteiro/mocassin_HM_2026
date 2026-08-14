@@ -2257,9 +2257,9 @@ endif
 
       common/hdatax/densx,tempx,ex,ntempx,ndensx,ntop,nll,nlu
       close(337)
-      open(unit =337, file = PREFIX//"/share/mocassin/data/e1bx.d", status = "old", position = "rewind", iostat=ios, action="read")
+      open(unit =337, file = PREFIX//"/share/mocassin/data/e1bx.dat", status = "old", position = "rewind", iostat=ios, action="read")
         if (ios /= 0) then
-             print*, "! hdatax: can't open ",PREFIX,"/share/mocassin/data/e1bx.d"
+             print*, "! hdatax: can't open ",PREFIX,"/share/mocassin/data/e1bx.dat"
              stop
         end if
 
