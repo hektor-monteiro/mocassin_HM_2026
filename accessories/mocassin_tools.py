@@ -20,6 +20,170 @@ from scipy.spatial.distance import cdist
 from numpy.lib.recfunctions import unstructured_to_structured
 
 ###############################################################################
+# Function to read and plot the escaped SED from a mocassin run
+###############################################################################
+
+def read_sed(model_dir):
+    """Read output/SED.out from a mocassin run.
+
+    The file is written by source/output_mod.f90::writeSED as
+
+        write(16,*) nuArray(freq), lambda, (SED(freq,imu), imu=0,nAngleBins), &
+                                           (sSED(freq,imu), imu=0,nAngleBins)
+
+    so each data row is
+
+        nu [Ryd] | lambda [um] | SED(0..nAngleBins) | sSED(0..nAngleBins)
+
+    where imu=0 is the angle-integrated total and imu=1..nAngleBins are the
+    individual viewpoints requested with the `inclination` keyword. SED is the
+    full nebular SED, sSED the contribution of the stellar sources alone --
+    both in Jy*pc^2, i.e. F(nu)*D^2, so they are distance independent.
+
+    Parameters:
+    - model_dir (str): model directory (the one containing output/).
+
+    Returns:
+    - dict with keys:
+        'nu'          nu [Ryd]                                (nfreq)
+        'lam'         wavelength [um]                         (nfreq)
+        'sed'         total nebular SED, all directions       (nfreq)
+        'sed_view'    total SED per viewpoint                 (nfreq, nAngleBins)
+        'ssed'        stellar-only SED, all directions        (nfreq)
+        'ssed_view'   stellar-only SED per viewpoint          (nfreq, nAngleBins)
+        'viewpoints'  (theta, phi) pairs in radians           (nAngleBins, 2)
+    """
+
+    path = model_dir + 'output/SED.out'
+
+    with open(path) as f:
+        lines = f.readlines()
+
+    # viewpoint angles live on header line 2, as "theta phi ," repeated
+    viewpoints = []
+    if len(lines) > 1 and 'viewPoints' in lines[1]:
+        nums = lines[1].split('=')[-1].replace(',', ' ').split()
+        vals = [float(v) for v in nums]
+        viewpoints = np.array(vals).reshape(-1, 2) if vals else np.empty((0, 2))
+    else:
+        viewpoints = np.empty((0, 2))
+
+    # data rows are the purely numeric ones; the file ends with a blank line
+    # and a diagnostics footer ("Total energy radiated out of the nebula...")
+    rows = []
+    for line in lines[3:]:
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        try:
+            rows.append([float(v) for v in parts])
+        except ValueError:
+            break
+
+    data = np.array(rows)
+    if data.size == 0:
+        raise ValueError('no numeric SED rows found in ' + path)
+
+    nflux = data.shape[1] - 2
+    if nflux % 2 != 0:
+        raise ValueError('unexpected SED.out column count (%d flux columns); '
+                         'expected 2*(nAngleBins+1)' % nflux)
+    nmu = nflux // 2                      # = nAngleBins + 1
+
+    sed_all = data[:, 2:2 + nmu]          # imu = 0 .. nAngleBins
+    ssed_all = data[:, 2 + nmu:2 + 2 * nmu]
+
+    return dict(nu=data[:, 0], lam=data[:, 1],
+                sed=sed_all[:, 0], sed_view=sed_all[:, 1:],
+                ssed=ssed_all[:, 0], ssed_view=ssed_all[:, 1:],
+                viewpoints=viewpoints)
+
+
+def plot_sed(model_dir, dist=None, show_stellar=True, show_viewpoints=True,
+             nufnu=True, floor=1e-12, save=True, ax=None):
+    """Plot the escaped SED of a mocassin run.
+
+    Parameters:
+    - model_dir (str): model directory (the one containing output/ and figs/).
+    - dist (float): distance in pc. If given, fluxes are divided by dist^2 and
+      labelled in Jy (SED.out stores F(nu)*D^2). If None, the native
+      distance-independent Jy*pc^2 is plotted.
+    - show_stellar (bool): overplot the stellar-source-only SED (sSED).
+    - show_viewpoints (bool): overplot each individual viewpoint, if the run
+      used the `inclination` keyword.
+    - nufnu (bool): plot nu*F(nu) rather than F(nu). nu*F(nu) is usually the
+      more readable choice, since it shows where the energy actually is.
+    - floor (float): drop bins whose flux is below floor*peak. mocassin writes
+      a great many exactly-zero bins outside the sampled range, and on a log
+      axis those turn into meaningless vertical spikes.
+    - save (bool): write figs/<model>_SED.png.
+    - ax: existing matplotlib axis to draw into. If None a new figure is made.
+
+    Returns:
+    - the matplotlib axis, so several models can be overplotted by passing the
+      returned ax back in.
+    """
+    print('Reading SED from ' + model_dir + 'output/SED.out ...')
+    s = read_sed(model_dir)
+
+    lam = s['lam']
+    scale = 1.0 if dist is None else 1.0 / dist ** 2
+    unit = r'Jy pc$^2$' if dist is None else 'Jy'
+
+    def prep(flux):
+        y = flux * scale
+        if nufnu:
+            y = y * s['nu']
+        return y
+
+    y_tot = prep(s['sed'])
+    peak = np.nanmax(y_tot) if np.isfinite(y_tot).any() else 0.
+    good = y_tot > peak * floor
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+    mod_id = [p for p in model_dir.split('/') if p][-1]
+
+    ax.plot(lam[good], y_tot[good], '-', lw=1.8, label=mod_id + ': total')
+
+    if show_stellar and np.nanmax(s['ssed']) > 0:
+        y_s = prep(s['ssed'])
+        m = y_s > peak * floor
+        ax.plot(lam[m], y_s[m], ':', lw=1.3, alpha=0.9, label='stellar sources only')
+
+    if show_viewpoints and s['sed_view'].shape[1] > 0:
+        for iv in range(s['sed_view'].shape[1]):
+            y_v = prep(s['sed_view'][:, iv])
+            m = y_v > peak * floor
+            if s['viewpoints'].shape[0] > iv:
+                th, ph = s['viewpoints'][iv]
+                lbl = r'viewpoint $\theta$=%.2f, $\phi$=%.2f' % (th, ph)
+            else:
+                lbl = 'viewpoint %d' % (iv + 1)
+            ax.plot(lam[m], y_v[m], '--', lw=1.1, alpha=0.8, label=lbl)
+
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlabel(r'wavelength [$\mu$m]')
+    if nufnu:
+        ax.set_ylabel(r'$\nu F_\nu \cdot D^2$ [%s Ryd]' % unit if dist is None
+                      else r'$\nu F_\nu$ [%s Ryd]' % unit)
+    else:
+        ax.set_ylabel(r'$F_\nu \cdot D^2$ [%s]' % unit if dist is None
+                      else r'$F_\nu$ [%s]' % unit)
+    ax.set_title('mocassin escaped SED')
+    ax.grid(alpha=0.25, which='both')
+    ax.legend(fontsize=8)
+
+    if save:
+        out = model_dir + 'figs/' + mod_id + '_SED.png'
+        ax.figure.tight_layout()
+        ax.figure.savefig(out, dpi=300)
+        print('wrote ' + out)
+
+    return ax
+###############################################################################
 # function to read dust species file
 
 def read_dust_species_file(filepath):

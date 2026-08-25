@@ -94,9 +94,12 @@ if any('slit' in sublista for sublista in moc_pars):
     doSlit = True
     slitMask = np.loadtxt(model_dir+'output/slitMask.out')
     slitMask = np.reshape(slitMask,(nx,ny,nz))
+else:
+    doSlit = False
 
 if do_x8:
-    slitMask = cube_rot(make_cube(slitMask),incl_angle,0,0,order=1)
+    if doSlit:
+        slitMask = cube_rot(make_cube(slitMask),incl_angle,0,0,order=1)
 
     
 ############################################################
@@ -316,3 +319,9 @@ for i in range(ncell):
 # dealocate memory 
 del aux
 
+############################################################
+# Plot escaped SED
+#%%
+
+plot_sed(model_dir, dist=None, show_stellar=True, show_viewpoints=True,
+             nufnu=True, floor=1e-12, save=False, ax=None)
