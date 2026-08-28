@@ -1528,7 +1528,7 @@ module xSec_mod
 !		 ! now calculate the efficiencies
 !		 call BHmie(sizeParam,refIndex,Qabs(ai,i),Qsca(ai,i),ggCos(ai,i))
 		 
-		 if (sizeParam < 1) then 
+		 if (sizeParam < 1 .and. lgCDE) then 
 		    call CDE_efficiency(grainRadius(ai), refIndex, 2.9979250e14/(nuArray(i)*fr1Ryd), Qabs(ai,i),Qsca(ai,i),ggCos(ai,i))
 		 else 
 		    call BHmie(sizeParam,refIndex,Qabs(ai,i),Qsca(ai,i),ggCos(ai,i))

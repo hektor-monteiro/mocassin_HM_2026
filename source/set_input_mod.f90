@@ -581,6 +581,14 @@ module set_input_mod
                  print*, "! readInput: unrecognised keyword in model parameter input file", &
 &                        in_file, keyword
                endif
+               
+            case ("CDE")
+               ! Use CDE distribution properties for grains with sizeParam < 1
+                backspace 10
+                read(unit=10, fmt=*, iostat=ios) keyword
+                lgCDE = .true.
+               print*, keyword, "CDE dust properties enabled..."
+               
             end select
 
          end do

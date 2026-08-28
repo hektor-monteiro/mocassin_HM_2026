@@ -23,7 +23,7 @@ module common_mod
     logical         :: lg2D=.false.             ! 2D?
     logical         :: lgIsotropic
 
-    logical             :: lgMultiStars=.false.
+    logical         :: lgMultiStars=.false.
     logical         :: lgEquivalentTau          ! calculate equivalent tau?
     logical         :: lgWarm=.false.           ! warm started?
     logical         :: lgFluorescence=.false.   ! fluorescence run?
@@ -38,7 +38,7 @@ module common_mod
     logical         :: lgforceTDust = .false.   !
     logical         :: lgNosource = .false.     ! exclude sources from SED?
     logical         :: lginputDustMass = .false.! user sets input dust mass?
-    logical         :: lginputGasMass = .false. ! user sets input gas mass?
+    logical         :: lgCDE = .false.          ! user sets CDE for grain properties?
 
     real, allocatable :: gSca(:)                 ! gSca(freq)
 
