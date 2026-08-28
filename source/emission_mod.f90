@@ -58,7 +58,6 @@ module emission_mod
         if (grids(iG)%active(ix, iy, iz)<=0) return
 
         cellPUsed = grids(iG)%active(ix, iy, iz)
-        abFileUsed = grids(iG)%abFileIndex(ix,iy,iz)
 
         if (lgMultiDustChemistry) then
            nspE = grids(iG)%dustAbunIndex(cellPUsed)
@@ -70,6 +69,10 @@ module emission_mod
         if (lgDust .and. .not.lgGas) call setDustPDF()
 
         if (.not.lgGas) return
+
+        ! grid%abFileIndex is allocated only when lgGas (grid_mod.f90), and
+        ! the emissionDriver loop in iteration_mod.f90 is not gated on lgGas
+        abFileUsed = grids(iG)%abFileIndex(ix,iy,iz)
 
         ! find the physical properties of this cell
         ionDenUsed= grids(iG)%ionDen(cellPUsed, :, :)
