@@ -631,7 +631,7 @@ module photon_mod
                        & initPhotonPacket%position%z, initPhotonPacket%zP(igpi))
                   if (initPhotonPacket%zP(igpi) < grid(gP)%nz) then
                      if (initPhotonPacket%position%z >= &
-                          & (grid(gP)%xAxis(initPhotonPacket%zP(igpi))+&
+                          & (grid(gP)%zAxis(initPhotonPacket%zP(igpi))+&
                           & grid(gP)%zAxis(initPhotonPacket%zP(igpi)+1))&
                           & /2.) initPhotonPacket%zP(igpi) =&
                           & initPhotonPacket%zP(igpi)+1
