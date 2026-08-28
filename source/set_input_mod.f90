@@ -235,8 +235,18 @@ module set_input_mod
                !print*, keyword, fillingFactor
             case ("slit")
                backspace 10
-               read(unit=10, fmt=*, iostat=ios) keyword, dxSlit, dySlit
-               !print*, keyword, dxSlit, dySlit
+               read(unit=10, fmt=*, iostat=ios) keyword, slitAxis, d1Slit, d2Slit
+               print*, "Using slit. Integrating ialong ", slitAxis, " axis."
+               if (ios /= 0) then
+                  print*, "! readInput: error reading slit parameters."
+                  stop
+               end if
+               if (slitAxis /= 'x' .and. slitAxis /= 'X' .and. &
+                   slitAxis /= 'y' .and. slitAxis /= 'Y' .and. &
+                   slitAxis /= 'z' .and. slitAxis /= 'Z') then
+                  print*, "! readInput: invalid slitAxis: ", slitAxis, ". Must be 'x', 'y', or 'z'."
+                  stop
+               end if
             case ("inputNe")
                backspace 10
                read(unit=10, fmt=*, iostat=ios) keyword

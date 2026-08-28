@@ -23,7 +23,7 @@ ifeq ($(OS),Darwin)
   PREFIX=/usr/local
 else
   #PREFIX=$(HOME)/mocassin_2023
-  PREFIX=/usr
+  PREFIX=$(HOME)/.local
 endif
 
 # get version from changelog if debian package, or git log otherwise

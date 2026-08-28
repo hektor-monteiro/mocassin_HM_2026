@@ -20,7 +20,7 @@ dustFile  'input/dust_species.dat' 'input/dust_sizes.dat'
 Ndust file "input/test_dust_21x21x21.dat"
 inclination 1 1.57 0. 
 resLinesTransfer 50.
-
+symmetricXYZ
 
 
 
