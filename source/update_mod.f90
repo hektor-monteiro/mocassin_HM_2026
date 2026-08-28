@@ -2318,7 +2318,9 @@ end subroutine iterateT
 
                if (ion <= nstages) then
 
-                  if (direc_coeffs(i)%g == 0) then
+        	  if (ion == 1) then
+                     diRec(direc_coeffs(i)%elem, ion) = 0.
+                  else if (direc_coeffs(i)%g == 0) then
                      diRec(direc_coeffs(i)%elem, ion) = (10.**(-12))*(direc_coeffs(i)%a/t+direc_coeffs(i)%b+direc_coeffs(i)%c*t+direc_coeffs(i)%d*t**2)*t**(-3./2.)*exp(-direc_coeffs(i)%f/t)
                   else if (direc_coeffs(i)%g == 1 .and. TeUsed .lt. 20000.) then
                      diRec(direc_coeffs(i)%elem, ion) = (10.**(-12))*(direc_coeffs(i)%a/t+direc_coeffs(i)%b+direc_coeffs(i)%c*t+direc_coeffs(i)%d*t**2)*t**(-3./2.)*exp(-direc_coeffs(i)%f/t)
