@@ -38,6 +38,7 @@ module common_mod
     logical         :: lgforceTDust = .false.   !
     logical         :: lgNosource = .false.     ! exclude sources from SED?
     logical         :: lginputDustMass = .false.! user sets input dust mass?
+    logical         :: lginputGasMass = .false. ! user sets input gas mass?
     logical         :: lgCDE = .false.          ! user sets CDE for grain properties?
 
     real, allocatable :: gSca(:)                 ! gSca(freq)
