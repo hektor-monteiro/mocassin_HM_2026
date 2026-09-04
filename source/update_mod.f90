@@ -1563,6 +1563,7 @@ end subroutine iterateT
 
 
             real                   :: revRate       ! reverse charge exchange rate
+            double precision       :: ionNum, ionDen2   ! guarded stage ratio
 
             double precision, dimension(nELements) :: &
                  & denominator   ! denominator of final ion abundance
@@ -1704,20 +1705,22 @@ end subroutine iterateT
                     if ( (elem>1) .or. (ion>1) ) collIon = 0.
 
                     ! calculate the X(i+1)/X(i) ratio
-                    if (lgDebug) then
-                       ionRatio(elem,ion) = (nPhotoSte(elem,ion)+nPhotoDif(elem,ion)+&
-                            & collIon+revRate)/&
-                            & (NeUsed*alphaTot(elem,ion)&
-                            & +chex(elem,ion,1)*grid%Hden(grid%active(xP,yp,zP)) * &
-                            & grid%ionDen(cellP,elementXref(1),1))
-                    else
-                       ionRatio(elem,ion) = (nPhotoSte(elem,ion)+&
-                            & collIon+revRate)/&
-                            & (NeUsed*alphaTot(elem,ion)&
-                            & +chex(elem,ion,1)*grid%Hden(grid%active(xP,yp,zP)) * &
-                            & grid%ionDen(cellP,elementXref(1),1))
+                    ionNum = dble(nPhotoSte(elem,ion)) + dble(collIon) + dble(revRate)
+                    if (lgDebug) ionNum = ionNum + dble(nPhotoDif(elem,ion))
+                    ionDen2 = dble(NeUsed)*dble(alphaTot(elem,ion)) &
+                         & + dble(chex(elem,ion,1))*dble(grid%Hden(grid%active(xP,yp,zP))) &
+                         & * dble(grid%ionDen(cellP,elementXref(1),1))
 
+                    if (ionDen2 > 0.d0) then
+                       ionRatio(elem,ion) = ionNum/ionDen2
+                    else if (ionNum > 0.d0) then
+                       ! no recombination path out of the stage above: nothing
+                       ! physical bounds the ratio, so cap rather than overflow
+                       ionRatio(elem,ion) = 1.d30
+                    else
+                       ionRatio(elem,ion) = 0.d0
                     end if
+                    if (.not. (ionRatio(elem,ion) >= 0.d0)) ionRatio(elem,ion) = 0.d0
                  end do
               end do
 
@@ -2160,7 +2163,9 @@ end subroutine iterateT
             do elem = 3, nElements
                 do ion = 1, min(nstages-1, elem)
                    if (diRec(elem,ion) == 0.) diRec(elem,ion) = diRec(8,ion)
-                    alphaTot(elem, ion) = alphaTot(elem, ion) + diRec(elem, ion)
+                   if (diRec(elem,ion) < 0.) diRec(elem,ion) = 0.
+                   alphaTot(elem, ion) = alphaTot(elem, ion) + diRec(elem, ion)
+                   if (alphaTot(elem,ion) < 0.) alphaTot(elem,ion) = 0.                    
                 end do
             end do
 
