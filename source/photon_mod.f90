@@ -1535,14 +1535,6 @@ module photon_mod
              ! find the volume of this cell via pre-calculated array
              dV = cell_volumes(gP)%v(xP,yP,zP)
              
-             !=============================================================
-             ! force skip for high tau cells
-             if ( i == 1 .and. tauCell > 20.0) then 
-                passProb = tauCell+1.0e-6
-                enPacket%weight = enPacket%weight / weightFactor * exp(-passProb)
-                !print*, tauCell, enPacket%weight
-             endif
-
              ! check if the packet interacts within this cell
              if ((absTau+tauCell > passProb) .and. (grid(gP)%active(xP,yP,zP)>0)) then
 ! .and. &
