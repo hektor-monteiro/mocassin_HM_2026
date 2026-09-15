@@ -1666,7 +1666,7 @@ end subroutine iterateT
 
 
             deltaE_k(7,1) = 10863.
-            deltaE_k(8,1) = 2205.
+            deltaE_k(8,1) = 229.
 
             chex(:,:,1) = chex(:,:,1)*1.e-9
 
@@ -1683,7 +1683,13 @@ end subroutine iterateT
                          & (1.+chex(elem,ion,3)*exp(chex(elem,ion,4)*t4))
 
                     if (chex(elem,ion,1) < 0. ) chex(elem,ion,1) = 0.
-                    if (TeUsed < 6000. .or. TeUsed>5.e4) chex(elem,ion,1) = 0.
+                    
+                    ! No lower temperature cut-off. It had been 6000 K for every
+                    ! element, which is not the fits' validity limit: O+ + H is
+                    ! valid to 10 K (Kingdon & Ferland 1996) and agrees with
+                    ! Stancil et al. (1999) and UMIST to 5-15% below 1000 K. In
+                    ! cool gas the cut-off removed the dominant O+ <-> O channel.
+                    if (TeUsed > 5.e4) chex(elem,ion,1) = 0.
 
                     ! find the number of electron in this ion
                     nElec = elem - ion +1
