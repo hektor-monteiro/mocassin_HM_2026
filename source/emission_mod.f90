@@ -334,15 +334,23 @@ module emission_mod
             gammaHI(i) = gammaHI(i)+ffCoeff1(i)
 
             if (i >= HeINuEdgeP(nlimGammaHeI) ) then
-                expFactor = exp(dble( (-nuArray(i) + nuArray(HeIPnuP)) * hcRyd_k / TeUsed))
-                phXSecHeI = xSecArray(i-HeIPnuP+1+HeISingXSecP(1)-1)
-                gammaHeI(i) = fourPi * phXSecHeI * statW(2) * hcRyd * constant* factor * expFactor * 1.d40
-                gammaHeI(i) = gammaHeI(i) + ffCoeff1(i)
+                if (i >= HeIPnuP) then
+                    expFactor = exp(dble( (-nuArray(i) + nuArray(HeIPnuP)) * hcRyd_k / TeUsed))
+                    phXSecHeI = xSecArray(i-HeIPnuP+1+HeISingXSecP(1)-1)
+                    gammaHeI(i) = fourPi * phXSecHeI * statW(2) * hcRyd * constant* factor * expFactor * 1.d40
+                    gammaHeI(i) = gammaHeI(i) + ffCoeff1(i)
+                else
+                    gammaHeI(i) = ffCoeff1(i)
+                end if
                 if (i >= HeIINuEdgeP(nlimGammaHeII)) then
-                    expFactor  = exp(dble( (-nuArray(i) + nuArray(HeIIPnuP)) * hcRyd_k / TeUsed))
-                    phXSecHeII = xSecArray(i-HeIIPnuP+1+HeIIXSecP(1)-1)
-                    gammaHeII(i) = fourPi * phXSecHeII * statW(3) * hcRyd * constant* factor * expFactor * 1.d40
-                    gammaHeII(i) = gammaHeII(i) + ffCoeff2(i)
+                    if (i >= HeIIPnuP) then
+                        expFactor  = exp(dble( (-nuArray(i) + nuArray(HeIIPnuP)) * hcRyd_k / TeUsed))
+                        phXSecHeII = xSecArray(i-HeIIPnuP+1+HeIIXSecP(1)-1)
+                        gammaHeII(i) = fourPi * phXSecHeII * statW(3) * hcRyd * constant* factor * expFactor * 1.d40
+                        gammaHeII(i) = gammaHeII(i) + ffCoeff2(i)
+                    else
+                        gammaHeII(i) = ffCoeff2(i)
+                    end if
                 end if
             end if
         end do
