@@ -2166,9 +2166,12 @@ end subroutine iterateT
             call dielectronic(diRec)
 
             ! calculate dielectronic recombination part
-            do elem = 3, nElements
+            do elem = 2, nElements
+                if (.not. lgBadnellLoaded .and. elem == 2) cycle
                 do ion = 1, min(nstages-1, elem)
-                   if (diRec(elem,ion) == 0.) diRec(elem,ion) = diRec(8,ion)
+                   if (.not. lgBadnellLoaded) then
+                      if (elem >= 3 .and. diRec(elem,ion) == 0.) diRec(elem,ion) = diRec(8,ion)
+                   end if
                    if (diRec(elem,ion) < 0.) diRec(elem,ion) = 0.
                    alphaTot(elem, ion) = alphaTot(elem, ion) + diRec(elem, ion)
                    if (alphaTot(elem,ion) < 0.) alphaTot(elem,ion) = 0.                    
@@ -2312,34 +2315,48 @@ end subroutine iterateT
 
             ! local variables
 
-            integer                             :: ion
+            integer                             :: elem, ion, k, i
             real                                :: t         ! t = TeUsed/10000., t0,t1 are fitting par
-            real                                :: alpha
+            real                                :: alpha, t32
             real, dimension(nElements, nstages) :: aldroPequi! high T dielec rec coeff by A&P73
 
+            diRec = 0.
             aldroPequi = 0.
 
-            t = TeUsed/10000.
+            if (TeUsed <= 0.) return
 
-            alpha = 0.
-            aldroPequi=0.
+            if (lgBadnellLoaded) then
+               t32 = TeUsed**(-1.5)
+               do elem = 2, nElements
+                  do ion = 1, min(nstages-1, elem)
+                     if (badnell_dr_coeffs(elem, ion)%nfit > 0) then
+                        alpha = 0.
+                        do k = 1, badnell_dr_coeffs(elem, ion)%nfit
+                           alpha = alpha + badnell_dr_coeffs(elem, ion)%c(k) * exp(-badnell_dr_coeffs(elem, ion)%e(k) / TeUsed)
+                        end do
+                        diRec(elem, ion) = alpha * t32
+                     end if
+                  end do
+               end do
+            else
+               t = TeUsed/10000.
+               do i = 1, size(direc_coeffs)
+                  ion = direc_coeffs(i)%elem + 1 - direc_coeffs(i)%n
 
-            do i = 1, size(direc_coeffs)
-               ion = direc_coeffs(i)%elem + 1 - direc_coeffs(i)%n
+                  if (ion <= nstages) then
 
-               if (ion <= nstages) then
-
-        	  if (ion == 1) then
-                     diRec(direc_coeffs(i)%elem, ion) = 0.
-                  else if (direc_coeffs(i)%g == 0) then
-                     diRec(direc_coeffs(i)%elem, ion) = (10.**(-12))*(direc_coeffs(i)%a/t+direc_coeffs(i)%b+direc_coeffs(i)%c*t+direc_coeffs(i)%d*t**2)*t**(-3./2.)*exp(-direc_coeffs(i)%f/t)
-                  else if (direc_coeffs(i)%g == 1 .and. TeUsed .lt. 20000.) then
-                     diRec(direc_coeffs(i)%elem, ion) = (10.**(-12))*(direc_coeffs(i)%a/t+direc_coeffs(i)%b+direc_coeffs(i)%c*t+direc_coeffs(i)%d*t**2)*t**(-3./2.)*exp(-direc_coeffs(i)%f/t)
-                  else if (direc_coeffs(i)%g == 2 .and. TeUsed .ge. 20000.) then
-                     diRec(direc_coeffs(i)%elem, ion) = (10.**(-12))*(direc_coeffs(i)%a/t+direc_coeffs(i)%b+direc_coeffs(i)%c*t+direc_coeffs(i)%d*t**2)*t**(-3./2.)*exp(-direc_coeffs(i)%f/t)
+                     if (ion == 1) then
+                        diRec(direc_coeffs(i)%elem, ion) = 0.
+                     else if (direc_coeffs(i)%g == 0) then
+                        diRec(direc_coeffs(i)%elem, ion) = (10.**(-12))*(direc_coeffs(i)%a/t+direc_coeffs(i)%b+direc_coeffs(i)%c*t+direc_coeffs(i)%d*t**2)*t**(-3./2.)*exp(-direc_coeffs(i)%f/t)
+                     else if (direc_coeffs(i)%g == 1 .and. TeUsed .lt. 20000.) then
+                        diRec(direc_coeffs(i)%elem, ion) = (10.**(-12))*(direc_coeffs(i)%a/t+direc_coeffs(i)%b+direc_coeffs(i)%c*t+direc_coeffs(i)%d*t**2)*t**(-3./2.)*exp(-direc_coeffs(i)%f/t)
+                     else if (direc_coeffs(i)%g == 2 .and. TeUsed .ge. 20000.) then
+                        diRec(direc_coeffs(i)%elem, ion) = (10.**(-12))*(direc_coeffs(i)%a/t+direc_coeffs(i)%b+direc_coeffs(i)%c*t+direc_coeffs(i)%d*t**2)*t**(-3./2.)*exp(-direc_coeffs(i)%f/t)
+                     end if
                   end if
-               end if
-            end do
+               end do
+            end if
 
             ! calculate the high temperatures dielectronic recombination coeficients of
             ! Aldrovandi and Pequignot 1973
@@ -2351,12 +2368,19 @@ end subroutine iterateT
                if (ion <= nstages) aldroPequi(aldropequi_coeffs(i)%elem, ion) = alpha
             end do
 
-            if (TeUsed>60000.) then
-               diRec = aldroPequi
-            else
-               where (direc .eq. 0.)
-                 diRec = aldroPequi
+            if (lgBadnellLoaded) then
+               ! For Badnell dataset, fall back to Aldrovandi & Pequignot only for missing ions
+               where (diRec == 0. .and. aldroPequi > 0.)
+                  diRec = aldroPequi
                endwhere
+            else
+               if (TeUsed>60000.) then
+                  diRec = aldroPequi
+               else
+                  where (direc .eq. 0.)
+                    diRec = aldroPequi
+                  endwhere
+               end if
             end if
 
           end subroutine dielectronic

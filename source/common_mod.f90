@@ -534,4 +534,13 @@ module common_mod
 
     type(aldropequidata), dimension(167) :: aldropequi_coeffs
 
+    type badnelldata
+        integer :: nfit
+        real, dimension(9) :: c
+        real, dimension(9) :: e
+    end type badnelldata
+
+    type(badnelldata), dimension(nElements, nElements) :: badnell_dr_coeffs
+    logical :: lgBadnellLoaded = .false.
+
 end module common_mod
