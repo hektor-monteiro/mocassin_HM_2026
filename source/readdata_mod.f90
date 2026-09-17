@@ -12,8 +12,9 @@ contains
         integer :: iup, ilow                 ! H counters
         integer :: elem_in, ion_in, ncore_in, nfit_in, k
         integer :: env_stat
-        character(len=32) :: dr_env
+        character(len=32) :: dr_env, rr_env
         real, dimension(9) :: c_in, e_in
+        real :: a_rr_in, b_rr_in, t0_rr_in, t1_rr_in, c_rr_in, t2_rr_in
 
     ! initialise all the arrays that we are reading in
 
@@ -42,9 +43,17 @@ contains
               badnell_dr_coeffs(elem_in, ion_in)%nfit = 0
               badnell_dr_coeffs(elem_in, ion_in)%c = 0.
               badnell_dr_coeffs(elem_in, ion_in)%e = 0.
+              badnell_rr_coeffs(elem_in, ion_in)%a = 0.
+              badnell_rr_coeffs(elem_in, ion_in)%b = 0.
+              badnell_rr_coeffs(elem_in, ion_in)%t0 = 0.
+              badnell_rr_coeffs(elem_in, ion_in)%t1 = 0.
+              badnell_rr_coeffs(elem_in, ion_in)%c = 0.
+              badnell_rr_coeffs(elem_in, ion_in)%t2 = 0.
+              badnell_rr_coeffs(elem_in, ion_in)%defined = .false.
            end do
         end do
         lgBadnellLoaded = .false.
+        lgBadnellRRLoaded = .false.
 
     ! read in rates from data/HeI2phot.dat
 
@@ -150,6 +159,35 @@ contains
         end do
 
         close(17)
+
+        ! radiative recombination coefficients from Badnell (Cloudy c25.00)
+        call get_environment_variable("MOCASSIN_RR", rr_env, status=env_stat)
+        if (env_stat == 0 .and. (trim(rr_env) == "legacy" .or. trim(rr_env) == "old")) then
+           ios = -1
+        else
+           open (unit=19, file=PREFIX//'/share/mocassin/data/badnell_rr.dat', status='old', position='rewind', iostat = ios, action="read")
+        end if
+
+        if (ios == 0) then
+           do
+              read(unit=19, fmt=*, iostat=ios) elem_in, ion_in, ncore_in, a_rr_in, b_rr_in, t0_rr_in, t1_rr_in, c_rr_in, t2_rr_in
+              if (ios /= 0) exit
+              if (elem_in >= 1 .and. elem_in <= nElements .and. ion_in >= 1 .and. ion_in <= nElements) then
+                 badnell_rr_coeffs(elem_in, ion_in)%a = a_rr_in
+                 badnell_rr_coeffs(elem_in, ion_in)%b = b_rr_in
+                 badnell_rr_coeffs(elem_in, ion_in)%t0 = t0_rr_in
+                 badnell_rr_coeffs(elem_in, ion_in)%t1 = t1_rr_in
+                 badnell_rr_coeffs(elem_in, ion_in)%c = c_rr_in
+                 badnell_rr_coeffs(elem_in, ion_in)%t2 = t2_rr_in
+                 badnell_rr_coeffs(elem_in, ion_in)%defined = .true.
+                 lgBadnellRRLoaded = .true.
+              end if
+           end do
+           close(19)
+           print*, "! readData: using Badnell radiative recombination dataset (Cloudy c25.00)"
+        else
+           print*, "! readData: using legacy radiative recombination dataset (Verner & Ferland 1996)"
+        end if
 
     end subroutine readData
 

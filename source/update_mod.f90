@@ -2220,12 +2220,45 @@ end subroutine iterateT
                                                             ! first time this is evaluated?
 
             real                                 :: tt      ! temp dep fact in interpolation
+            real                                 :: d_rr, f_rr, b_prime ! Badnell RR evaluation variables
 
             real, dimension(2, nElements, nElements),&      ! coefficients for the
                  & save  :: rrec    ! calculation of the
             real, dimension(4, nElements, nElements),&      ! radiative rates
                  & save  :: rnew    !
             real, dimension(3, 4:13), save         :: fe    !
+
+            if (TeUsed <= 0.) then
+                radRecFit = 0.
+                return
+            end if
+
+            ! check right element and number of electron reference
+            if ( (z<1) .or. (z>30) ) then
+                print*, "! radRecFit: insane atomic number", z
+                stop
+            end if
+            if ( (n<1) .or. (n>z) ) then
+                print*, "! radRecFit: insane number of electrons", n
+                stop
+            end if
+
+            ! Modern Badnell radiative recombination fits (Cloudy c25.00)
+            if (lgBadnellRRLoaded) then
+               ion = z - n + 1
+               if (ion >= 1 .and. ion <= z) then
+                  if (badnell_rr_coeffs(z, ion)%defined) then
+                     d_rr = sqrt(TeUsed / badnell_rr_coeffs(z, ion)%t0)
+                     f_rr = sqrt(TeUsed / badnell_rr_coeffs(z, ion)%t1)
+                     b_prime = badnell_rr_coeffs(z, ion)%b
+                     if (badnell_rr_coeffs(z, ion)%c /= 0. .and. badnell_rr_coeffs(z, ion)%t2 > 0.) then
+                        b_prime = b_prime + badnell_rr_coeffs(z, ion)%c * exp(-badnell_rr_coeffs(z, ion)%t2 / TeUsed)
+                     end if
+                     radRecFit = badnell_rr_coeffs(z, ion)%a / (d_rr * (1. + d_rr)**(1. - b_prime) * (1. + f_rr)**(1. + b_prime))
+                     return
+                  end if
+               end if
+            end if
 
             ! if this is the first time this procedure is called
             ! read in radiative recombination coefficient file
@@ -2278,16 +2311,6 @@ end subroutine iterateT
 
                 ! set lgFirst to .false.
                 lgFirst = .false.
-            end if
-
-            ! check right element and number of electron reference
-            if ( (z<1) .or. (z>30) ) then
-                print*, "! radRecFit: insane atomic number", z
-                stop
-            end if
-            if ( (n<1) .or. (n>z) ) then
-                print*, "! radRecFit: insane number of electrons", n
-                stop
             end if
 
             ! calculate the rates
