@@ -12,7 +12,7 @@ contains
         integer :: iup, ilow                 ! H counters
         integer :: elem_in, ion_in, ncore_in, nfit_in, k
         integer :: env_stat
-        character(len=32) :: dr_env, rr_env
+        character(len=32) :: dr_env, rr_env, reccool_env
         real, dimension(9) :: c_in, e_in
         real :: a_rr_in, b_rr_in, t0_rr_in, t1_rr_in, c_rr_in, t2_rr_in
 
@@ -184,9 +184,19 @@ contains
               end if
            end do
            close(19)
-           print*, "! readData: using Badnell radiative recombination dataset (Cloudy c25.00)"
+           if (taskid == 0) print*, "! readData: using Badnell radiative recombination dataset (Cloudy c25.00)"
         else
-           print*, "! readData: using legacy radiative recombination dataset (Verner & Ferland 1996)"
+           if (taskid == 0) print*, "! readData: using legacy radiative recombination dataset (Verner & Ferland 1996)"
+        end if
+
+        ! Recombination cooling treatment in thermal balance
+        call get_environment_variable("MOCASSIN_RECCOOL", reccool_env, status=env_stat)
+        if (env_stat == 0 .and. (trim(reccool_env) == "legacy" .or. trim(reccool_env) == "caseB" .or. trim(reccool_env) == "caseb")) then
+           lgCaseARecCool = .false.
+           if (taskid == 0) print*, "! readData: using legacy Case B recombination cooling in thermal balance"
+        else
+           lgCaseARecCool = .true.
+           if (taskid == 0) print*, "! readData: using Case A recombination cooling in thermal balance (Hummer 1994, Hummer & Storey 1998)"
         end if
 
     end subroutine readData

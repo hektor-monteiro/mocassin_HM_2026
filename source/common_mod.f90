@@ -556,4 +556,7 @@ module common_mod
     type(badnell_rr_data), dimension(nElements, nElements) :: badnell_rr_coeffs
     logical :: lgBadnellRRLoaded = .false.
 
+    ! Recombination cooling treatment in thermal balance: Case A (default) vs Case B (legacy)
+    logical :: lgCaseARecCool = .true.
+
 end module common_mod
