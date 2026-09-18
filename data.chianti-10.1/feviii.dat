@@ -1,0 +1,84 @@
+29
+** Atomic data from version 10.1 of the CHIANTI database **
+ Observed energies:
+Del Zanna 2009, A&A, 508, 513
+and NIST Database for Atomic Spectroscopy, Version 2.0, NIST Standard Reference Database 61
+Theoretical energy levels (up to 518, n=3,4,5):
+ Del Zanna, G. and Badnell, N.R., 2014,  A&A, 570, A56
+Theoretical energy levels (n=6,7):
+ O'Dwyer, B., Del Zanna, G., Badnell, N.R., Mason, H. E.,Storey, P.J., 2012, A&A, 537, A22
+Produced for the CHIANTI database v.8 by G. Del Zanna Oct  2014
+%filename: fe_8.wgfa
+%filename:  fe_8.wgfa
+Observed energies:
+Del Zanna 2009, A&A, 508, 513
+and NIST Database for Atomic Spectroscopy, Version 2.0, NIST Standard Reference Database 61
+Theoretical energy levels, gf and A-values (up to 518, n=3,4,5):
+Del Zanna, G. and Badnell, N.R., 2014,  A&A, 570, A56
+Theoretical energy levels, gf and A-values (n=6,7):
+O'Dwyer, B., Del Zanna, G., Badnell, N.R., Mason, H. E.,Storey, P.J., 2012, A&A, 537, A22
+Produced for the CHIANTI database v.8 by G. Del Zanna Oct  2014
+Modified on Tue Jun 13  2017: fixed indexing problems for the  levels 511-518
+ K. Dere  -  minimum branching ratio =   1.00e-05
+     2017 December 06
+%File processed with wgfa_tidy by pryoung on  6-Mar-2019
+%File processed with wgfa_tidy by pryoung on  6-Mar-2019
+%filename: fe_8.scups
+ Effective collision strengths (up to level 518, n=3,4,5): Del Zanna, G. and Badnell, N.R., 2014,  A&A,570, A56
+ Effective collision strengths (levels n=6,7):
+ O'Dwyer, B., Del Zanna, G., Badnell, N.R., Mason, H. E.,Storey, P.J., 2012, A&A, 537, A22
+Produced for the CHIANTI database v.8 by G. Del Zanna Oct  2014
+2 23
+   1  3s2 3p6 3d 2D1
+   2  3s2 3p6 3d 2D2
+     100.0
+     158.5
+     251.2
+     398.1
+     631.0
+    1000.0
+    1584.9
+    2511.9
+    3981.1
+    6309.6
+   10000.0
+   15848.9
+   25118.9
+   39810.7
+   63095.7
+  100000.0
+  158489.3
+  251188.6
+  398107.2
+  630957.3
+ 1000000.0
+ 1584893.2
+ 2511886.4
+0
+   1  2   2.66e+00
+   0  0   2.66e+00
+   0  0   2.66e+00
+   0  0   2.66e+00
+   0  0   2.66e+00
+   0  0   2.66e+00
+   0  0   2.66e+00
+   0  0   2.66e+00
+   0  0   2.66e+00
+   0  0   2.66e+00
+   0  0   2.65e+00
+   0  0   2.63e+00
+   0  0   2.61e+00
+   0  0   2.63e+00
+   0  0   2.73e+00
+   0  0   2.89e+00
+   0  0   3.07e+00
+   0  0   3.17e+00
+   0  0   3.03e+00
+   0  0   2.63e+00
+   0  0   2.10e+00
+   0  0   1.59e+00
+   0  0   1.16e+00
+ 0 0 0
+   1  2   9.710e-02
+   1  4          0.0
+   2  6       1836.0
