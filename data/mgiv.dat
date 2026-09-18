@@ -1,44 +1,25 @@
-37
-** Atomic data from version 10 of the CHIANTI database **
-
+18
+** Atomic data from version 10.1 of the CHIANTI database **
 Observed energies: Kramida, A., Ralchenko, Yu., Reader, J., and NIST ASD Team (2012). NIST Atomic Spectra Database (ver. 5.0), [Online]. Available: http://physics.nist.gov/asd [2013, May 3]. National Institute of Standards and Technology, Gaithersburg, MD.
-
 Theoretical energies from the UK APAP-network work of
 Witthoeft, M.C., Whiteford, A.D., & Badnell, N.R. 2007, J.Phys.B, 40, 2969
-
 Produced for the CHIANTI database v.8 by Giulio Del Zanna, Apr 2013
-
-
-
--1
-
+%filename: mg_4.wgfa
 Observed energies: Kramida, A., Ralchenko, Yu., Reader, J., and NIST ASD Team (2012). NIST Atomic Spectra Database (ver. 5.0), [Online]. Available: http://physics.nist.gov/asd [2013, May 3]. National Institute of Standards and Technology, Gaithersburg, MD.
-
 Theoretical data from the UK APAP-network work of
 Witthoeft, M.C., Whiteford, A.D., & Badnell, N.R. 2007, J.Phys.B, 40, 2969
-
 Produced for the CHIANTI database v.8 by Giulio Del Zanna, Apr 2013
-
 Removed two unimportant transitions from level 141
-(observed energy of the upper level lower than the energy of the lower level)
+ (observed energy of the upper level lower than the energy of the lower level)
 G. Del Zanna 5 May 2016
-
-
 %File processed with wgfa_tidy by pryoung on  6-Mar-2019
--1
-
-
+%filename: mg_4.scups
 Data from from the UK APAP-network work of
 Witthoeft, M.C., Whiteford, A.D., & Badnell, N.R. 2007, J.Phys.B, 40, 2969
-
 Produced for the CHIANTI database v.8 by Giulio Del Zanna, Apr 2013
-
-
-
-
 2 23
-  1  2s2 2p5 2P1
-  2  2s2 2p5 2P0
+   1  2s2 2p5 2P1   
+   2  2s2 2p5 2P0   
      100.0
      158.5
      251.2
@@ -63,30 +44,30 @@ Produced for the CHIANTI database v.8 by Giulio Del Zanna, Apr 2013
  1584893.2
  2511886.4
 0
-  1  2   2.69e-01
-  0  0   2.69e-01
-  0  0   2.69e-01
-  0  0   2.69e-01
-  0  0   2.70e-01
-  0  0   2.71e-01
-  0  0   2.72e-01
-  0  0   2.74e-01
-  0  0   2.78e-01
-  0  0   2.84e-01
-  0  0   2.90e-01
-  0  0   2.96e-01
-  0  0   3.07e-01
-  0  0   3.28e-01
-  0  0   3.54e-01
-  0  0   3.85e-01
-  0  0   4.14e-01
-  0  0   4.35e-01
-  0  0   4.37e-01
-  0  0   4.14e-01
-  0  0   3.76e-01
-  0  0   3.31e-01
-  0  0   2.87e-01
+   1  2   2.69e-01
+   0  0   2.69e-01
+   0  0   2.69e-01
+   0  0   2.69e-01
+   0  0   2.70e-01
+   0  0   2.71e-01
+   0  0   2.72e-01
+   0  0   2.74e-01
+   0  0   2.78e-01
+   0  0   2.84e-01
+   0  0   2.90e-01
+   0  0   2.96e-01
+   0  0   3.07e-01
+   0  0   3.28e-01
+   0  0   3.54e-01
+   0  0   3.85e-01
+   0  0   4.14e-01
+   0  0   4.35e-01
+   0  0   4.37e-01
+   0  0   4.14e-01
+   0  0   3.76e-01
+   0  0   3.31e-01
+   0  0   2.87e-01
  0 0 0
-  1  2   2.640e-01
-  1  4        0.0
-  2  2     2228.0
+   1  2   2.640e-01
+   1  4          0.0
+   2  2       2228.0

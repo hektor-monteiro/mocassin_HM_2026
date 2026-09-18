@@ -1,46 +1,31 @@
-39
-** Atomic data from version 10 of the CHIANTI database **
-
-Observed energies: Kramida, A., Ralchenko, Yu., Reader, J., and NIST ASD Team (2012). NIST Atomic Spectra Database (ver. 5.0), [Online]. Available: http://physics.nist.gov/asd [2013, May 3]. National Institute of Standards and Technology, Gaithersburg, MD.
-
+24
+** Atomic data from version 10.1 of the CHIANTI database **
+ Observed energies: Kramida, A., Ralchenko, Yu., Reader, J., and NIST ASD Team (2012). NIST Atomic Spectra Database (ver. 5.0), [Online]. Available: http://physics.nist.gov/asd [2013, May 3]. National Institute of Standards and Technology, Gaithersburg, MD.
 Theoretical (adjusted) energies from
 D C Griffin, D M Mitnik and N R Badnell 2001 J. Phys. B 34
-
 Produced for the CHIANTI database v.8 by Giulio Del Zanna,  2013 Jun 23
-
-
+%filename: ne_2.wgfa
 Observed energies: Kramida, A., Ralchenko, Yu., Reader, J., and NIST ASD Team (2012). NIST Atomic Spectra Database (ver. 5.0), [Online]. Available: http://physics.nist.gov/asd [2013, May 3]. National Institute of Standards and Technology, Gaithersburg, MD.
-
-
 Theoretical (adjusted) energies, gf and A-values:
 D C Griffin, D M Mitnik and N R Badnell 2001 J. Phys. B 34
-
 A-values for a few M1, M2 , E2 forbidden transitions:
 G. Tachiev and C. Froese Fischer, Method: MCHF (ab initio), 2002,
 the MCHF collection at NIST (http://nlte.nist.gov/MCHF/).
-
 Transitions with an A values greater than 10^-5 of the maximum A-value
 were retained.
-
 Produced for the CHIANTI database v.8 by Giulio Del Zanna,  August 2015
 %File processed with wgfa_tidy by pryoung on  6-Mar-2019
--1
- 
-
-Data from from 
+%filename: ne_2.scups
+Data from from
 D C Griffin, D M Mitnik and N R Badnell 2001 J. Phys. B 34
-
 The maximum energy in this calculation was 6 Ry which is
       high enough to generate accurate effective collision strengths up to the
-      maximum temperature of 4x10^5 K.  
+      maximum temperature of 4x10^5 K.
 However, the  collision strengths have been extrapolated to high energies.
-
 Produced for the CHIANTI database v.8 by Giulio Del Zanna,  2013 Jun 23
-
-
 2 23
-  1  2s22p5 2P1
-  2  2s22p5 2P0
+   1  2s22p5 2P1    
+   2  2s22p5 2P0    
      100.0
      158.5
      251.2
@@ -65,30 +50,30 @@ Produced for the CHIANTI database v.8 by Giulio Del Zanna,  2013 Jun 23
  1584893.2
  2511886.4
 0
-  1  2   2.55e-01
-  0  0   2.54e-01
-  0  0   2.55e-01
-  0  0   2.56e-01
-  0  0   2.59e-01
-  0  0   2.66e-01
-  0  0   2.79e-01
-  0  0   2.92e-01
-  0  0   2.99e-01
-  0  0   3.06e-01
-  0  0   3.14e-01
-  0  0   3.23e-01
-  0  0   3.35e-01
-  0  0   3.50e-01
-  0  0   3.70e-01
-  0  0   4.00e-01
-  0  0   4.26e-01
-  0  0   4.64e-01
-  0  0   4.73e-01
-  0  0   4.46e-01
-  0  0   4.07e-01
-  0  0   3.72e-01
-  0  0   3.45e-01
+   1  2   2.55e-01
+   0  0   2.54e-01
+   0  0   2.55e-01
+   0  0   2.56e-01
+   0  0   2.59e-01
+   0  0   2.66e-01
+   0  0   2.79e-01
+   0  0   2.92e-01
+   0  0   2.99e-01
+   0  0   3.06e-01
+   0  0   3.14e-01
+   0  0   3.23e-01
+   0  0   3.35e-01
+   0  0   3.50e-01
+   0  0   3.70e-01
+   0  0   4.00e-01
+   0  0   4.26e-01
+   0  0   4.64e-01
+   0  0   4.73e-01
+   0  0   4.46e-01
+   0  0   4.07e-01
+   0  0   3.72e-01
+   0  0   3.45e-01
  0 0 0
-  1  2   8.321e-03
-  1  4        0.0
-  2  2      780.4
+   1  2   8.321e-03
+   1  4          0.0
+   2  2        780.4

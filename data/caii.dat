@@ -1,14 +1,15 @@
 39
-** Atomic data from version 10 of the CHIANTI database **
+** Atomic data from version 10.1 of the CHIANTI database **
 %filename:  ca_2.elvlc
 %observed energies: v.3 of the NIST Atomic Database
 %theoretical energies: These were not published by Melendez et al. (2007) so the observed energies have been used.
 %comment: Some of the fine structure levels arising from the same spectroscopic
-term are given the same energy value in the NIST database. For CHIANTI,
-an artificial separation of 1 cm^-1 has been applied to these levels.
+   term are given the same energy value in the NIST database. For CHIANTI,
+   an artificial separation of 1 cm^-1 has been applied to these levels.
 % produced as part of the Arcetri/Cambridge/NRL 'CHIANTI' atomic data base collaboration
 %
 %      Peter Young, Jan 2009
+%filename: ca_2.wgfa
 %filename:  ca_2.wgfa
 %filename: ca_2.wgfa
 %observed energies: v.3 of the NIST Atomic Database
@@ -20,10 +21,9 @@ greater than 1e5.
 % produced as part of the Arcetri/Cambridge/NRL 'CHIANTI' atomic data base collaboration
 %
 %      Peter Young, Jan 2009
-
-minimum branching ratio =   1.00e-05  :  K Dere  - 2017 December 16
+ minimum branching ratio =   1.00e-05  :  K Dere  - 2017 December 16
 %File processed with wgfa_tidy by pryoung on  6-Mar-2019
--1
+%filename: ca_2.scups
 %filename: ca_2.splups
 %Theoretical energies: observed energies from .elvlc file used.
 %gf-values: derived from A-values of Melendez, Bautista, & Badnell, 2007, A&A, 469, 1203 and experimental energies.
@@ -39,8 +39,8 @@ minimum branching ratio =   1.00e-05  :  K Dere  - 2017 December 16
 %
 %      Peter Young, Mar 2009
 2 23
-  1  3p6.4s 2S0
-  2  3p6.3d 2D1
+   1  3p6.4s 2S0    
+   2  3p6.3d 2D1    
      100.0
      158.5
      251.2
@@ -65,30 +65,30 @@ minimum branching ratio =   1.00e-05  :  K Dere  - 2017 December 16
  1584893.2
  2511886.4
 0
-  1  2   5.40e+00
-  0  0   5.38e+00
-  0  0   5.35e+00
-  0  0   5.30e+00
-  0  0   5.22e+00
-  0  0   5.12e+00
-  0  0   4.98e+00
-  0  0   4.81e+00
-  0  0   4.61e+00
-  0  0   4.37e+00
-  0  0   4.04e+00
-  0  0   3.61e+00
-  0  0   3.14e+00
-  0  0   2.70e+00
-  0  0   2.34e+00
-  0  0   2.08e+00
-  0  0   1.89e+00
-  0  0   1.77e+00
-  0  0   1.69e+00
-  0  0   1.63e+00
-  0  0   1.60e+00
-  0  0   1.58e+00
-  0  0   1.56e+00
+   1  2   5.40e+00
+   0  0   5.38e+00
+   0  0   5.35e+00
+   0  0   5.30e+00
+   0  0   5.22e+00
+   0  0   5.12e+00
+   0  0   4.98e+00
+   0  0   4.81e+00
+   0  0   4.61e+00
+   0  0   4.37e+00
+   0  0   4.04e+00
+   0  0   3.61e+00
+   0  0   3.14e+00
+   0  0   2.70e+00
+   0  0   2.34e+00
+   0  0   2.08e+00
+   0  0   1.89e+00
+   0  0   1.77e+00
+   0  0   1.69e+00
+   0  0   1.63e+00
+   0  0   1.60e+00
+   0  0   1.58e+00
+   0  0   1.56e+00
  0 0 0
-  1  2   9.033e-01
-  1  2        0.0
-  2  4    13650.2
+   1  2   9.033e-01
+   1  2          0.0
+   2  4      13650.2

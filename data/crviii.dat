@@ -1,41 +1,41 @@
 34
-** Atomic data from version 10 of the CHIANTI database **
+** Atomic data from version 10.1 of the CHIANTI database **
 %File prepared for the CHIANTI atomic database by Peter Young.
 %File: cr_8.elvlc
 %Observed energies:
-Kramida, A., Ralchenko, Yu., Reader, J., and NIST ASD Team (2019).
-NIST Atomic Spectra Database (ver. 5.7.1), [Online].
-Available: https://physics.nist.gov/asd [2020, July 27].
-National Institute of Standards and Technology, Gaithersburg, MD.
-DOI: https://doi.org/10.18434/T4W30F
+    Kramida, A., Ralchenko, Yu., Reader, J., and NIST ASD Team (2019).
+    NIST Atomic Spectra Database (ver. 5.7.1), [Online].
+    Available: https://physics.nist.gov/asd [2020, July 27].
+    National Institute of Standards and Technology, Gaithersburg, MD.
+    DOI: https://doi.org/10.18434/T4W30F
 %Theoretical energies:
-Aggarwal, K.M., Kato, T., Keenan, F.P. & Murakami, I., 2009, A&A 506, 1501
+    Aggarwal, K.M., Kato, T., Keenan, F.P. & Murakami, I., 2009, A&A 506, 1501
 %Comment:
-Theoretical energies come from the GRASP model with Breit and QED corrections, i.e., energy
-column 3 of the authors' Table 1.
+    Theoretical energies come from the GRASP model with Breit and QED corrections, i.e., energy
+    column 3 of the authors' Table 1.
+%filename: cr_8.wgfa
 %File prepared for the CHIANTI atomic database by Peter Young.
 %File: cr_8.wgfa
 %A-values:
-Aggarwal, K.M., Kato, T., Keenan, F.P. & Murakami, I., 2009, A&A 506, 1501
+    Aggarwal, K.M., Kato, T., Keenan, F.P. & Murakami, I., 2009, A&A 506, 1501
 %Comment:
-Wavelengths are derived from energies in the elvlc file.
+    Wavelengths are derived from energies in the elvlc file.
 %File processed with wgfa_tidy by pryoung on 27-Jul-2020
--1
-%File prepared for the CHIANTI atomic database by Peter Young.
-%File: cr_8.scups
+%filename: cr_8.scups
+%File:  cr_8.scups
+%File created: Thu Feb  4 17:00:13 2021
+%File prepared for the CHIANTI atomic database by Peter Young (Feb-2021).
 %Upsilons:
     Aggarwal, K.M., Kato, T., Keenan, F.P. & Murakami, I., 2009, A&A 506, 1501
-%Comments:
-    Energies are from the theoretical energy column of the elvlc file.
-    gf values are from the wgfa file.
-    Cr VIII has 11 metastable levels (1,2,4,8,10,19,20,21,24,81,106). Only those transitions that have one
-    of these levels as the lower level are included in this file.
-    Upsilons were assessed with write_scups.pro. 171 problem type 6 transitions were found (i.e., upsilons
-    did not tend towards high temperature limit. 102 of these transitions were manually fit with
-    write_scups_gui. The remaining 69 transitions were fit by dropping the high temperature limit point.
+%Comment:
+    - Wavelengths are derived from energies in the elvlc file.
+    - Only transitions involving the metastables are retained.
+    - Metastables: 1,2,4,5,6,7,8,10,16,19,20,21,22,24,81,106.
+    - About 200 transitions were missing in the Aggarwal data (these will be flagged
+      by the ch_ion_validity routine).
 2 23
-  1  3s2.3p5 2P1
-  2  3s2.3p5 2P0
+   1  3s2.3p5 2P1   
+   2  3s2.3p5 2P0   
      100.0
      158.5
      251.2
@@ -60,30 +60,30 @@ Wavelengths are derived from energies in the elvlc file.
  1584893.2
  2511886.4
 0
-  1  2   3.95e-01
-  0  0   3.95e-01
-  0  0   3.95e-01
-  0  0   3.95e-01
-  0  0   3.95e-01
-  0  0   3.96e-01
-  0  0   3.96e-01
-  0  0   3.96e-01
-  0  0   3.96e-01
-  0  0   3.97e-01
-  0  0   3.98e-01
-  0  0   4.00e-01
-  0  0   4.02e-01
-  0  0   4.06e-01
-  0  0   4.12e-01
-  0  0   4.22e-01
-  0  0   4.34e-01
-  0  0   4.48e-01
-  0  0   4.61e-01
-  0  0   4.64e-01
-  0  0   4.52e-01
-  0  0   4.22e-01
-  0  0   3.84e-01
+   1  2   3.95e-01
+   0  0   3.95e-01
+   0  0   3.95e-01
+   0  0   3.95e-01
+   0  0   3.95e-01
+   0  0   3.96e-01
+   0  0   3.96e-01
+   0  0   3.96e-01
+   0  0   3.96e-01
+   0  0   3.97e-01
+   0  0   3.98e-01
+   0  0   4.00e-01
+   0  0   4.02e-01
+   0  0   4.06e-01
+   0  0   4.12e-01
+   0  0   4.22e-01
+   0  0   4.34e-01
+   0  0   4.48e-01
+   0  0   4.61e-01
+   0  0   4.64e-01
+   0  0   4.52e-01
+   0  0   4.22e-01
+   0  0   3.84e-01
  0 0 0
-  1  2   1.701e+01
-  1  4        0.0
-  2  2     9892.0
+   1  2   1.701e+01
+   1  4          0.0
+   2  2       9892.0

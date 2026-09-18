@@ -1,21 +1,22 @@
-23
-** Atomic data from version 10 of the CHIANTI database **
+24
+** Atomic data from version 10.1 of the CHIANTI database **
 %filename: p_7.elvlc
 %observed energy levels: Martin, W.C., Sugar, J., Musgrove, A., Dalton, G.R., 1995,
-NIST Database for Atomic Spectroscopy, Version 1.0, NIST Standard Reference Database 61.
+   NIST Database for Atomic Spectroscopy, Version 1.0, NIST Standard Reference Database 61.
 %theoretical energy levels: interpolated using Mg IV, Si VI, S VIII, Ca XII.
 %produced as part of the Arcetri/Cambridge/NRL 'CHIANTI' atomic data base collaboration
 %
 % Enrico Landi 1997
 %filename: p_7.wgfa
+%filename: p_7.wgfa
 %observed energy levels: Martin, W.C., Sugar, J., Musgrove, A., Dalton, G.R., 1995,
-NIST Database for Atomic Spectroscopy, Version 1.0, NIST Standard Reference Database 61
+   NIST Database for Atomic Spectroscopy, Version 1.0, NIST Standard Reference Database 61
 %A and gf values: interpolated using Mg IV, Si VI, S VIII, Ca XII.
 %produced as part of the Arcetri/Cambridge/NRL 'CHIANTI' atomic data base collaboration
 %
 % Enrico Landi 1997
 %File processed with wgfa_tidy by pryoung on  6-Mar-2019
--1
+%filename: p_7.scups
 %filename: p_7.splups
 %oscillator strengths: interpolated using Mg IV, Si VI, S VIII, Ca XII
 %effective collision strengths: interpolated using Mg IV, Si VI, S VIII, Ca XII
@@ -23,8 +24,8 @@ NIST Database for Atomic Spectroscopy, Version 1.0, NIST Standard Reference Data
 %
 % Enrico Landi 1997
 2 23
-  1  2s2.2p5 2P1
-  2  2s2.2p5 2P0
+   1  2s2.2p5 2P1   
+   2  2s2.2p5 2P0   
      100.0
      158.5
      251.2
@@ -49,30 +50,30 @@ NIST Database for Atomic Spectroscopy, Version 1.0, NIST Standard Reference Data
  1584893.2
  2511886.4
 0
-  1  2   2.49e-01
-  0  0   2.49e-01
-  0  0   2.48e-01
-  0  0   2.48e-01
-  0  0   2.47e-01
-  0  0   2.46e-01
-  0  0   2.44e-01
-  0  0   2.42e-01
-  0  0   2.39e-01
-  0  0   2.35e-01
-  0  0   2.34e-01
-  0  0   2.37e-01
-  0  0   2.51e-01
-  0  0   2.77e-01
-  0  0   3.12e-01
-  0  0   3.42e-01
-  0  0   3.58e-01
-  0  0   3.64e-01
-  0  0   3.64e-01
-  0  0   3.62e-01
-  0  0   3.60e-01
-  0  0   3.59e-01
-  0  0   3.57e-01
+   1  2   2.49e-01
+   0  0   2.49e-01
+   0  0   2.48e-01
+   0  0   2.48e-01
+   0  0   2.47e-01
+   0  0   2.46e-01
+   0  0   2.44e-01
+   0  0   2.42e-01
+   0  0   2.39e-01
+   0  0   2.35e-01
+   0  0   2.34e-01
+   0  0   2.37e-01
+   0  0   2.51e-01
+   0  0   2.77e-01
+   0  0   3.12e-01
+   0  0   3.42e-01
+   0  0   3.58e-01
+   0  0   3.64e-01
+   0  0   3.64e-01
+   0  0   3.62e-01
+   0  0   3.60e-01
+   0  0   3.59e-01
+   0  0   3.57e-01
  0 0 0
-  1  2   2.120e+00
-  1  4        0.0
-  2  2     7273.0
+   1  2   2.120e+00
+   1  4          0.0
+   2  2       7273.0

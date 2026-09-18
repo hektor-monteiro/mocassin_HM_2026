@@ -1,11 +1,12 @@
-22
-** Atomic data from version 10 of the CHIANTI database **
+23
+** Atomic data from version 10.1 of the CHIANTI database **
 %filename: mn_9.elvlc
 %Observed energy levels: Shirai, T., Sugar, J., Musgrove, A., & Wiese, W.L. 2000, J.Phys.Chem.Ref.Data, Monograph 8
 %Theoretical energy levels: Landi & Young 2009, ApJ, in press
 %produced as part of the Arcetri/Cambridge/NRL 'CHIANTI' atomic data base collaboration
 %
 % Enrico Landi - Nov 2008
+%filename: mn_9.wgfa
 %filename: mn_9.wgfa
 %Observed energy levels: Shirai, T., Sugar, J., Musgrove, A., & Wiese, W.L. 2000, J.Phys.Chem.Ref.Data, Monograph 8
 %Theoretical energy levels: Landi & Young 2009, ApJ, in press
@@ -14,7 +15,7 @@
 %
 % Enrico Landi - Nov 2008
 %File processed with wgfa_tidy by pryoung on  6-Mar-2019
--1
+%filename: mn_9.scups
 %filename: mn_9.splups
 %gf values: Landi & Young 2009, ApJ, in press
 %Collision strengths: Landi & Young 2009, ApJ, in press
@@ -22,8 +23,8 @@
 %
 % Enrico Landi - Nov 2008
 2 23
-  1  3s2.3p5 2P1
-  2  3s2.3p5 2P0
+   1  3s2.3p5 2P1   
+   2  3s2.3p5 2P0   
      100.0
      158.5
      251.2
@@ -48,30 +49,30 @@
  1584893.2
  2511886.4
 0
-  1  2   3.37e-01
-  0  0   3.37e-01
-  0  0   3.37e-01
-  0  0   3.37e-01
-  0  0   3.37e-01
-  0  0   3.37e-01
-  0  0   3.36e-01
-  0  0   3.36e-01
-  0  0   3.36e-01
-  0  0   3.36e-01
-  0  0   3.36e-01
-  0  0   3.35e-01
-  0  0   3.34e-01
-  0  0   3.33e-01
-  0  0   3.31e-01
-  0  0   3.28e-01
-  0  0   3.24e-01
-  0  0   3.17e-01
-  0  0   3.09e-01
-  0  0   2.99e-01
-  0  0   2.88e-01
-  0  0   2.77e-01
-  0  0   2.65e-01
+   1  2   3.37e-01
+   0  0   3.37e-01
+   0  0   3.37e-01
+   0  0   3.37e-01
+   0  0   3.37e-01
+   0  0   3.37e-01
+   0  0   3.36e-01
+   0  0   3.36e-01
+   0  0   3.36e-01
+   0  0   3.36e-01
+   0  0   3.36e-01
+   0  0   3.35e-01
+   0  0   3.34e-01
+   0  0   3.33e-01
+   0  0   3.31e-01
+   0  0   3.28e-01
+   0  0   3.24e-01
+   0  0   3.17e-01
+   0  0   3.09e-01
+   0  0   2.99e-01
+   0  0   2.88e-01
+   0  0   2.77e-01
+   0  0   2.65e-01
  0 0 0
-  1  2   3.433e+01
-  1  4        0.0
-  2  2    12546.0
+   1  2   3.433e+01
+   1  4          0.0
+   2  2      12546.0
