@@ -2450,6 +2450,7 @@ end subroutine iterateT
             real                   :: dabs
             real                   :: resLineHeat       ! resonance line heating
             real, dimension(nbins) :: radField          ! radiation field
+            real                   :: binAbunSum, speciesWeightSum, totalWeightSum
 
             integer :: nS, i, ai ! counters
             integer :: iT        ! pointer to dust temp in dust temp array
@@ -2522,12 +2523,13 @@ end subroutine iterateT
 
                      call locate(dustEmIntegral(global_nS,ai,:), dustAbsIntegral, iT)
 
-                     if (iT<=0 .and. lgTalk) then
-                        print*, "getDustT: [warning] temperature of grain = 0. K!!!!"
-                        print*, cellP
-                        print*, nS, dustAbsIntegral
-                        print*, dustEmIntegral(global_nS,ai,1)
-                        !stop
+                     if (iT<=0) then
+                        if (lgTalk) then
+                           print*, "getDustT: [warning] temperature of grain = 0. K!!!!"
+                           print*, cellP
+                           print*, nS, dustAbsIntegral
+                           print*, dustEmIntegral(global_nS,ai,1)
+                        end if
                         iT=1
                         grid%Tdust(nS,ai,cellP) = 1.
                      else if (iT>=nTemps) then
@@ -2551,20 +2553,65 @@ end subroutine iterateT
                           & print*, "! getDustT: [talk] cell ", xP,yP,zP,"; Grain temperature: "&
                           &, grid%Tdust(nS,ai,cellP), " species ", grainLabel(global_nS), " size:", grainRadius(ai)
 
-                     ! find weighted mean
-                     grid%Tdust(nS,0,cellP) = grid%Tdust(nS,0,cellP)+&
-                          & grid%Tdust(nS,ai,cellP)*grainWeight(ai)
-                          
                   endif
 
                end do
 
-               grid%Tdust(0,0,cellP) = grid%Tdust(0,0,cellP)+&
-                    & grid%Tdust(nS,0,cellP)*grainAbun(nspU,nS)
-                    
                endif ! *** END OF IF for zero grain abundance ***
 
             end do
+
+            ! 1. Calculate size-averaged temperature for each species (ai = 0)
+            ! Normalized over only the sizes where the species exists
+            do nS = 1, nSpeciesPart(nspU)
+               grid%Tdust(nS, 0, cellP) = 0.
+               if (grainAbun(nspU, nS) > 1.e-20) then
+                  speciesWeightSum = 0.
+                  do ai = 1, nSizes
+                     if (grainRadius(ai) >= componentMinRadius(nspU, nS) .and. &
+                         grainRadius(ai) <= componentMaxRadius(nspU, nS)) then
+                        grid%Tdust(nS, 0, cellP) = grid%Tdust(nS, 0, cellP) + &
+                             grid%Tdust(nS, ai, cellP) * grainWeight(ai)
+                        speciesWeightSum = speciesWeightSum + grainWeight(ai)
+                     end if
+                  end do
+                  if (speciesWeightSum > 0.) then
+                     grid%Tdust(nS, 0, cellP) = grid%Tdust(nS, 0, cellP) / speciesWeightSum
+                  end if
+               end if
+            end do
+
+            ! 2. Calculate species-averaged temperature for each size bin (nS = 0, ai = 1..nSizes)
+            ! The average temperature is taken only over species present in each size bin,
+            ! weighted by their relative abundances.
+            ! 3. Calculate overall average dust temperature (nS = 0, ai = 0)
+            ! Weighted over the size distribution for bins containing dust.
+            grid%Tdust(0, 0, cellP) = 0.
+            totalWeightSum = 0.
+            do ai = 1, nSizes
+               grid%Tdust(0, ai, cellP) = 0.
+               binAbunSum = 0.
+               do nS = 1, nSpeciesPart(nspU)
+                  if (grainAbun(nspU, nS) > 1.e-20) then
+                     if (grainRadius(ai) >= componentMinRadius(nspU, nS) .and. &
+                         grainRadius(ai) <= componentMaxRadius(nspU, nS)) then
+                        grid%Tdust(0, ai, cellP) = grid%Tdust(0, ai, cellP) + &
+                             grid%Tdust(nS, ai, cellP) * grainAbun(nspU, nS)
+                        binAbunSum = binAbunSum + grainAbun(nspU, nS)
+                     end if
+                  end if
+               end do
+               if (binAbunSum > 0.) then
+                  grid%Tdust(0, ai, cellP) = grid%Tdust(0, ai, cellP) / binAbunSum
+                  grid%Tdust(0, 0, cellP) = grid%Tdust(0, 0, cellP) + &
+                       grid%Tdust(0, ai, cellP) * grainWeight(ai)
+                  totalWeightSum = totalWeightSum + grainWeight(ai)
+               end if
+            end do
+
+            if (totalWeightSum > 0.) then
+               grid%Tdust(0, 0, cellP) = grid%Tdust(0, 0, cellP) / totalWeightSum
+            end if
 
 
           end subroutine getDustT
