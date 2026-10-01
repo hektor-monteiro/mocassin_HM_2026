@@ -56,33 +56,55 @@ module pathIntegration_mod
 
 
         ! locate the starting position in the cartesian grid
-        call locate(grid(1)%xAxis, aVec%x, xP)
-        if ( xP < grid(1)%nx ) then
-            if ( aVec%x >= (grid(1)%xAxis(xP)+ &
-                 & grid(1)%xAxis(xP+1))/2. ) xP = xP+1
+        if (lg2D .and. perpAxis2D == "X") then
+           xP = 1
+        else
+           call locate(grid(1)%xAxis, aVec%x, xP)
+           if ( xP < grid(1)%nx ) then
+               if ( aVec%x >= (grid(1)%xAxis(xP)+ &
+                    & grid(1)%xAxis(xP+1))/2. ) xP = xP+1
+           end if
         end if
-        call locate(grid(1)%yAxis, aVec%y, yP)
-        if ( yP < grid(1)%ny ) then
-            if ( aVec%y >= (grid(1)%yAxis(yP)+ &
-                 & grid(1)%yAxis(yP+1))/2. ) yP = yP+1
+
+        if (lg2D .and. perpAxis2D == "Y") then
+           yP = 1
+        else
+           call locate(grid(1)%yAxis, aVec%y, yP)
+           if ( yP < grid(1)%ny ) then
+               if ( aVec%y >= (grid(1)%yAxis(yP)+ &
+                    & grid(1)%yAxis(yP+1))/2. ) yP = yP+1
+           end if
         end if
-        call locate(grid(1)%zAxis, aVec%z, zP)
-        if ( zP < grid(1)%nz ) then
-            if ( aVec%z >= (grid(1)%zAxis(zP)+ &
-                 & grid(1)%zAxis(zP+1))/2. ) zP = zP+1
+
+        if (lg2D .and. perpAxis2D == "Z") then
+           zP = 1
+        else
+           call locate(grid(1)%zAxis, aVec%z, zP)
+           if ( zP < grid(1)%nz ) then
+               if ( aVec%z >= (grid(1)%zAxis(zP)+ &
+                    & grid(1)%zAxis(zP+1))/2. ) zP = zP+1
+           end if
         end if
 
 
         ! check that the input position is not outside the grid
-        if ( (xP <= 0).or.(xP > grid(1)%nx) ) then
-            print*, "! integratePathTau: starting position in x is outside the grid",xP,yP,zP
-            stop
-        else if ( (yP <= 0).or.(yP > grid(1)%ny) ) then
-            print*, "! integratePathTau: starting position in y is outside the grid",xP,yP,zP
-            stop
-        else if ( (zP <= 0).or.(zP > grid(1)%nz) ) then
-            print*, "! integratePathTau: starting position in z is outside the grid",xP,yP,zP
-            stop
+        if (.not. (lg2D .and. perpAxis2D == "X")) then
+           if ( (xP <= 0).or.(xP > grid(1)%nx) ) then
+               print*, "! integratePathTau: starting position in x is outside the grid",xP,yP,zP
+               stop
+           end if
+        end if
+        if (.not. (lg2D .and. perpAxis2D == "Y")) then
+           if ( (yP <= 0).or.(yP > grid(1)%ny) ) then
+               print*, "! integratePathTau: starting position in y is outside the grid",xP,yP,zP
+               stop
+           end if
+        end if
+        if (.not. (lg2D .and. perpAxis2D == "Z")) then
+           if ( (zP <= 0).or.(zP > grid(1)%nz) ) then
+               print*, "! integratePathTau: starting position in z is outside the grid",xP,yP,zP
+               stop
+           end if
         end if
 
         ! define dlSmall
@@ -107,113 +129,169 @@ module pathIntegration_mod
         do i = 1, maxTau
 
            ! check if the path is still within the ionized region
-           if (rVec%x > grid(1)%xAxis(grid(1)%nx)) exit
+           if (.not. (lg2D .and. perpAxis2D == "X")) then
+              if (rVec%x > grid(1)%xAxis(grid(1)%nx)) exit
+           end if
 
-           if (rVec%y > grid(1)%yAxis(grid(1)%ny)) exit
+           if (.not. (lg2D .and. perpAxis2D == "Y")) then
+              if (rVec%y > grid(1)%yAxis(grid(1)%ny)) exit
+           end if
 
-           if (rVec%z > grid(1)%zAxis(grid(1)%nz)) exit
+           if (.not. (lg2D .and. perpAxis2D == "Z")) then
+              if (rVec%z > grid(1)%zAxis(grid(1)%nz)) exit
+           end if
 
            if ( sqrt( (rvec%x/1.e10)**2 + (rvec%y/1.e10)**2 + (rvec%z/1.e10)**2)*1.e10 >= R_out &
                 & .and. R_out > 0.) exit
 
 
            if (lgSymmetricXYZ) then
-              if( rVec%x < grid(1)%xAxis(1) ) then
-                 vHat%x = -vHat%x
-                 rVec%x = -rVec%x
-                 call locate(grid(1)%xAxis, rVec%x, xP)
+              if (.not. (lg2D .and. perpAxis2D == "X")) then
+                 if( rVec%x < grid(1)%xAxis(1) ) then
+                    vHat%x = -vHat%x
+                    rVec%x = -rVec%x
+                    call locate(grid(1)%xAxis, rVec%x, xP)
+                 end if
               end if
-              if( rVec%y < grid(1)%yAxis(1) ) then
-                 vHat%y = -vHat%y
-                 rVec%y = -rVec%y
-                 call locate(grid(1)%yAxis, rVec%y, yP)
+              if (.not. (lg2D .and. perpAxis2D == "Y")) then
+                 if( rVec%y < grid(1)%yAxis(1) ) then
+                    vHat%y = -vHat%y
+                    rVec%y = -rVec%y
+                    call locate(grid(1)%yAxis, rVec%y, yP)
+                 end if
               end if
-              if( rVec%z < grid(1)%zAxis(1) ) then
-                 vHat%z = -vHat%z
-                 rVec%z = -rVec%z
-                 call locate(grid(1)%zAxis, rVec%z, zP)
+              if (.not. (lg2D .and. perpAxis2D == "Z")) then
+                 if( rVec%z < grid(1)%zAxis(1) ) then
+                    vHat%z = -vHat%z
+                    rVec%z = -rVec%z
+                    call locate(grid(1)%zAxis, rVec%z, zP)
+                 end if
               end if
            end if
 
-           ! x-axis
-           if (xP < grid(1)%nx) then
-              if ( rVec%x > (grid(1)%xAxis(xP)+grid(1)%xAxis(xP+1))/2. ) then
-                 xP = xP + 1
-              end if
-           else if (xP == grid(1)%nx) then
-              if ( rVec%x > grid(1)%xAxis(xP) ) exit
+           if (lg2D) then
+              select case (perpAxis2D)
+              case ("Z")
+                 zP = 1
+                 if (rVec%z < minPerp2D) then
+                    vHat%z = -vHat%z
+                    rVec%z = 2.0*minPerp2D - rVec%z
+                 else if (rVec%z > maxPerp2D) then
+                    vHat%z = -vHat%z
+                    rVec%z = 2.0*maxPerp2D - rVec%z
+                 end if
+              case ("Y")
+                 yP = 1
+                 if (rVec%y < minPerp2D) then
+                    vHat%y = -vHat%y
+                    rVec%y = 2.0*minPerp2D - rVec%y
+                 else if (rVec%y > maxPerp2D) then
+                    vHat%y = -vHat%y
+                    rVec%y = 2.0*maxPerp2D - rVec%y
+                 end if
+              case ("X")
+                 xP = 1
+                 if (rVec%x < minPerp2D) then
+                    vHat%x = -vHat%x
+                    rVec%x = 2.0*minPerp2D - rVec%x
+                 else if (rVec%x > maxPerp2D) then
+                    vHat%x = -vHat%x
+                    rVec%x = 2.0*maxPerp2D - rVec%x
+                 end if
+              end select
            end if
-           if (xP > 1) then
-              if ( rVec%x < (grid(1)%xAxis(xP)+grid(1)%xAxis(xP-1))/2. ) then
-                 xP = xP - 1
+
+           ! x-axis
+           if (.not. (lg2D .and. perpAxis2D == "X")) then
+              if (xP < grid(1)%nx) then
+                 if ( rVec%x > (grid(1)%xAxis(xP)+grid(1)%xAxis(xP+1))/2. ) then
+                    xP = xP + 1
+                 end if
+              else if (xP == grid(1)%nx) then
+                 if ( rVec%x > grid(1)%xAxis(xP) ) exit
+              end if
+              if (xP > 1) then
+                 if ( rVec%x < (grid(1)%xAxis(xP)+grid(1)%xAxis(xP-1))/2. ) then
+                    xP = xP - 1
+                 end if
               end if
            end if
 
            ! y-axis
-           if (yP < grid(1)%ny) then
-              if ( rVec%y > (grid(1)%yAxis(yP)+grid(1)%yAxis(yP+1))/2. ) then
-                 yP = yP + 1
+           if (.not. (lg2D .and. perpAxis2D == "Y")) then
+              if (yP < grid(1)%ny) then
+                 if ( rVec%y > (grid(1)%yAxis(yP)+grid(1)%yAxis(yP+1))/2. ) then
+                    yP = yP + 1
+                 end if
+              else if (yP == grid(1)%ny) then
+                 if (rVec%y > grid(1)%yAxis(yP)) exit
               end if
-           else if (yP == grid(1)%ny) then
-              if (rVec%y > grid(1)%yAxis(yP)) exit
-           end if
-           if (yP > 1) then
-              if ( rVec%y < (grid(1)%yAxis(yP)+grid(1)%yAxis(yP-1))/2. ) then
-                 yP = yP - 1
+              if (yP > 1) then
+                 if ( rVec%y < (grid(1)%yAxis(yP)+grid(1)%yAxis(yP-1))/2. ) then
+                    yP = yP - 1
+                 end if
               end if
            end if
 
            ! z-axis
-            if (zP < grid(1)%nz) then
-               if ( rVec%z > (grid(1)%zAxis(zP)+grid(1)%zAxis(zP+1))/2. ) then
-                  zP = zP + 1
-               end if
-            else if (zP == grid(1)%nz) then
-               if (rVec%z > grid(1)%zAxis(zP)) exit
-            end if
-            if (zP > 1) then
-                if ( rVec%z < (grid(1)%zAxis(zP)+grid(1)%zAxis(zP-1))/2. ) then
-                    zP = zP - 1
+           if (.not. (lg2D .and. perpAxis2D == "Z")) then
+              if (zP < grid(1)%nz) then
+                 if ( rVec%z > (grid(1)%zAxis(zP)+grid(1)%zAxis(zP+1))/2. ) then
+                    zP = zP + 1
+                 end if
+              else if (zP == grid(1)%nz) then
+                 if (rVec%z > grid(1)%zAxis(zP)) exit
+              end if
+              if (zP > 1) then
+                  if ( rVec%z < (grid(1)%zAxis(zP)+grid(1)%zAxis(zP-1))/2. ) then
+                      zP = zP - 1
+                  end if
+              end if
+           end if
+
+           if (.not.lgSymmetricXYZ) then
+               if ((xP < 1) .or. (zP < 1) .or. (yP < 1)) exit
+           end if
+
+            ! check if there's any symmetries and if the path must be reflected
+            if (lgSymmetricXYZ) then
+                if (.not. (lg2D .and. perpAxis2D == "X")) then
+                   if (xP<1) then
+                       vHat%x=-vHat%x
+                       rVec%x=-rVec%x
+                       call locate(grid(1)%xAxis, rVec%x, xP)
+                       if (xP < grid(1)%nx) then
+                           if ( rVec%x > (grid(1)%xAxis(xP)+grid(1)%xAxis(xP+1))/2. ) xP = xP + 1
+                       else if (xP == grid(1)%nx) then
+                           if (rVec%x > grid(1)%xAxis(xP)) exit
+                       end if
+                   end if
+                end if
+                if (.not. (lg2D .and. perpAxis2D == "Y")) then
+                   if (yP<1) then
+                       vHat%y=-vHat%y
+                       rVec%y=-rVec%y
+                       call locate(grid(1)%yAxis, rVec%y, yP)
+                       if (yP < grid(1)%ny) then
+                           if ( rVec%y > (grid(1)%yAxis(yP)+grid(1)%yAxis(yP+1))/2. ) yP = yP + 1
+                       else if (yP == grid(1)%ny) then
+                           if (rVec%y > grid(1)%yAxis(yP)) exit
+                       end if
+                   end if
+                end if
+                if (.not. (lg2D .and. perpAxis2D == "Z")) then
+                   if (zP<1) then
+                       vHat%z=-vHat%z
+                       rVec%z=-rVec%z
+                       call locate(grid(1)%zAxis, rVec%z, zP)
+                       if (zP < grid(1)%nz) then
+                           if ( rVec%z > (grid(1)%zAxis(zP)+grid(1)%zAxis(zP+1))/2. ) zP = zP + 1
+                       else if (zP == grid(1)%nz) then
+                           if (rVec%z > grid(1)%zAxis(zP)) exit
+                       end if
+                   end if
                 end if
             end if
-
-            if (.not.lgSymmetricXYZ) then
-                if ((xP < 1) .or. (zP < 1) .or. (yP < 1)) exit
-            end if
-
-             ! check if there's any symmetries and if the path must be reflected
-             if (lgSymmetricXYZ) then
-                 if (xP<1) then
-                     vHat%x=-vHat%x
-                     rVec%x=-rVec%x
-                     call locate(grid(1)%xAxis, rVec%x, xP)
-                     if (xP < grid(1)%nx) then
-                         if ( rVec%x > (grid(1)%xAxis(xP)+grid(1)%xAxis(xP+1))/2. ) xP = xP + 1
-                     else if (xP == grid(1)%nx) then
-                         if (rVec%x > grid(1)%xAxis(xP)) exit
-                     end if
-                 end if
-                 if (yP<1) then
-                     vHat%y=-vHat%y
-                     rVec%y=-rVec%y
-                     call locate(grid(1)%yAxis, rVec%y, yP)
-                     if (yP < grid(1)%ny) then
-                         if ( rVec%y > (grid(1)%yAxis(yP)+grid(1)%yAxis(yP+1))/2. ) yP = yP + 1
-                     else if (yP == grid(1)%ny) then
-                         if (rVec%y > grid(1)%yAxis(yP)) exit
-                     end if
-                 end if
-                 if (zP<1) then
-                     vHat%z=-vHat%z
-                     rVec%z=-rVec%z
-                     call locate(grid(1)%zAxis, rVec%z, zP)
-                     if (zP < grid(1)%nz) then
-                         if ( rVec%z > (grid(1)%zAxis(zP)+grid(1)%zAxis(zP+1))/2. ) zP = zP + 1
-                     else if (zP == grid(1)%nz) then
-                         if (rVec%z > grid(1)%zAxis(zP)) exit
-                     end if
-                 end if
-             end if
 
             ! increment nTau
             nTau = nTau + 1
@@ -266,37 +344,59 @@ module pathIntegration_mod
         end if
 
         ! locate the starting position in the cartesian grid
-        call locate(grid(1)%xAxis, aVec%x, xP)
-        if ( xP < grid(1)%nx ) then
-            if ( aVec%x >= (grid(1)%xAxis(xP)+ &
-                 & grid(1)%xAxis(xP+1))/2. ) xP = xP+1
+        if (lg2D .and. perpAxis2D == "X") then
+           xP = 1
+        else
+           call locate(grid(1)%xAxis, aVec%x, xP)
+           if ( xP < grid(1)%nx ) then
+               if ( aVec%x >= (grid(1)%xAxis(xP)+ &
+                    & grid(1)%xAxis(xP+1))/2. ) xP = xP+1
+           end if
         end if
-        call locate(grid(1)%yAxis, aVec%y, yP)
-        if ( yP < grid(1)%ny ) then
-            if ( aVec%y >= (grid(1)%yAxis(yP)+ &
-                 & grid(1)%yAxis(yP+1))/2. ) yP = yP+1
+
+        if (lg2D .and. perpAxis2D == "Y") then
+           yP = 1
+        else
+           call locate(grid(1)%yAxis, aVec%y, yP)
+           if ( yP < grid(1)%ny ) then
+               if ( aVec%y >= (grid(1)%yAxis(yP)+ &
+                    & grid(1)%yAxis(yP+1))/2. ) yP = yP+1
+           end if
         end if
-        call locate(grid(1)%zAxis, aVec%z, zP)
-        if ( zP < grid(1)%nz ) then
-            if ( aVec%z >= (grid(1)%zAxis(zP)+ &
-                 & grid(1)%zAxis(zP+1))/2. ) zP = zP+1
+
+        if (lg2D .and. perpAxis2D == "Z") then
+           zP = 1
+        else
+           call locate(grid(1)%zAxis, aVec%z, zP)
+           if ( zP < grid(1)%nz ) then
+               if ( aVec%z >= (grid(1)%zAxis(zP)+ &
+                    & grid(1)%zAxis(zP+1))/2. ) zP = zP+1
+           end if
         end if
 
 
         ! check that the input position is not outside the grid
-        if ( (xP <= 0).or.(xP > grid(1)%nx) ) then
-            print*, "! integratePathTau: starting position in x is outside the grid",xP,yP,zP
-            stop
-        else if ( (yP <= 0).or.(yP > grid(1)%ny) ) then
-            print*, "! integratePathTau: starting position in y is outside the grid",xP,yP,zP
-            stop
-        else if ( (zP <= 0).or.(zP > grid(1)%nz) ) then
-            print*, "! integratePathTau: starting position in z is outside the grid",xP,yP,zP
-            stop
+        if (.not. (lg2D .and. perpAxis2D == "X")) then
+           if ( (xP <= 0).or.(xP > grid(1)%nx) ) then
+               print*, "! integratePathTau: starting position in x is outside the grid",xP,yP,zP
+               stop
+           end if
+        end if
+        if (.not. (lg2D .and. perpAxis2D == "Y")) then
+           if ( (yP <= 0).or.(yP > grid(1)%ny) ) then
+               print*, "! integratePathTau: starting position in y is outside the grid",xP,yP,zP
+               stop
+           end if
+        end if
+        if (.not. (lg2D .and. perpAxis2D == "Z")) then
+           if ( (zP <= 0).or.(zP > grid(1)%nz) ) then
+               print*, "! integratePathTau: starting position in z is outside the grid",xP,yP,zP
+               stop
+           end if
         end if
 
         dlSmall = 0.
-        if (uHat%x > 0.) then
+        if (uHat%x > 0. .and. grid(1)%nx > 1) then
            ! find linear increment
            dlSmall =  abs(grid(1)%xAxis(2) - grid(1)%xAxis(1))
            do i = 2, grid(1)%nx-1
@@ -304,7 +404,7 @@ module pathIntegration_mod
            end do
         end if
 
-        if (uHat%y > 0.) then
+        if (uHat%y > 0. .and. grid(1)%ny > 1) then
            if (dlSmall <= 0.) then
               ! find linear increment
               dlSmall =  abs(grid(1)%yAxis(2) - grid(1)%yAxis(1))
@@ -319,7 +419,7 @@ module pathIntegration_mod
            end if
         end if
 
-        if (uHat%z > 0.) then
+        if (uHat%z > 0. .and. grid(1)%nz > 1) then
            if (dlSmall <= 0.) then
               ! find linear increment
               dlSmall =  abs(grid(1)%zAxis(2) - grid(1)%zAxis(1))
@@ -334,6 +434,7 @@ module pathIntegration_mod
            end if
         end if
 
+        if (dlSmall <= 0.) dlSmall = dl(1)
         dlSmall = dlSmall/2.
 
         ! initialize the optical depth arrays
@@ -351,113 +452,169 @@ module pathIntegration_mod
         do i = 1, maxTau
 
            ! check if the path is still within the ionized region
-           if (rVec%x > grid(1)%xAxis(grid(1)%nx)) exit
+           if (.not. (lg2D .and. perpAxis2D == "X")) then
+              if (rVec%x > grid(1)%xAxis(grid(1)%nx)) exit
+           end if
 
-           if (rVec%y > grid(1)%yAxis(grid(1)%ny)) exit
+           if (.not. (lg2D .and. perpAxis2D == "Y")) then
+              if (rVec%y > grid(1)%yAxis(grid(1)%ny)) exit
+           end if
 
-           if (rVec%z > grid(1)%zAxis(grid(1)%nz)) exit
+           if (.not. (lg2D .and. perpAxis2D == "Z")) then
+              if (rVec%z > grid(1)%zAxis(grid(1)%nz)) exit
+           end if
 
            if ( sqrt( (rvec%x/1.e10)**2 + (rvec%y/1.e10)**2 + (rvec%z/1.e10)**2)*1.e10 >= R_out &
                 & .and. R_out > 0.) exit
 
 
            if (lgSymmetricXYZ) then
-              if( rVec%x < grid(1)%xAxis(1) ) then
-                 vHat%x = -vHat%x
-                 rVec%x = -rVec%x
-                 call locate(grid(1)%xAxis, rVec%x, xP)
+              if (.not. (lg2D .and. perpAxis2D == "X")) then
+                 if( rVec%x < grid(1)%xAxis(1) ) then
+                    vHat%x = -vHat%x
+                    rVec%x = -rVec%x
+                    call locate(grid(1)%xAxis, rVec%x, xP)
+                 end if
               end if
-              if( rVec%y < grid(1)%yAxis(1) ) then
-                 vHat%y = -vHat%y
-                 rVec%y = -rVec%y
-                 call locate(grid(1)%yAxis, rVec%y, yP)
+              if (.not. (lg2D .and. perpAxis2D == "Y")) then
+                 if( rVec%y < grid(1)%yAxis(1) ) then
+                    vHat%y = -vHat%y
+                    rVec%y = -rVec%y
+                    call locate(grid(1)%yAxis, rVec%y, yP)
+                 end if
               end if
-              if( rVec%z < grid(1)%zAxis(1) ) then
-                 vHat%z = -vHat%z
-                 rVec%z = -rVec%z
-                 call locate(grid(1)%zAxis, rVec%z, zP)
+              if (.not. (lg2D .and. perpAxis2D == "Z")) then
+                 if( rVec%z < grid(1)%zAxis(1) ) then
+                    vHat%z = -vHat%z
+                    rVec%z = -rVec%z
+                    call locate(grid(1)%zAxis, rVec%z, zP)
+                 end if
               end if
            end if
 
-           ! x-axis
-           if (xP < grid(1)%nx) then
-              if ( rVec%x > (grid(1)%xAxis(xP)+grid(1)%xAxis(xP+1))/2. ) then
-                 xP = xP + 1
-              end if
-           else if (xP == grid(1)%nx) then
-              if ( rVec%x > grid(1)%xAxis(xP) ) exit
+           if (lg2D) then
+              select case (perpAxis2D)
+              case ("Z")
+                 zP = 1
+                 if (rVec%z < minPerp2D) then
+                    vHat%z = -vHat%z
+                    rVec%z = 2.0*minPerp2D - rVec%z
+                 else if (rVec%z > maxPerp2D) then
+                    vHat%z = -vHat%z
+                    rVec%z = 2.0*maxPerp2D - rVec%z
+                 end if
+              case ("Y")
+                 yP = 1
+                 if (rVec%y < minPerp2D) then
+                    vHat%y = -vHat%y
+                    rVec%y = 2.0*minPerp2D - rVec%y
+                 else if (rVec%y > maxPerp2D) then
+                    vHat%y = -vHat%y
+                    rVec%y = 2.0*maxPerp2D - rVec%y
+                 end if
+              case ("X")
+                 xP = 1
+                 if (rVec%x < minPerp2D) then
+                    vHat%x = -vHat%x
+                    rVec%x = 2.0*minPerp2D - rVec%x
+                 else if (rVec%x > maxPerp2D) then
+                    vHat%x = -vHat%x
+                    rVec%x = 2.0*maxPerp2D - rVec%x
+                 end if
+              end select
            end if
-           if (xP > 1) then
-              if ( rVec%x < (grid(1)%xAxis(xP)+grid(1)%xAxis(xP-1))/2. ) then
-                 xP = xP - 1
+
+           ! x-axis
+           if (.not. (lg2D .and. perpAxis2D == "X")) then
+              if (xP < grid(1)%nx) then
+                 if ( rVec%x > (grid(1)%xAxis(xP)+grid(1)%xAxis(xP+1))/2. ) then
+                    xP = xP + 1
+                 end if
+              else if (xP == grid(1)%nx) then
+                 if ( rVec%x > grid(1)%xAxis(xP) ) exit
+              end if
+              if (xP > 1) then
+                 if ( rVec%x < (grid(1)%xAxis(xP)+grid(1)%xAxis(xP-1))/2. ) then
+                    xP = xP - 1
+                 end if
               end if
            end if
 
            ! y-axis
-           if (yP < grid(1)%ny) then
-              if ( rVec%y > (grid(1)%yAxis(yP)+grid(1)%yAxis(yP+1))/2. ) then
-                 yP = yP + 1
+           if (.not. (lg2D .and. perpAxis2D == "Y")) then
+              if (yP < grid(1)%ny) then
+                 if ( rVec%y > (grid(1)%yAxis(yP)+grid(1)%yAxis(yP+1))/2. ) then
+                    yP = yP + 1
+                 end if
+              else if (yP == grid(1)%ny) then
+                 if (rVec%y > grid(1)%yAxis(yP)) exit
               end if
-           else if (yP == grid(1)%ny) then
-              if (rVec%y > grid(1)%yAxis(yP)) exit
-           end if
-           if (yP > 1) then
-              if ( rVec%y < (grid(1)%yAxis(yP)+grid(1)%yAxis(yP-1))/2. ) then
-                 yP = yP - 1
+              if (yP > 1) then
+                 if ( rVec%y < (grid(1)%yAxis(yP)+grid(1)%yAxis(yP-1))/2. ) then
+                    yP = yP - 1
+                 end if
               end if
            end if
 
            ! z-axis
-            if (zP < grid(1)%nz) then
-               if ( rVec%z > (grid(1)%zAxis(zP)+grid(1)%zAxis(zP+1))/2. ) then
-                  zP = zP + 1
-               end if
-            else if (zP == grid(1)%nz) then
-               if (rVec%z > grid(1)%zAxis(zP)) exit
-            end if
-            if (zP > 1) then
-                if ( rVec%z < (grid(1)%zAxis(zP)+grid(1)%zAxis(zP-1))/2. ) then
-                    zP = zP - 1
+           if (.not. (lg2D .and. perpAxis2D == "Z")) then
+              if (zP < grid(1)%nz) then
+                 if ( rVec%z > (grid(1)%zAxis(zP)+grid(1)%zAxis(zP+1))/2. ) then
+                    zP = zP + 1
+                 end if
+              else if (zP == grid(1)%nz) then
+                 if (rVec%z > grid(1)%zAxis(zP)) exit
+              end if
+              if (zP > 1) then
+                  if ( rVec%z < (grid(1)%zAxis(zP)+grid(1)%zAxis(zP-1))/2. ) then
+                      zP = zP - 1
+                  end if
+              end if
+           end if
+
+           if (.not.lgSymmetricXYZ) then
+               if ((xP < 1) .or. (zP < 1) .or. (yP < 1)) exit
+           end if
+
+            ! check if there's any symmetries and if the path must be reflected
+            if (lgSymmetricXYZ) then
+                if (.not. (lg2D .and. perpAxis2D == "X")) then
+                   if (xP<1) then
+                       vHat%x=-vHat%x
+                       rVec%x=-rVec%x
+                       call locate(grid(1)%xAxis, rVec%x, xP)
+                       if (xP < grid(1)%nx) then
+                           if ( rVec%x > (grid(1)%xAxis(xP)+grid(1)%xAxis(xP+1))/2. ) xP = xP + 1
+                       else if (xP == grid(1)%nx) then
+                           if (rVec%x > grid(1)%xAxis(xP)) exit
+                       end if
+                   end if
+                end if
+                if (.not. (lg2D .and. perpAxis2D == "Y")) then
+                   if (yP<1) then
+                       vHat%y=-vHat%y
+                       rVec%y=-rVec%y
+                       call locate(grid(1)%yAxis, rVec%y, yP)
+                       if (yP < grid(1)%ny) then
+                           if ( rVec%y > (grid(1)%yAxis(yP)+grid(1)%yAxis(yP+1))/2. ) yP = yP + 1
+                       else if (yP == grid(1)%ny) then
+                           if (rVec%y > grid(1)%yAxis(yP)) exit
+                       end if
+                   end if
+                end if
+                if (.not. (lg2D .and. perpAxis2D == "Z")) then
+                   if (zP<1) then
+                       vHat%z=-vHat%z
+                       rVec%z=-rVec%z
+                       call locate(grid(1)%zAxis, rVec%z, zP)
+                       if (zP < grid(1)%nz) then
+                           if ( rVec%z > (grid(1)%zAxis(zP)+grid(1)%zAxis(zP+1))/2. ) zP = zP + 1
+                       else if (zP == grid(1)%nz) then
+                           if (rVec%z > grid(1)%zAxis(zP)) exit
+                       end if
+                   end if
                 end if
             end if
-
-            if (.not.lgSymmetricXYZ) then
-                if ((xP < 1) .or. (zP < 1) .or. (yP < 1)) exit
-            end if
-
-             ! check if there's any symmetries and if the path must be reflected
-             if (lgSymmetricXYZ) then
-                 if (xP<1) then
-                     vHat%x=-vHat%x
-                     rVec%x=-rVec%x
-                     call locate(grid(1)%xAxis, rVec%x, xP)
-                     if (xP < grid(1)%nx) then
-                         if ( rVec%x > (grid(1)%xAxis(xP)+grid(1)%xAxis(xP+1))/2. ) xP = xP + 1
-                     else if (xP == grid(1)%nx) then
-                         if (rVec%x > grid(1)%xAxis(xP)) exit
-                     end if
-                 end if
-                 if (yP<1) then
-                     vHat%y=-vHat%y
-                     rVec%y=-rVec%y
-                     call locate(grid(1)%yAxis, rVec%y, yP)
-                     if (yP < grid(1)%ny) then
-                         if ( rVec%y > (grid(1)%yAxis(yP)+grid(1)%yAxis(yP+1))/2. ) yP = yP + 1
-                     else if (yP == grid(1)%ny) then
-                         if (rVec%y > grid(1)%yAxis(yP)) exit
-                     end if
-                 end if
-                 if (zP<1) then
-                     vHat%z=-vHat%z
-                     rVec%z=-rVec%z
-                     call locate(grid(1)%zAxis, rVec%z, zP)
-                     if (zP < grid(1)%nz) then
-                         if ( rVec%z > (grid(1)%zAxis(zP)+grid(1)%zAxis(zP+1))/2. ) zP = zP + 1
-                     else if (zP == grid(1)%nz) then
-                         if (rVec%z > grid(1)%zAxis(zP)) exit
-                     end if
-                 end if
-             end if
 
              ! add the delta optical depths
              absTau = absTau + grid(1)%opacity(grid(1)%active(xP,yP,zP),freqP)*dlSmall

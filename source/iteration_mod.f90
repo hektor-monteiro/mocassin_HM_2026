@@ -110,11 +110,7 @@ module iteration_mod
 
            do iG = 1, nGrids
 
-              if (ig>1 .or. (.not.lg2D)) then
-                 yTop = grid(iG)%ny
-              else if (iG ==1 .and. lg2D) then
-                 yTop = 1
-              end if
+              yTop = grid(iG)%ny
 
 
               grid(iG)%opacity(0:grid(iG)%nCells, 1:nbins) = 0.
@@ -176,11 +172,7 @@ module iteration_mod
                  else
 
 
-                    if (ig>1 .or. (.not. lg2D)) then
-                       yTop = grid(iG)%ny
-                    else if (iG ==1 .and. lg2D) then
-                       yTop = 1
-                    end if
+                    yTop = grid(iG)%ny
 
                     do i = 1, grid(iG)%nx
                        do j = 1, yTop
@@ -281,11 +273,7 @@ module iteration_mod
            ! set the diffuse PDFs at every grid cell
            do iG = 1, nGrids
 
-              if (ig>1 .or. (.not.lg2D) ) then
-                 yTop = grid(iG)%ny
-              else if (iG ==1 .and. lg2D) then
-                 yTop = 1
-              end if
+              yTop = grid(iG)%ny
 
 
               if (taskid==0) print*, '! iterateMC: emissionDriver in',iG
@@ -506,11 +494,7 @@ module iteration_mod
 
               do gpLoc = 1, nGridloc
 
-                 if (gploc>1 .or. (.not. lg2D)) then
-                    yTop = grid(gploc)%ny
-                 else if (gploc ==1 .and. lg2D) then
-                    yTop = 1
-                 end if
+                 yTop = grid(gploc)%ny
 
 
                  if(taskid==0) print*, 'iterateMC: Starting transfer for diffuse source grid: ', gpLoc
@@ -583,11 +567,7 @@ module iteration_mod
 
            do iG = 1, nGrids
 
-              if (ig>1 .or. (.not. lg2D)) then
-                 yTop = grid(iG)%ny
-              else if (iG ==1 .and. lg2D) then
-                 yTop = 1
-              end if
+              yTop = grid(iG)%ny
 
 
 
@@ -770,11 +750,7 @@ module iteration_mod
 
            do iG = 1, nGrids
 
-              if (ig>1 .or. (.not.lg2D)) then
-                 yTop = grid(iG)%ny
-              else if (iG ==1 .and. lg2D) then
-                 yTop = 1
-              end if
+              yTop = grid(iG)%ny
 
 
               allocate(lgConvergedTemp(0:grid(iG)%nCells), stat &
@@ -985,11 +961,7 @@ module iteration_mod
               totCells    = 0.
               convPercent = 0.
 
-              if (ig>1 .or. (.not.lg2D)) then
-                 yTop = grid(iG)%ny
-              else if (iG ==1 .and. lg2D) then
-                 yTop = 1
-              end if
+              yTop = grid(iG)%ny
 
               do i = 1, grid(iG)%nx
                  do j = 1, yTop

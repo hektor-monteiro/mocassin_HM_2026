@@ -508,7 +508,7 @@ module grid_mod
         integer, parameter :: maxLim = 10000
         integer, parameter :: nSeries = 17
 
-        real :: massFac,dV
+        real :: massFac,dV, dPerp
         integer                        :: ix,iy,iz     ! counters
         integer                        :: nspec, ai    ! counters
         integer                        :: nsp          ! pointer
@@ -528,7 +528,118 @@ module grid_mod
 
         if (.not.lgDfile) then
 
-           if (lgSymmetricXYZ ) then
+           if (lg2D) then
+
+              if (lgSymmetricXYZ) then
+                 select case (perpAxis2D)
+                 case ("Z")
+                    do i = 1, grid(1)%nx
+                       grid(1)%xAxis(i) = real(i-1)/real(grid(1)%nx-1) * Rnx
+                    end do
+                    do i = 1, grid(1)%ny
+                       grid(1)%yAxis(i) = real(i-1)/real(grid(1)%ny-1) * Rny
+                    end do
+                    grid(1)%zAxis(1) = 0.
+                    if (nzIn3D(1) > 1) then
+                       dPerp = Rnz / real(nzIn3D(1) - 1)
+                    else
+                       dPerp = Rnx / real(grid(1)%nx - 1)
+                    end if
+                 case ("Y")
+                    do i = 1, grid(1)%nx
+                       grid(1)%xAxis(i) = real(i-1)/real(grid(1)%nx-1) * Rnx
+                    end do
+                    grid(1)%yAxis(1) = 0.
+                    do i = 1, grid(1)%nz
+                       grid(1)%zAxis(i) = real(i-1)/real(grid(1)%nz-1) * Rnz
+                    end do
+                    if (nyIn3D(1) > 1) then
+                       dPerp = Rny / real(nyIn3D(1) - 1)
+                    else
+                       dPerp = Rnx / real(grid(1)%nx - 1)
+                    end if
+                 case ("X")
+                    grid(1)%xAxis(1) = 0.
+                    do i = 1, grid(1)%ny
+                       grid(1)%yAxis(i) = real(i-1)/real(grid(1)%ny-1) * Rny
+                    end do
+                    do i = 1, grid(1)%nz
+                       grid(1)%zAxis(i) = real(i-1)/real(grid(1)%nz-1) * Rnz
+                    end do
+                    if (nxIn3D(1) > 1) then
+                       dPerp = Rnx / real(nxIn3D(1) - 1)
+                    else
+                       dPerp = Rny / real(grid(1)%ny - 1)
+                    end if
+                 end select
+
+                 minPerp2D = 0.0
+                 maxPerp2D = dPerp / 2.0
+                 deltaPerp2D = dPerp / 2.0
+
+              else ! not lgSymmetricXYZ
+
+                 select case (perpAxis2D)
+                 case ("Z")
+                    if (mod(grid(1)%nx,2) == 0 .or. mod(grid(1)%ny,2) == 0) then
+                       print*, "! fillGrid: automatic grid requires odd integer nx and ny"
+                       stop
+                    end if
+                    do i = 1, grid(1)%nx
+                       grid(1)%xAxis(i) = (2.*real(i-1)/real(grid(1)%nx-1) - 1.) * Rnx
+                    end do
+                    do i = 1, grid(1)%ny
+                       grid(1)%yAxis(i) = (2.*real(i-1)/real(grid(1)%ny-1) - 1.) * Rny
+                    end do
+                    grid(1)%zAxis(1) = 0.
+                    if (nzIn3D(1) > 1) then
+                       dPerp = 2.0 * Rnz / real(nzIn3D(1) - 1)
+                    else
+                       dPerp = 2.0 * Rnx / real(grid(1)%nx - 1)
+                    end if
+                 case ("Y")
+                    if (mod(grid(1)%nx,2) == 0 .or. mod(grid(1)%nz,2) == 0) then
+                       print*, "! fillGrid: automatic grid requires odd integer nx and nz"
+                       stop
+                    end if
+                    do i = 1, grid(1)%nx
+                       grid(1)%xAxis(i) = (2.*real(i-1)/real(grid(1)%nx-1) - 1.) * Rnx
+                    end do
+                    grid(1)%yAxis(1) = 0.
+                    do i = 1, grid(1)%nz
+                       grid(1)%zAxis(i) = (2.*real(i-1)/real(grid(1)%nz-1) - 1.) * Rnz
+                    end do
+                    if (nyIn3D(1) > 1) then
+                       dPerp = 2.0 * Rny / real(nyIn3D(1) - 1)
+                    else
+                       dPerp = 2.0 * Rnx / real(grid(1)%nx - 1)
+                    end if
+                 case ("X")
+                    if (mod(grid(1)%ny,2) == 0 .or. mod(grid(1)%nz,2) == 0) then
+                       print*, "! fillGrid: automatic grid requires odd integer ny and nz"
+                       stop
+                    end if
+                    grid(1)%xAxis(1) = 0.
+                    do i = 1, grid(1)%ny
+                       grid(1)%yAxis(i) = (2.*real(i-1)/real(grid(1)%ny-1) - 1.) * Rny
+                    end do
+                    do i = 1, grid(1)%nz
+                       grid(1)%zAxis(i) = (2.*real(i-1)/real(grid(1)%nz-1) - 1.) * Rnz
+                    end do
+                    if (nxIn3D(1) > 1) then
+                       dPerp = 2.0 * Rnx / real(nxIn3D(1) - 1)
+                    else
+                       dPerp = 2.0 * Rny / real(grid(1)%ny - 1)
+                    end if
+                 end select
+
+                 minPerp2D = -dPerp / 2.0
+                 maxPerp2D = +dPerp / 2.0
+                 deltaPerp2D = dPerp
+
+              end if
+
+           else if (lgSymmetricXYZ ) then
 
               ! create the grid axes, forcing it to have grid points at the
               ! centre
@@ -805,6 +916,14 @@ module grid_mod
         call locate(grid(1)%yAxis, 0., jOrigin)
         call locate(grid(1)%zAxis, 0., kOrigin)
 
+        if (lg2D) then
+           select case (perpAxis2D)
+           case ("Z"); kOrigin = 1
+           case ("Y"); jOrigin = 1
+           case ("X"); iOrigin = 1
+           end select
+        end if
+
         if (taskid == 0) print*, 'Origin at mother grid cell:  ' , iOrigin, jOrigin, kOrigin
 
         ! allocate dl
@@ -817,10 +936,30 @@ module grid_mod
 
         do iG = 1, nGrids
            ! find geometric corrections
-           grid(iG)%geoCorrX = (grid(iG)%xAxis(grid(iG)%nx) - grid(iG)%xAxis(grid(iG)%nx-1))/2.
+           if (grid(iG)%nx > 1) then
+              grid(iG)%geoCorrX = (grid(iG)%xAxis(grid(iG)%nx) - grid(iG)%xAxis(grid(iG)%nx-1))/2.
+           else if (lg2D .and. perpAxis2D == "X") then
+              grid(iG)%geoCorrX = deltaPerp2D/2.
+           else
+              grid(iG)%geoCorrX = 0.
+           end if
+
            if (.not. lg1D) then
-              grid(iG)%geoCorrY = (grid(iG)%yAxis(grid(iG)%ny) - grid(iG)%yAxis(grid(iG)%ny-1))/2.
-              grid(iG)%geoCorrZ = (grid(iG)%zAxis(grid(iG)%nz) - grid(iG)%zAxis(grid(iG)%nz-1))/2.
+              if (grid(iG)%ny > 1) then
+                 grid(iG)%geoCorrY = (grid(iG)%yAxis(grid(iG)%ny) - grid(iG)%yAxis(grid(iG)%ny-1))/2.
+              else if (lg2D .and. perpAxis2D == "Y") then
+                 grid(iG)%geoCorrY = deltaPerp2D/2.
+              else
+                 grid(iG)%geoCorrY = 0.
+              end if
+
+              if (grid(iG)%nz > 1) then
+                 grid(iG)%geoCorrZ = (grid(iG)%zAxis(grid(iG)%nz) - grid(iG)%zAxis(grid(iG)%nz-1))/2.
+              else if (lg2D .and. perpAxis2D == "Z") then
+                 grid(iG)%geoCorrZ = deltaPerp2D/2.
+              else
+                 grid(iG)%geoCorrZ = 0.
+              end if
            else
               grid(iG)%geoCorrY = 0.
               grid(iG)%geoCorrZ = 0.
@@ -830,16 +969,25 @@ module grid_mod
                 & iG, ' : ', grid(iG)%geoCorrX, grid(iG)%geoCorrY, grid(iG)%geoCorrZ
 
            ! find linear increment
-           dl(iG) =  abs(grid(iG)%xAxis(2) - grid(iG)%xAxis(1))
-           do i = 2, grid(iG)%nx-1
-              dl(iG) = min(dl(iG), abs(grid(iG)%xAxis(i+1)-grid(iG)%xAxis(i)) )
-           end do
-           do i = 1, grid(iG)%ny-1
-              dl(iG) = min(dl(iG), abs(grid(iG)%yAxis(i+1)-grid(iG)%yAxis(i)) )
-           end do
-           do i = 1, grid(iG)%nz-1
-              dl(iG) = min(dl(iG), abs(grid(iG)%zAxis(i+1)-grid(iG)%zAxis(i)) )
-           end do
+           dl(iG) = 1.e30
+           if (grid(iG)%nx > 1) then
+              do i = 1, grid(iG)%nx-1
+                 dl(iG) = min(dl(iG), abs(grid(iG)%xAxis(i+1)-grid(iG)%xAxis(i)) )
+              end do
+           end if
+           if (grid(iG)%ny > 1) then
+              do i = 1, grid(iG)%ny-1
+                 dl(iG) = min(dl(iG), abs(grid(iG)%yAxis(i+1)-grid(iG)%yAxis(i)) )
+              end do
+           end if
+           if (grid(iG)%nz > 1) then
+              do i = 1, grid(iG)%nz-1
+                 dl(iG) = min(dl(iG), abs(grid(iG)%zAxis(i+1)-grid(iG)%zAxis(i)) )
+              end do
+           end if
+           if (lg2D .and. deltaPerp2D > 0.) then
+              dl(iG) = min(dl(iG), deltaPerp2D)
+           end if
            dl(iG) = dl(iG)/50.
         end do
 
@@ -936,6 +1084,10 @@ module grid_mod
 
 
         integer                        :: i,j,k        ! counters
+        integer                        :: i3D, j3D, k3D, kSliceTarget, jSliceTarget, iSliceTarget
+        integer                        :: indx, indy, indz
+        real                           :: xVal, yVal, zVal, hdenVal, abVal, dPerp, zVal1, zVal2
+        real                           :: mdmgVal, dAbunVal, ndustVal
         integer                        :: index        ! general index
         integer                        :: ios, err     ! I/O and allocation error status
         integer                        :: elem, ion    ! counters
@@ -978,81 +1130,165 @@ module grid_mod
         end if
 
 
-        if (lg2D) then
-           yTop = 1
-        else
-           yTop = grid%ny
-        end if
-
+        yTop = grid%ny
 
         grid%active = 1
+
+        if (lg2D) then
+           if (perpAxis2D == "Z") then
+              if (lgSymmetricXYZ) then
+                 kSliceTarget = 1
+              else
+                 kSliceTarget = (nzIn3D(1) + 1) / 2
+              end if
+           else if (perpAxis2D == "Y") then
+              if (lgSymmetricXYZ) then
+                 jSliceTarget = 1
+              else
+                 jSliceTarget = (nyIn3D(1) + 1) / 2
+              end if
+           else if (perpAxis2D == "X") then
+              if (lgSymmetricXYZ) then
+                 iSliceTarget = 1
+              else
+                 iSliceTarget = (nxIn3D(1) + 1) / 2
+              end if
+           end if
+        end if
+
         if (lgGas) then
-           do i = 1, grid%nx
-              do j = 1, yTop
-                 do k = 1, grid%nz
-
-                    ! set density
-                    if (lgDlaw) then
-
-                       ! calculate radius
-                       if (lg1D) then
-                          radius = grid%xAxis(i)
-                       else
-                          radius = 1.e10*sqrt( (grid%xAxis(i)/1.e10)*(grid%xAxis(i)/1.e10) + &
-                                 &                                        (grid%yAxis(j)/1.e10)*(grid%yAxis(j)/1.e10) + &
-                                 &                                        (grid%zAxis(k)/1.e10)*(grid%zAxis(k)/1.e10) )
+           if (lgDlaw .or. lgHdenConstant) then
+              do i = 1, grid%nx
+                 do j = 1, yTop
+                    do k = 1, grid%nz
+                       if (lgDlaw) then
+                          if (lg1D) then
+                             radius = grid%xAxis(i)
+                          else
+                             radius = 1.e10*sqrt( (grid%xAxis(i)/1.e10)*(grid%xAxis(i)/1.e10) + &
+                                    &             (grid%yAxis(j)/1.e10)*(grid%yAxis(j)/1.e10) + &
+                                    &             (grid%zAxis(k)/1.e10)*(grid%zAxis(k)/1.e10) )
+                          end if
+                          expFactor = exp(-0.5*(radius/densityLaw(1))*(radius/densityLaw(1)))
+                          HdenTemp(i,j,k) = densityLaw(3)*expFactor*(radius/densityLaw(1))**densityLaw(2)
+                       else if (lgHdenConstant) then
+                          HdenTemp(i,j,k) = Hdensity
                        end if
+                       if (fillingFactor<1.) then
+                          call random_number(random)
+                          if (random > fillingFactor) HdenTemp(i,j,k) = 0.
+                       end if
+                       if (grid%active(i,j,k) <= 0 ) HdenTemp(i,j,k) = 0.
+                    end do
+                 end do
+              end do
+           else if (lgDfile) then
+              if (lg2D) then
+                 zVal1 = 0.
+                 zVal2 = 0.
+                 do i3D = 1, nxIn3D(1)
+                    do j3D = 1, nyIn3D(1)
+                       do k3D = 1, nzIn3D(1)
+                          if (.not.lgMultiChemistry) then
+                             read(77, *) xVal, yVal, zVal, hdenVal
+                          else
+                             read(77, *) xVal, yVal, zVal, hdenVal, abVal
+                          end if
 
-                         ! edit the following to use a different density law
+                          if (perpAxis2D == "Z") then
+                             if (k3D == 1) zVal1 = zVal
+                             if (k3D == 2) zVal2 = zVal
+                             if (k3D == kSliceTarget) then
+                                grid%xAxis(i3D) = xVal
+                                grid%yAxis(j3D) = yVal
+                                grid%zAxis(1) = 0.
+                                HdenTemp(i3D, j3D, 1) = hdenVal
+                                if (lgMultiChemistry) grid%abFileIndex(i3D, j3D, 1) = nint(abVal)
+                             end if
+                          else if (perpAxis2D == "Y") then
+                             if (j3D == 1) zVal1 = yVal
+                             if (j3D == 2) zVal2 = yVal
+                             if (j3D == jSliceTarget) then
+                                grid%xAxis(i3D) = xVal
+                                grid%yAxis(1) = 0.
+                                grid%zAxis(k3D) = zVal
+                                HdenTemp(i3D, 1, k3D) = hdenVal
+                                if (lgMultiChemistry) grid%abFileIndex(i3D, 1, k3D) = nint(abVal)
+                             end if
+                          else if (perpAxis2D == "X") then
+                             if (i3D == 1) zVal1 = xVal
+                             if (i3D == 2) zVal2 = xVal
+                             if (i3D == iSliceTarget) then
+                                grid%xAxis(1) = 0.
+                                grid%yAxis(j3D) = yVal
+                                grid%zAxis(k3D) = zVal
+                                HdenTemp(1, j3D, k3D) = hdenVal
+                                if (lgMultiChemistry) grid%abFileIndex(1, j3D, k3D) = nint(abVal)
+                             end if
+                          end if
+                       end do
+                    end do
+                 end do
 
-                         ! N(r) = N0 * (r/r1)^n * exp[-0.5*(r/r1)^2]
-                         ! Clegg, Harrington, Barlow and Walsh 1987, ApJ, 314, 551
+                 if (abs(zVal2 - zVal1) > 0.) then
+                    dPerp = abs(zVal2 - zVal1)
+                 else
+                    if (grid%nx > 1) then
+                       dPerp = abs(grid%xAxis(2) - grid%xAxis(1))
+                    else if (grid%ny > 1) then
+                       dPerp = abs(grid%yAxis(2) - grid%yAxis(1))
+                    else if (grid%nz > 1) then
+                       dPerp = abs(grid%zAxis(2) - grid%zAxis(1))
+                    else
+                       dPerp = 1.e16
+                    end if
+                 end if
 
-                         expFactor = exp(-0.5*(radius/densityLaw(1))*(radius/densityLaw(1)))
+                 if (lgSymmetricXYZ) then
+                    minPerp2D = 0.0
+                    maxPerp2D = dPerp / 2.0
+                    deltaPerp2D = dPerp / 2.0
+                 else
+                    minPerp2D = -dPerp / 2.0
+                    maxPerp2D = +dPerp / 2.0
+                    deltaPerp2D = dPerp
+                 end if
 
-
-                         HdenTemp(i,j,k) = densityLaw(3)*expFactor*(radius/densityLaw(1))**densityLaw(2)
-
-
-                      else if (lgHdenConstant) then
-
-                         HdenTemp(i,j,k) = Hdensity
-
-                      else if (lgDfile) then
-
-                         if (.not.lgMultiChemistry) then
-
-                            read(77, *) grid%xAxis(i), grid%yAxis(j), grid%zAxis(k), HdenTemp(i,j,k)
-
-                         else
-
-                            read(77, *) grid%xAxis(i), grid%yAxis(j), grid%zAxis(k), &
-                              & HdenTemp(i,j,k), grid%abFileIndex(i,j,k)
-
-                         end if
-
-                      else
-
-                         print*, "! setMotherGrid: no density distribution was set"
-                         stop
-
-                      end if
-
-                      if (fillingFactor<1.) then
-
-                         call random_number(random)
-
-                         if (random > fillingFactor) HdenTemp(i,j,k) = 0.
-
-                      end if
-
-
-                      if (grid%active(i,j,k) <= 0 ) HdenTemp(i,j,k) = 0.
-
-                   end do
-                end do
-             end do
-          end if ! lgGas
+                 do i = 1, grid%nx
+                    do j = 1, grid%ny
+                       do k = 1, grid%nz
+                          if (fillingFactor < 1.) then
+                             call random_number(random)
+                             if (random > fillingFactor) HdenTemp(i,j,k) = 0.
+                          end if
+                          if (grid%active(i,j,k) <= 0) HdenTemp(i,j,k) = 0.
+                       end do
+                    end do
+                 end do
+              else
+                 do i = 1, grid%nx
+                    do j = 1, yTop
+                       do k = 1, grid%nz
+                          if (.not.lgMultiChemistry) then
+                             read(77, *) grid%xAxis(i), grid%yAxis(j), grid%zAxis(k), HdenTemp(i,j,k)
+                          else
+                             read(77, *) grid%xAxis(i), grid%yAxis(j), grid%zAxis(k), &
+                               & HdenTemp(i,j,k), grid%abFileIndex(i,j,k)
+                          end if
+                          if (fillingFactor<1.) then
+                             call random_number(random)
+                             if (random > fillingFactor) HdenTemp(i,j,k) = 0.
+                          end if
+                          if (grid%active(i,j,k) <= 0 ) HdenTemp(i,j,k) = 0.
+                       end do
+                    end do
+                 end do
+              end if
+           else
+              print*, "! setMotherGrid: no density distribution was set"
+              stop
+           end if
+        end if ! lgGas
 
           if (lgGas) close(77)
 
@@ -1096,22 +1332,46 @@ module grid_mod
                     read(20,*)keyword
                     if (keyword .ne. "#") backspace 20
 
-                    if (lgMultiDustChemistry) then
-                       do i = 1, grid%nx
-                          do j = 1, yTop
-                             do k = 1, grid%nz
-                                read(20, *) index, index, index, MdMg(i,j,k), dustAbunIndexTemp(i,j,k)
+                    if (lg2D) then
+                       do i3D = 1, nxIn3D(1)
+                          do j3D = 1, nyIn3D(1)
+                             do k3D = 1, nzIn3D(1)
+                                if (lgMultiDustChemistry) then
+                                   read(20, *) indx, indy, indz, mdmgVal, dAbunVal
+                                else
+                                   read(20, *) indx, indy, indz, mdmgVal
+                                end if
+                                if (perpAxis2D == "Z" .and. k3D == kSliceTarget) then
+                                   MdMg(i3D, j3D, 1) = mdmgVal
+                                   if (lgMultiDustChemistry) dustAbunIndexTemp(i3D, j3D, 1) = nint(dAbunVal)
+                                else if (perpAxis2D == "Y" .and. j3D == jSliceTarget) then
+                                   MdMg(i3D, 1, k3D) = mdmgVal
+                                   if (lgMultiDustChemistry) dustAbunIndexTemp(i3D, 1, k3D) = nint(dAbunVal)
+                                else if (perpAxis2D == "X" .and. i3D == iSliceTarget) then
+                                   MdMg(1, j3D, k3D) = mdmgVal
+                                   if (lgMultiDustChemistry) dustAbunIndexTemp(1, j3D, k3D) = nint(dAbunVal)
+                                end if
                              end do
                           end do
                        end do
                     else
-                       do i = 1, grid%nx
-                          do j = 1, yTop
-                             do k = 1, grid%nz
-                                read(20, *) index, index, index, MdMg(i,j,k)
+                       if (lgMultiDustChemistry) then
+                          do i = 1, grid%nx
+                             do j = 1, yTop
+                                do k = 1, grid%nz
+                                   read(20, *) index, index, index, MdMg(i,j,k), dustAbunIndexTemp(i,j,k)
+                                end do
                              end do
                           end do
-                       end do
+                       else
+                          do i = 1, grid%nx
+                             do j = 1, yTop
+                                do k = 1, grid%nz
+                                   read(20, *) index, index, index, MdMg(i,j,k)
+                                end do
+                             end do
+                          end do
+                       end if
                     end if
                     close(20)
                  end if
@@ -1131,25 +1391,103 @@ module grid_mod
                     read(20,*)keyword
                     if (keyword .ne. "#") backspace 20
 
-                    if (lgMultiDustChemistry) then
-                       do i = 1, grid%nx
-                          do j = 1, yTop
-                             do k = 1, grid%nz
-                                read(20, *) grid%xAxis(i), grid%yAxis(j), &
-                                     & grid%zAxis(k), NdustTemp(i,j,k), dustAbunIndexTemp(i,j,k)
+                    if (lg2D) then
+                       zVal1 = 0.
+                       zVal2 = 0.
+                       do i3D = 1, nxIn3D(1)
+                          do j3D = 1, nyIn3D(1)
+                             do k3D = 1, nzIn3D(1)
+                                if (lgMultiDustChemistry) then
+                                   read(20, *) xVal, yVal, zVal, ndustVal, dAbunVal
+                                else
+                                   read(20, *) xVal, yVal, zVal, ndustVal
+                                end if
+                                if (perpAxis2D == "Z") then
+                                   if (k3D == 1) zVal1 = zVal
+                                   if (k3D == 2) zVal2 = zVal
+                                   if (k3D == kSliceTarget) then
+                                      if (.not. lgGas) then
+                                         grid%xAxis(i3D) = xVal
+                                         grid%yAxis(j3D) = yVal
+                                         grid%zAxis(1) = 0.
+                                      end if
+                                      NdustTemp(i3D, j3D, 1) = ndustVal
+                                      if (lgMultiDustChemistry) dustAbunIndexTemp(i3D, j3D, 1) = nint(dAbunVal)
+                                   end if
+                                else if (perpAxis2D == "Y") then
+                                   if (j3D == 1) zVal1 = yVal
+                                   if (j3D == 2) zVal2 = yVal
+                                   if (j3D == jSliceTarget) then
+                                      if (.not. lgGas) then
+                                         grid%xAxis(i3D) = xVal
+                                         grid%yAxis(1) = 0.
+                                         grid%zAxis(k3D) = zVal
+                                      end if
+                                      NdustTemp(i3D, 1, k3D) = ndustVal
+                                      if (lgMultiDustChemistry) dustAbunIndexTemp(i3D, 1, k3D) = nint(dAbunVal)
+                                   end if
+                                else if (perpAxis2D == "X") then
+                                   if (i3D == 1) zVal1 = xVal
+                                   if (i3D == 2) zVal2 = xVal
+                                   if (i3D == iSliceTarget) then
+                                      if (.not. lgGas) then
+                                         grid%xAxis(1) = 0.
+                                         grid%yAxis(j3D) = yVal
+                                         grid%zAxis(k3D) = zVal
+                                      end if
+                                      NdustTemp(1, j3D, k3D) = ndustVal
+                                      if (lgMultiDustChemistry) dustAbunIndexTemp(1, j3D, k3D) = nint(dAbunVal)
+                                   end if
+                                end if
                              end do
                           end do
                        end do
+
+                       if (.not. lgGas) then
+                          if (abs(zVal2 - zVal1) > 0.) then
+                             dPerp = abs(zVal2 - zVal1)
+                          else
+                             if (grid%nx > 1) then
+                                dPerp = abs(grid%xAxis(2) - grid%xAxis(1))
+                             else if (grid%ny > 1) then
+                                dPerp = abs(grid%yAxis(2) - grid%yAxis(1))
+                             else if (grid%nz > 1) then
+                                dPerp = abs(grid%zAxis(2) - grid%zAxis(1))
+                             else
+                                dPerp = 1.e16
+                             end if
+                          end if
+                          if (lgSymmetricXYZ) then
+                             minPerp2D = 0.0
+                             maxPerp2D = dPerp / 2.0
+                             deltaPerp2D = dPerp / 2.0
+                          else
+                             minPerp2D = -dPerp / 2.0
+                             maxPerp2D = +dPerp / 2.0
+                             deltaPerp2D = dPerp
+                          end if
+                       end if
                     else
-                       print*,grid%nx,yTop,grid%nz
-                       do i = 1, grid%nx
-                          do j = 1, yTop
-                             do k = 1, grid%nz
-                                read(20, *) grid%xAxis(i), grid%yAxis(j), grid%zAxis(k), NdustTemp(i,j,k)
-!                                write(6,'(3i4,4es11.3)')i,j,k,grid%xAxis(i), grid%yAxis(j), grid%zAxis(k), NdustTemp(i,j,k)
+                       if (lgMultiDustChemistry) then
+                          do i = 1, grid%nx
+                             do j = 1, yTop
+                                do k = 1, grid%nz
+                                   read(20, *) grid%xAxis(i), grid%yAxis(j), &
+                                        & grid%zAxis(k), NdustTemp(i,j,k), dustAbunIndexTemp(i,j,k)
+                                end do
                              end do
                           end do
-                       end do
+                       else
+                          print*,grid%nx,yTop,grid%nz
+                          do i = 1, grid%nx
+                             do j = 1, yTop
+                                do k = 1, grid%nz
+                                   read(20, *) grid%xAxis(i), grid%yAxis(j), grid%zAxis(k), NdustTemp(i,j,k)
+!                                write(6,'(3i4,4es11.3)')i,j,k,grid%xAxis(i), grid%yAxis(j), grid%zAxis(k), NdustTemp(i,j,k)
+                                end do
+                             end do
+                          end do
+                       end if
                     end if
                     close(20)
                  end if
@@ -1157,8 +1495,6 @@ module grid_mod
               end if
 
            end if
-
-           if (lg2D) grid%yAxis = grid%xAxis
 
 
           ! set active cells pointers
@@ -1233,48 +1569,8 @@ module grid_mod
           end do
 
 
-          allocate(TwoDscaleJtemp(grid%nCells))
-          TwoDscaleJtemp = 1.
-
-
-          if (lg2D) then
-             do i = 1, grid%nx
-                do j = 2, grid%ny
-                   do k = 1, grid%nz
-                      radius = 1.e10*sqrt( (grid%xAxis(i)/1.e10)*&
-                           &(grid%xAxis(i)/1.e10) + &
-                           &(grid%yAxis(j)/1.e10)*(grid%yAxis(j)/1.e10) )
-
-                      call locate(grid%xAxis, radius, xPmap)
-                      if (xPmap < grid%nx) then
-                         if (radius >= (grid%xAxis(xPmap)+grid%xAxis(xPmap+1))/2.) &
-                              & xPmap = xPmap+1
-                      end if
-                      grid%active(i,j,k) = grid%active(xPmap, 1, k)
-
-                      if (grid%active(xPmap,1,k)>0) &
-                           & TwoDScaleJtemp(grid%active(xPmap,1,k)) = &
-                           & TwoDScaleJtemp(grid%active(xPmap,1,k))+1.
-
-                   end do
-                end do
-             end do
-
-             grid%nCells = 0
-             do i = 1,  grid%nx
-                do k = 1,  grid%nz
-                   if (grid%active(i,1,k) > 0) grid%nCells = grid%nCells +1
-
-                end do
-             end do
-
-             allocate(TwoDscaleJ(grid%nCells))
-             do i = 1, grid%nCells
-                TwoDscaleJ(i) = TwoDscaleJtemp(i)
-             end do
-             deallocate(TwoDscaleJtemp)
-
-          end if
+          allocate(TwoDscaleJ(grid%nCells))
+          TwoDscaleJ = 1.
 
 
 
@@ -2635,6 +2931,7 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
            integer                     :: ios                 ! I/O error status
            integer                     :: i,j,k,iG,ai         ! counters
            integer                     :: yTop                ! 2D index
+           real                        :: starFracX, starFracY, starFracZ
 
            print* , 'in writeGrid'
 
@@ -2686,11 +2983,7 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
                  write(21,*) grid(iG)%zAxis(i)
               end do
 
-              if (iG>1 .or. (.not. lg2D)) then
-                 yTop = grid(iG)%ny
-              else if (iG == 1 .and. lg2D) then
-                 yTop = 1
-              end if
+              yTop = grid(iG)%ny
 
 
               ! write the rest of the grid to files
@@ -2766,10 +3059,24 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
 
         write(42, *) nStars, ' number of photon sources'
         do i = 1, nStars
+           starFracX = 0.
+           if (abs(grid(1)%xAxis(grid(1)%nx)) > 0.) starFracX = starPosition(i)%x/grid(1)%xAxis(grid(1)%nx)
+           starFracY = 0.
+           if (abs(grid(1)%yAxis(grid(1)%ny)) > 0.) starFracY = starPosition(i)%y/grid(1)%yAxis(grid(1)%ny)
+           starFracZ = 0.
+           if (abs(grid(1)%zAxis(grid(1)%nz)) > 0.) starFracZ = starPosition(i)%z/grid(1)%zAxis(grid(1)%nz)
+           if (lg2D) then
+              select case (perpAxis2D)
+              case ("Z")
+                 starFracZ = 0.
+              case ("Y")
+                 starFracY = 0.
+              case ("X")
+                 starFracX = 0.
+              end select
+           end if
            write(42, *) "'",trim(contShapeIn(i)),"'", TStellar(i), LStar(i), nPhotons(i), &
-                & starPosition(i)%x/grid(1)%xAxis(grid(1)%nx),&
-                & starPosition(i)%y/grid(1)%yAxis(grid(1)%ny),&
-                & starPosition(i)%z/grid(1)%zAxis(grid(1)%nz),&
+                & starFracX, starFracY, starFracZ, &
                 & trim(spID(i)), tStep(i)
            if (contShapeIn(i)=='powerlaw') write(42,*) pwlIndex
         end do
@@ -2842,7 +3149,11 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
         write(40, *) emittingGrid, ' emittingGrid'
         write(40, *) nstages, ' emittingGrid'
         write(40, *) lgMultistars, ' lgMultiStars'
-        write(40,*)  lg2D, ' 2D geometry?'
+        if (lg2D) then
+           write(40,*)  lg2D, ' ', trim(plane2D), minPerp2D, maxPerp2D, deltaPerp2D, ' 2D geometry'
+        else
+           write(40,*)  lg2D, ' 2D geometry?'
+        end if
         write(40,*) lgEcho, echot1, echot2, echoTemp," Echo on/off"
         write(40,*) lgNosource," NoSourceSED"
         ! close file
@@ -2880,6 +3191,93 @@ function getVolume(grid, xP, yP, zP)
                       ((grid%xAxis(xP-1)/1.e15)+(grid%xAxis(xP)/1.e15))**3 ) / 6.
     end if
     getVolume = getVolume/8.
+
+  else if (lg2D) then
+     select case (perpAxis2D)
+     case ('Z')
+        if ((xP > 1) .and. (xP < grid%nx)) then
+           dx = abs(grid%xAxis(xP+1) - grid%xAxis(xP-1)) / 2.0
+        else if (xP == 1) then
+           if (lgSymmetricXYZ) then
+              dx = abs(grid%xAxis(xP+1) - grid%xAxis(xP)) / 2.0
+           else
+              dx = abs(grid%xAxis(xP+1) - grid%xAxis(xP))
+           end if
+        else if (xP == grid%nx) then
+           dx = abs(grid%xAxis(xP) - grid%xAxis(xP-1))
+        end if
+
+        if ((yP > 1) .and. (yP < grid%ny)) then
+           dy = abs(grid%yAxis(yP+1) - grid%yAxis(yP-1)) / 2.0
+        else if (yP == 1) then
+           if (lgSymmetricXYZ) then
+              dy = abs(grid%yAxis(yP+1) - grid%yAxis(yP)) / 2.0
+           else
+              dy = abs(grid%yAxis(yP+1) - grid%yAxis(yP))
+           end if
+        else if (yP == grid%ny) then
+           dy = abs(grid%yAxis(yP) - grid%yAxis(yP-1))
+        end if
+        dz = deltaPerp2D
+
+     case ('Y')
+        if ((xP > 1) .and. (xP < grid%nx)) then
+           dx = abs(grid%xAxis(xP+1) - grid%xAxis(xP-1)) / 2.0
+        else if (xP == 1) then
+           if (lgSymmetricXYZ) then
+              dx = abs(grid%xAxis(xP+1) - grid%xAxis(xP)) / 2.0
+           else
+              dx = abs(grid%xAxis(xP+1) - grid%xAxis(xP))
+           end if
+        else if (xP == grid%nx) then
+           dx = abs(grid%xAxis(xP) - grid%xAxis(xP-1))
+        end if
+        dy = deltaPerp2D
+
+        if ((zP > 1) .and. (zP < grid%nz)) then
+           dz = abs(grid%zAxis(zP+1) - grid%zAxis(zP-1)) / 2.0
+        else if (zP == 1) then
+           if (lgSymmetricXYZ) then
+              dz = abs(grid%zAxis(zP+1) - grid%zAxis(zP)) / 2.0
+           else
+              dz = abs(grid%zAxis(zP+1) - grid%zAxis(zP))
+           end if
+        else if (zP == grid%nz) then
+           dz = abs(grid%zAxis(zP) - grid%zAxis(zP-1))
+        end if
+
+     case ('X')
+        dx = deltaPerp2D
+
+        if ((yP > 1) .and. (yP < grid%ny)) then
+           dy = abs(grid%yAxis(yP+1) - grid%yAxis(yP-1)) / 2.0
+        else if (yP == 1) then
+           if (lgSymmetricXYZ) then
+              dy = abs(grid%yAxis(yP+1) - grid%yAxis(yP)) / 2.0
+           else
+              dy = abs(grid%yAxis(yP+1) - grid%yAxis(yP))
+           end if
+        else if (yP == grid%ny) then
+           dy = abs(grid%yAxis(yP) - grid%yAxis(yP-1))
+        end if
+
+        if ((zP > 1) .and. (zP < grid%nz)) then
+           dz = abs(grid%zAxis(zP+1) - grid%zAxis(zP-1)) / 2.0
+        else if (zP == 1) then
+           if (lgSymmetricXYZ) then
+              dz = abs(grid%zAxis(zP+1) - grid%zAxis(zP)) / 2.0
+           else
+              dz = abs(grid%zAxis(zP+1) - grid%zAxis(zP))
+           end if
+        else if (zP == grid%nz) then
+           dz = abs(grid%zAxis(zP) - grid%zAxis(zP-1))
+        end if
+     end select
+
+     dx = dx / 1.e15
+     dy = dy / 1.e15
+     dz = dz / 1.e15
+     getVolume = dx * dy * dz
 
   else
     ! Determine the factor based on lgSymmetricXYZ
@@ -2950,7 +3348,8 @@ end function getVolume
       integer, parameter :: maxLim = 10000
       integer, parameter :: nSeries = 17
 
-      real                 :: radius
+      real                 :: radius, dPerp
+      character(len=200)   :: line2D
 
       print*, 'resetGrid in'
 
@@ -3071,7 +3470,29 @@ end function getVolume
       read(77, *) emittingGrid
       read(77, *) nstages
       read(77, *) lgMultistars
-      read(77, *) lg2D
+      read(77, '(A)') line2D
+      read(line2D, *, iostat=ios) lg2D
+      if (ios == 0 .and. lg2D) then
+         read(line2D, *, iostat=ios) lg2D, plane2D, minPerp2D, maxPerp2D, deltaPerp2D
+         if (ios /= 0) then
+            plane2D = "XY"
+            perpAxis2D = "Z"
+         else
+            select case (trim(plane2D))
+            case ("XZ", "xz", "ZX", "zx")
+               plane2D = "XZ"
+               perpAxis2D = "Y"
+            case ("YZ", "yz", "ZY", "zy")
+               plane2D = "YZ"
+               perpAxis2D = "X"
+            case default
+               plane2D = "XY"
+               perpAxis2D = "Z"
+            end select
+         end if
+      else
+         lg2D = .false.
+      end if
       read(77, *) lgEcho, echot1, echot2, echoTemp
       read(77,*) lgNosource
 
@@ -3383,11 +3804,7 @@ end function getVolume
             read(89, *) grid(iG)%zAxis(i)
          end do
 
-         if (lg2D) then
-            yTop = 1
-         else
-            yTop = grid(iG)%ny
-         end if
+         yTop = grid(iG)%ny
 
          ! read the rest of the files into grid
          do i = 1, grid(iG)%nx
@@ -3450,38 +3867,56 @@ end function getVolume
          if (lg2D .and. iG==1) then
             allocate(TwoDscaleJ(grid(iG)%nCells))
             TwoDscaleJ = 1.
-
-            do i = 1, grid(ig)%nx
-               do j = 2, grid(ig)%ny
-                  do k = 1, grid(ig)%nz
-                     radius = 1.e10*sqrt( (grid(ig)%xAxis(i)/1.e10)*&
-                          &(grid(ig)%xAxis(i)/1.e10) + &
-                          &(grid(ig)%yAxis(j)/1.e10)*(grid(ig)%yAxis(j)/1.e10) )
-
-                     call locate(grid(ig)%xAxis, radius, xPmap)
-                     if (xPmap < grid(ig)%nx) then
-                        if (radius >= (grid(ig)%xAxis(xPmap)+grid(ig)%xAxis(xPmap+1))/2.) &
-                             & xPmap = xPmap+1
-                     end if
-                     grid(ig)%active(i,j,k) = grid(ig)%active(xPmap, 1, k)
-
-                     if (grid(ig)%active(xPmap,1,k)>0) &
-                          & TwoDScaleJ(grid(ig)%active(xPmap,1,k)) = &
-                          & TwoDScaleJ(grid(ig)%active(xPmap,1,k))+1.
-
-                   end do
-                end do
-             end do
-          end if
+            if (deltaPerp2D <= 0.) then
+               if (grid(1)%nx > 1) then
+                  dPerp = abs(grid(1)%xAxis(2) - grid(1)%xAxis(1))
+               else if (grid(1)%ny > 1) then
+                  dPerp = abs(grid(1)%yAxis(2) - grid(1)%yAxis(1))
+               else if (grid(1)%nz > 1) then
+                  dPerp = abs(grid(1)%zAxis(2) - grid(1)%zAxis(1))
+               else
+                  dPerp = 1.e16
+               end if
+               if (lgSymmetricXYZ) then
+                  minPerp2D = 0.0
+                  maxPerp2D = dPerp / 2.0
+                  deltaPerp2D = dPerp / 2.0
+               else
+                  minPerp2D = -dPerp / 2.0
+                  maxPerp2D = +dPerp / 2.0
+                  deltaPerp2D = dPerp
+               end if
+            end if
+         end if
 
 
 
 
          ! find geometric corrections
-         grid(iG)%geoCorrX = (grid(iG)%xAxis(grid(iG)%nx) - grid(iG)%xAxis(grid(iG)%nx-1))/2.
+         if (grid(iG)%nx > 1) then
+            grid(iG)%geoCorrX = (grid(iG)%xAxis(grid(iG)%nx) - grid(iG)%xAxis(grid(iG)%nx-1))/2.
+         else if (lg2D .and. perpAxis2D == "X") then
+            grid(iG)%geoCorrX = deltaPerp2D/2.
+         else
+            grid(iG)%geoCorrX = 0.
+         end if
+
          if (.not. lg1D) then
-            grid(iG)%geoCorrY = (grid(iG)%yAxis(grid(iG)%ny) - grid(iG)%yAxis(grid(iG)%ny-1))/2.
-            grid(iG)%geoCorrZ = (grid(iG)%zAxis(grid(iG)%nz) - grid(iG)%zAxis(grid(iG)%nz-1))/2.
+            if (grid(iG)%ny > 1) then
+               grid(iG)%geoCorrY = (grid(iG)%yAxis(grid(iG)%ny) - grid(iG)%yAxis(grid(iG)%ny-1))/2.
+            else if (lg2D .and. perpAxis2D == "Y") then
+               grid(iG)%geoCorrY = deltaPerp2D/2.
+            else
+               grid(iG)%geoCorrY = 0.
+            end if
+
+            if (grid(iG)%nz > 1) then
+               grid(iG)%geoCorrZ = (grid(iG)%zAxis(grid(iG)%nz) - grid(iG)%zAxis(grid(iG)%nz-1))/2.
+            else if (lg2D .and. perpAxis2D == "Z") then
+               grid(iG)%geoCorrZ = deltaPerp2D/2.
+            else
+               grid(iG)%geoCorrZ = 0.
+            end if
          else
             grid(iG)%geoCorrY = 0.
             grid(iG)%geoCorrZ = 0.
@@ -3490,16 +3925,25 @@ end function getVolume
            & grid(iG)%geoCorrX, grid(iG)%geoCorrY, grid(iG)%geoCorrZ
 
          ! find linear increment
-         dl(iG) =  abs(grid(iG)%xAxis(2) - grid(iG)%xAxis(1))
-         do i = 2, grid(iG)%nx-1
-            dl(iG) = min(dl(iG), abs(grid(iG)%xAxis(i+1)-grid(iG)%xAxis(i)) )
-         end do
-         do i = 1, grid(iG)%ny-1
-            dl(iG) = min(dl(iG), abs(grid(iG)%yAxis(i+1)-grid(iG)%yAxis(i)) )
-         end do
-         do i = 1, grid(iG)%nz-1
-            dl(iG) = min(dl(iG), abs(grid(iG)%zAxis(i+1)-grid(iG)%zAxis(i)) )
-         end do
+         dl(iG) = 1.e30
+         if (grid(iG)%nx > 1) then
+            do i = 1, grid(iG)%nx-1
+               dl(iG) = min(dl(iG), abs(grid(iG)%xAxis(i+1)-grid(iG)%xAxis(i)) )
+            end do
+         end if
+         if (grid(iG)%ny > 1) then
+            do i = 1, grid(iG)%ny-1
+               dl(iG) = min(dl(iG), abs(grid(iG)%yAxis(i+1)-grid(iG)%yAxis(i)) )
+            end do
+         end if
+         if (grid(iG)%nz > 1) then
+            do i = 1, grid(iG)%nz-1
+               dl(iG) = min(dl(iG), abs(grid(iG)%zAxis(i+1)-grid(iG)%zAxis(i)) )
+            end do
+         end if
+         if (lg2D .and. deltaPerp2D > 0.) then
+            dl(iG) = min(dl(iG), deltaPerp2D)
+         end if
          dl(iG) = dl(iG)/50.
 
 
@@ -3561,19 +4005,39 @@ end function getVolume
          starPosition(i)%y = starPosition(i)%y*yA(nyA)
          starPosition(i)%z = starPosition(i)%z*zA(nzA)
 
-         call locate(xA, starPosition(i)%x, xP)
-         if (xP<nxA) then
-            if (starPosition(i)%x > (xA(xP)+xA(xP+1))/2.) xP=xP+1
+         if (lg2D) then
+            select case (perpAxis2D)
+            case ("Z")
+               starPosition(i)%z = 0.
+               zP = 1
+            case ("Y")
+               starPosition(i)%y = 0.
+               yP = 1
+            case ("X")
+               starPosition(i)%x = 0.
+               xP = 1
+            end select
          end if
 
-         call locate(yA, starPosition(i)%y, yP)
-         if (yP<nyA) then
-            if (starPosition(i)%y > (yA(yP)+yA(yP+1))/2.) yP=yP+1
+         if (.not. (lg2D .and. perpAxis2D == "X")) then
+            call locate(xA, starPosition(i)%x, xP)
+            if (xP<nxA) then
+               if (starPosition(i)%x > (xA(xP)+xA(xP+1))/2.) xP=xP+1
+            end if
          end if
 
-         call locate(zA, starPosition(i)%z, zP)
-         if (zP<nzA) then
-            if (starPosition(i)%z > (zA(zP)+zA(zP+1))/2.) zP=zP+1
+         if (.not. (lg2D .and. perpAxis2D == "Y")) then
+            call locate(yA, starPosition(i)%y, yP)
+            if (yP<nyA) then
+               if (starPosition(i)%y > (yA(yP)+yA(yP+1))/2.) yP=yP+1
+            end if
+         end if
+
+         if (.not. (lg2D .and. perpAxis2D == "Z")) then
+            call locate(zA, starPosition(i)%z, zP)
+            if (zP<nzA) then
+               if (starPosition(i)%z > (zA(zP)+zA(zP+1))/2.) zP=zP+1
+            end if
          end if
 
 
@@ -3591,25 +4055,39 @@ end function getVolume
             nyA = grid(starIndeces(i,4))%ny
             nzA = grid(starIndeces(i,4))%nz
 
-            call locate(grid(starIndeces(i,4))%xAxis, starPosition(i)%x, xP)
-            if (xP<nxA) then
-               if (starPosition(i)%x > &
-                    & (grid(starIndeces(i,4))%xAxis(xP)+grid(starIndeces(i,4))%xAxis(xP+1))/2.) &
-                    xP=xP+1
+            if (lg2D) then
+               select case (perpAxis2D)
+               case ("Z"); starPosition(i)%z = 0.; zP = 1
+               case ("Y"); starPosition(i)%y = 0.; yP = 1
+               case ("X"); starPosition(i)%x = 0.; xP = 1
+               end select
             end if
 
-            call locate(grid(starIndeces(i,4))%yAxis, starPosition(i)%y, yP)
-            if (yP<nyA) then
-               if (starPosition(i)%y > &
-                    & (grid(starIndeces(i,4))%yAxis(yP)+grid(starIndeces(i,4))%yAxis(yP+1))/2.) &
-                    yP=yP+1
+            if (.not. (lg2D .and. perpAxis2D == "X")) then
+               call locate(grid(starIndeces(i,4))%xAxis, starPosition(i)%x, xP)
+               if (xP<nxA) then
+                  if (starPosition(i)%x > &
+                       & (grid(starIndeces(i,4))%xAxis(xP)+grid(starIndeces(i,4))%xAxis(xP+1))/2.) &
+                       xP=xP+1
+               end if
             end if
 
-            call locate(grid(starIndeces(i,4))%zAxis, starPosition(i)%z, zP)
-            if (zP<nzA) then
-               if (starPosition(i)%z > &
-                    & (grid(starIndeces(i,4))%yAxis(zP)+grid(starIndeces(i,4))%yAxis(zP+1))/2.) &
-                    zP=zP+1
+            if (.not. (lg2D .and. perpAxis2D == "Y")) then
+               call locate(grid(starIndeces(i,4))%yAxis, starPosition(i)%y, yP)
+               if (yP<nyA) then
+                  if (starPosition(i)%y > &
+                       & (grid(starIndeces(i,4))%yAxis(yP)+grid(starIndeces(i,4))%yAxis(yP+1))/2.) &
+                       yP=yP+1
+               end if
+            end if
+
+            if (.not. (lg2D .and. perpAxis2D == "Z")) then
+               call locate(grid(starIndeces(i,4))%zAxis, starPosition(i)%z, zP)
+               if (zP<nzA) then
+                  if (starPosition(i)%z > &
+                       & (grid(starIndeces(i,4))%zAxis(zP)+grid(starIndeces(i,4))%zAxis(zP+1))/2.) &
+                       zP=zP+1
+               end if
             end if
 
             starIndeces(i,1) = xP

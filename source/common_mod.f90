@@ -21,6 +21,14 @@ module common_mod
     integer, allocatable :: lgBlackTemp(:)      ! temporary converged? flag
 
     logical         :: lg2D=.false.             ! 2D?
+    character(len=2):: plane2D = "XY"           ! 2D symmetry plane: 'XY', 'XZ', or 'YZ'
+    character(len=1):: perpAxis2D = 'Z'         ! perpendicular reflection axis: 'Z', 'Y', or 'X'
+    real            :: minPerp2D = 0.0          ! lower bound of 2D central slice [cm]
+    real            :: maxPerp2D = 0.0          ! upper bound of 2D central slice [cm]
+    real            :: deltaPerp2D = 0.0        ! thickness of 2D central slice [cm]
+    integer         :: nxIn3D(maxGrids) = 0     ! original 3D grid dimensions
+    integer         :: nyIn3D(maxGrids) = 0
+    integer         :: nzIn3D(maxGrids) = 0
     logical         :: lgIsotropic
 
     logical         :: lgMultiStars=.false.

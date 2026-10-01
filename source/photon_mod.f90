@@ -1242,6 +1242,43 @@ module photon_mod
           zP = enPacket%zP(igpp)
           gP = enPacket%iG
 
+          if (lg2D) then
+             select case (perpAxis2D)
+             case ("Z")
+                zP = 1
+                enPacket%zP(1) = 1
+                if (rVec%z <= minPerp2D) then
+                   rVec%z = minPerp2D
+                   if (vHat%z < 0.) vHat%z = -vHat%z
+                else if (rVec%z >= maxPerp2D) then
+                   rVec%z = maxPerp2D
+                   if (vHat%z > 0.) vHat%z = -vHat%z
+                end if
+             case ("Y")
+                yP = 1
+                enPacket%yP(1) = 1
+                if (rVec%y <= minPerp2D) then
+                   rVec%y = minPerp2D
+                   if (vHat%y < 0.) vHat%y = -vHat%y
+                else if (rVec%y >= maxPerp2D) then
+                   rVec%y = maxPerp2D
+                   if (vHat%y > 0.) vHat%y = -vHat%y
+                end if
+             case ("X")
+                xP = 1
+                enPacket%xP(1) = 1
+                if (rVec%x <= minPerp2D) then
+                   rVec%x = minPerp2D
+                   if (vHat%x < 0.) vHat%x = -vHat%x
+                else if (rVec%x >= maxPerp2D) then
+                   rVec%x = maxPerp2D
+                   if (vHat%x > 0.) vHat%x = -vHat%x
+                end if
+             end select
+             enPacket%position = rVec
+             enPacket%direction = vHat
+          end if
+
           ! initialise distance from walls
           dSx = 0.
           dSy = 0.
@@ -1356,38 +1393,61 @@ module photon_mod
                    end if
                 end if
 
-                if (vHat%x>1.e-10) then
-                   if (xP<grid(gP)%nx) then
-
-                      dSx = ( (grid(gP)%xAxis(xP+1)+grid(gP)%xAxis(xP))/2.-rVec%x)/vHat%x
-
-                      if (abs(dSx)<1.e-10) then
-                         rVec%x=(grid(gP)%xAxis(xP+1)+grid(gP)%xAxis(xP))/2.
-                         xP = xP+1
+                if (lg2D .and. perpAxis2D == "X") then
+                   xP = 1
+                   if (vHat%x > 1.e-10) then
+                      dSx = (maxPerp2D - rVec%x) / vHat%x
+                      if (dSx <= 1.e-10) then
+                         rVec%x = maxPerp2D
+                         vHat%x = -vHat%x
+                         enPacket%direction%x = vHat%x
+                         dSx = deltaPerp2D / abs(vHat%x)
+                      end if
+                   else if (vHat%x < -1.e-10) then
+                      dSx = (minPerp2D - rVec%x) / vHat%x
+                      if (dSx <= 1.e-10) then
+                         rVec%x = minPerp2D
+                         vHat%x = -vHat%x
+                         enPacket%direction%x = vHat%x
+                         dSx = deltaPerp2D / abs(vHat%x)
                       end if
                    else
-                      dSx = ( grid(gP)%xAxis(grid(gP)%nx)-rVec%x)/vHat%x
-                      if (abs(dSx)<1.e-10) then
-                         rVec%x=grid(gP)%xAxis(grid(gP)%nx)
-                         if (.not.lgPlaneIonization .and. gP==1) return
-                      end if
-                   end if
-                else if (vHat%x<-1.e-10) then
-                   if (xP>1) then
-                      dSx = ( (grid(gP)%xAxis(xP)+grid(gP)%xAxis(xP-1))/2.-rVec%x)/vHat%x
-                      if (abs(dSx)<1.e-10) then
-                         rVec%x=(grid(gP)%xAxis(xP)+grid(gP)%xAxis(xP-1))/2.
-                         xP = xP-1
-                      end if
-                   else
-                      dSx = (grid(gP)%xAxis(1)-rVec%x)/vHat%x
-                      if (abs(dSx)<1.e-10) then
-                         rVec%x=grid(gP)%xAxis(1)
-                      end if
+                      dSx = 1.e35
                    end if
                 else
-!                   dSx = grid(gP)%xAxis(grid(gP)%nx)
-                   dSx =1.e35
+                   if (vHat%x>1.e-10) then
+                      if (xP<grid(gP)%nx) then
+
+                         dSx = ( (grid(gP)%xAxis(xP+1)+grid(gP)%xAxis(xP))/2.-rVec%x)/vHat%x
+
+                         if (abs(dSx)<1.e-10) then
+                            rVec%x=(grid(gP)%xAxis(xP+1)+grid(gP)%xAxis(xP))/2.
+                            xP = xP+1
+                         end if
+                      else
+                         dSx = ( grid(gP)%xAxis(grid(gP)%nx)-rVec%x)/vHat%x
+                         if (abs(dSx)<1.e-10) then
+                            rVec%x=grid(gP)%xAxis(grid(gP)%nx)
+                            if (.not.lgPlaneIonization .and. gP==1) return
+                         end if
+                      end if
+                   else if (vHat%x<-1.e-10) then
+                      if (xP>1) then
+                         dSx = ( (grid(gP)%xAxis(xP)+grid(gP)%xAxis(xP-1))/2.-rVec%x)/vHat%x
+                         if (abs(dSx)<1.e-10) then
+                            rVec%x=(grid(gP)%xAxis(xP)+grid(gP)%xAxis(xP-1))/2.
+                            xP = xP-1
+                         end if
+                      else
+                         dSx = (grid(gP)%xAxis(1)-rVec%x)/vHat%x
+                         if (abs(dSx)<1.e-10) then
+                            rVec%x=grid(gP)%xAxis(1)
+                         end if
+                      end if
+                   else
+!                      dSx = grid(gP)%xAxis(grid(gP)%nx)
+                      dSx =1.e35
+                   end if
                 end if
 
                 if (.not. (dSx >= 0. .or. dSx <0.)) then
@@ -1397,36 +1457,59 @@ module photon_mod
                 end if
 
                 if (.not.lg1D) then
-                   if (vHat%y>1.e-10) then
-                      if (yP<grid(gP)%ny) then
-                         dSy = ( (grid(gP)%yAxis(yP+1)+grid(gP)%yAxis(yP))/2.-rVec%y)/vHat%y
-                         if (abs(dSy)<1.e-10) then
-                            rVec%y=(grid(gP)%yAxis(yP+1)+grid(gP)%yAxis(yP))/2.
-                            yP = yP+1
+                   if (lg2D .and. perpAxis2D == "Y") then
+                      yP = 1
+                      if (vHat%y > 1.e-10) then
+                         dSy = (maxPerp2D - rVec%y) / vHat%y
+                         if (dSy <= 1.e-10) then
+                            rVec%y = maxPerp2D
+                            vHat%y = -vHat%y
+                            enPacket%direction%y = vHat%y
+                            dSy = deltaPerp2D / abs(vHat%y)
+                         end if
+                      else if (vHat%y < -1.e-10) then
+                         dSy = (minPerp2D - rVec%y) / vHat%y
+                         if (dSy <= 1.e-10) then
+                            rVec%y = minPerp2D
+                            vHat%y = -vHat%y
+                            enPacket%direction%y = vHat%y
+                            dSy = deltaPerp2D / abs(vHat%y)
                          end if
                       else
-                         dSy = (  grid(gP)%yAxis(grid(gP)%ny)-rVec%y)/vHat%y
-                         if (abs(dSy)<1.e-10) then
-                            rVec%y=grid(gP)%yAxis(grid(gP)%ny)
-                            if(gP==1) return
-                         end if
-                      end if
-                   else if (vHat%y<-1.e-10) then
-                      if (yP>1) then
-                         dSy = ( (grid(gP)%yAxis(yP)+grid(gP)%yAxis(yP-1))/2.-rVec%y)/vHat%y
-                         if (abs(dSy)<1.e-10) then
-                            rVec%y=(grid(gP)%yAxis(yP)+grid(gP)%yAxis(yP-1))/2.
-                            yP = yP-1
-                         end if
-                      else
-                         dSy = ( grid(gP)%yAxis(1)-rVec%y)/vHat%y
-                         if (abs(dSy)<1.e-10) then
-                            rVec%y=grid(gP)%yAxis(1)
-                         end if
+                         dSy = 1.e35
                       end if
                    else
-!                      dSy = grid(gP)%yAxis(grid(gP)%ny)
-                      dSy = 1.e35
+                      if (vHat%y>1.e-10) then
+                         if (yP<grid(gP)%ny) then
+                            dSy = ( (grid(gP)%yAxis(yP+1)+grid(gP)%yAxis(yP))/2.-rVec%y)/vHat%y
+                            if (abs(dSy)<1.e-10) then
+                               rVec%y=(grid(gP)%yAxis(yP+1)+grid(gP)%yAxis(yP))/2.
+                               yP = yP+1
+                            end if
+                         else
+                            dSy = (  grid(gP)%yAxis(grid(gP)%ny)-rVec%y)/vHat%y
+                            if (abs(dSy)<1.e-10) then
+                               rVec%y=grid(gP)%yAxis(grid(gP)%ny)
+                               if(gP==1) return
+                            end if
+                         end if
+                      else if (vHat%y<-1.e-10) then
+                         if (yP>1) then
+                            dSy = ( (grid(gP)%yAxis(yP)+grid(gP)%yAxis(yP-1))/2.-rVec%y)/vHat%y
+                            if (abs(dSy)<1.e-10) then
+                               rVec%y=(grid(gP)%yAxis(yP)+grid(gP)%yAxis(yP-1))/2.
+                               yP = yP-1
+                            end if
+                         else
+                            dSy = ( grid(gP)%yAxis(1)-rVec%y)/vHat%y
+                            if (abs(dSy)<1.e-10) then
+                               rVec%y=grid(gP)%yAxis(1)
+                            end if
+                         end if
+                      else
+!                         dSy = grid(gP)%yAxis(grid(gP)%ny)
+                         dSy = 1.e35
+                      end if
                    end if
 
                    if (.not. (dSy >= 0. .or. dSy <0.)) then
@@ -1435,37 +1518,59 @@ module photon_mod
                       stop
                    end if
 
-
-                   if (vHat%z>1.e-10) then
-                      if (zP<grid(gP)%nz) then
-                         dSz = ( (grid(gP)%zAxis(zP+1)+grid(gP)%zAxis(zP))/2.-rVec%z)/vHat%z
-                         if (abs(dSz)<1.e-10) then
-                            rVec%z=(grid(gP)%zAxis(zP+1)+grid(gP)%zAxis(zP))/2.
-                            zP = zP+1
+                   if (lg2D .and. perpAxis2D == "Z") then
+                      zP = 1
+                      if (vHat%z > 1.e-10) then
+                         dSz = (maxPerp2D - rVec%z) / vHat%z
+                         if (dSz <= 1.e-10) then
+                            rVec%z = maxPerp2D
+                            vHat%z = -vHat%z
+                            enPacket%direction%z = vHat%z
+                            dSz = deltaPerp2D / abs(vHat%z)
+                         end if
+                      else if (vHat%z < -1.e-10) then
+                         dSz = (minPerp2D - rVec%z) / vHat%z
+                         if (dSz <= 1.e-10) then
+                            rVec%z = minPerp2D
+                            vHat%z = -vHat%z
+                            enPacket%direction%z = vHat%z
+                            dSz = deltaPerp2D / abs(vHat%z)
                          end if
                       else
-                         dSz = ( grid(gP)%zAxis(grid(gP)%nz)-rVec%z)/vHat%z
-                         if (abs(dSz)<1.e-10) then
-                            rVec%z=grid(gP)%zAxis(grid(gP)%nz)
-                            if (.not.lgPlaneIonization .and. gP==1) return
-                         end if
-                      end if
-                   else if (vHat%z<-1.e-10) then
-                      if (zP>1) then
-                         dSz = ( (grid(gP)%zAxis(zP)+grid(gP)%zAxis(zP-1))/2.-rVec%z)/vHat%z
-                         if (abs(dSz)<1.e-10) then
-                            rVec%z=(grid(gP)%zAxis(zP)+grid(gP)%zAxis(zP-1))/2.
-                            zP = zP-1
-                         end if
-                      else
-                         dSz = ( grid(gP)%zAxis(1)-rVec%z)/vHat%z
-                         if (abs(dSz)<1.e-10) then
-                            rVec%z=grid(gP)%zAxis(1)
-                         end if
+                         dSz = 1.e35
                       end if
                    else
-!                      dSz = grid(gP)%zAxis(grid(gP)%nz)
-                      dSz = 1.e35
+                      if (vHat%z>1.e-10) then
+                         if (zP<grid(gP)%nz) then
+                            dSz = ( (grid(gP)%zAxis(zP+1)+grid(gP)%zAxis(zP))/2.-rVec%z)/vHat%z
+                            if (abs(dSz)<1.e-10) then
+                               rVec%z=(grid(gP)%zAxis(zP+1)+grid(gP)%zAxis(zP))/2.
+                               zP = zP+1
+                            end if
+                         else
+                            dSz = ( grid(gP)%zAxis(grid(gP)%nz)-rVec%z)/vHat%z
+                            if (abs(dSz)<1.e-10) then
+                               rVec%z=grid(gP)%zAxis(grid(gP)%nz)
+                               if (.not.lgPlaneIonization .and. gP==1) return
+                            end if
+                         end if
+                      else if (vHat%z<-1.e-10) then
+                         if (zP>1) then
+                            dSz = ( (grid(gP)%zAxis(zP)+grid(gP)%zAxis(zP-1))/2.-rVec%z)/vHat%z
+                            if (abs(dSz)<1.e-10) then
+                               rVec%z=(grid(gP)%zAxis(zP)+grid(gP)%zAxis(zP-1))/2.
+                               zP = zP-1
+                            end if
+                         else
+                            dSz = ( grid(gP)%zAxis(1)-rVec%z)/vHat%z
+                            if (abs(dSz)<1.e-10) then
+                               rVec%z=grid(gP)%zAxis(1)
+                            end if
+                         end if
+                      else
+!                         dSz = grid(gP)%zAxis(grid(gP)%nz)
+                         dSz = 1.e35
+                      end if
                    end if
 
                    if (.not. (dSz >= 0. .or. dSz <0.)) then
@@ -1489,9 +1594,27 @@ module photon_mod
              end do ! j safe limit loop
 
              ! cater for cells on cell wall
-             if ( abs(dSx)<1.e-10 ) dSx = grid(gP)%xAxis(grid(gP)%nx)
-             if ( abs(dSy)<1.e-10 ) dSy = grid(gP)%yAxis(grid(gP)%ny)
-             if ( abs(dSz)<1.e-10 ) dSz = grid(gP)%zAxis(grid(gP)%nz)
+             if ( abs(dSx)<1.e-10 ) then
+                if (lg2D .and. perpAxis2D == "X") then
+                   dSx = deltaPerp2D
+                else
+                   dSx = grid(gP)%xAxis(grid(gP)%nx)
+                end if
+             end if
+             if ( abs(dSy)<1.e-10 ) then
+                if (lg2D .and. perpAxis2D == "Y") then
+                   dSy = deltaPerp2D
+                else
+                   dSy = grid(gP)%yAxis(grid(gP)%ny)
+                end if
+             end if
+             if ( abs(dSz)<1.e-10 ) then
+                if (lg2D .and. perpAxis2D == "Z") then
+                   dSz = deltaPerp2D
+                else
+                   dSz = grid(gP)%zAxis(grid(gP)%nz)
+                end if
+             end if
 
              ! find the nearest wall
              dSx = abs(dSx)
@@ -1579,6 +1702,37 @@ module photon_mod
                       if (vHat%z<0.) vHat%z = -vHat%z
                       rVec%z = grid(gP)%zAxis(1)
                    end if
+                end if
+
+                if (lg2D) then
+                   select case (perpAxis2D)
+                   case ("Z")
+                      if (rVec%z <= minPerp2D) then
+                         rVec%z = minPerp2D
+                         if (vHat%z < 0.) vHat%z = -vHat%z
+                      else if (rVec%z >= maxPerp2D) then
+                         rVec%z = maxPerp2D
+                         if (vHat%z > 0.) vHat%z = -vHat%z
+                      end if
+                   case ("Y")
+                      if (rVec%y <= minPerp2D) then
+                         rVec%y = minPerp2D
+                         if (vHat%y < 0.) vHat%y = -vHat%y
+                      else if (rVec%y >= maxPerp2D) then
+                         rVec%y = maxPerp2D
+                         if (vHat%y > 0.) vHat%y = -vHat%y
+                      end if
+                   case ("X")
+                      if (rVec%x <= minPerp2D) then
+                         rVec%x = minPerp2D
+                         if (vHat%x < 0.) vHat%x = -vHat%x
+                      else if (rVec%x >= maxPerp2D) then
+                         rVec%x = maxPerp2D
+                         if (vHat%x > 0.) vHat%x = -vHat%x
+                      end if
+                   end select
+                   enPacket%direction = vHat
+                   enPacket%position = rVec
                 end if
 
                 ! add contribution of the packet to the radiation field
@@ -1803,6 +1957,21 @@ module photon_mod
                       vHat%y = enPacket%direction%y
                       vHat%z = enPacket%direction%z
 
+                      if (lg2D) then
+                         select case (perpAxis2D)
+                         case ("Z")
+                            if (rVec%z <= minPerp2D .and. vHat%z < 0.) vHat%z = -vHat%z
+                            if (rVec%z >= maxPerp2D .and. vHat%z > 0.) vHat%z = -vHat%z
+                         case ("Y")
+                            if (rVec%y <= minPerp2D .and. vHat%y < 0.) vHat%y = -vHat%y
+                            if (rVec%y >= maxPerp2D .and. vHat%y > 0.) vHat%y = -vHat%y
+                         case ("X")
+                            if (rVec%x <= minPerp2D .and. vHat%x < 0.) vHat%x = -vHat%x
+                            if (rVec%x >= maxPerp2D .and. vHat%x > 0.) vHat%x = -vHat%x
+                         end select
+                         enPacket%direction = vHat
+                      end if
+
 
                       if (.not. (enPacket%direction%x >= 0. .or. enPacket%direction%x < 0)) then
                          print*, '! pathSegment: [1] insane direction%x [direction%x]'
@@ -1988,18 +2157,60 @@ module photon_mod
                 end if
 
                 if (.not.lg1D) then
-                   if ( (dS == dSx) .and. (vHat%x > 0.)  ) then
-                      xP = xP+1
-                   else if ( (dS == dSx) .and. (vHat%x < 0.) ) then
-                      xP = xP-1
-                   else if ( (dS == dSy) .and. (vHat%y > 0.) ) then
-                      yP = yP+1
-                   else if ( (dS == dSy) .and. (vHat%y < 0.) ) then
-                      yP = yP-1
-                   else if ( (dS == dSz) .and. (vHat%z > 0.) ) then
-                      zP = zP+1
-                   else if ( (dS == dSz) .and. (vHat%z < 0.) ) then
-                      zP = zP-1
+                   if ( dS == dSx ) then
+                      if (lg2D .and. perpAxis2D == "X") then
+                         xP = 1
+                         if (vHat%x > 0.) then
+                            rVec%x = maxPerp2D
+                            vHat%x = -vHat%x
+                         else if (vHat%x < 0.) then
+                            rVec%x = minPerp2D
+                            vHat%x = -vHat%x
+                         end if
+                         enPacket%direction%x = vHat%x
+                      else
+                         if (vHat%x > 0.) then
+                            xP = xP+1
+                         else if (vHat%x < 0.) then
+                            xP = xP-1
+                         end if
+                      end if
+                   else if ( dS == dSy ) then
+                      if (lg2D .and. perpAxis2D == "Y") then
+                         yP = 1
+                         if (vHat%y > 0.) then
+                            rVec%y = maxPerp2D
+                            vHat%y = -vHat%y
+                         else if (vHat%y < 0.) then
+                            rVec%y = minPerp2D
+                            vHat%y = -vHat%y
+                         end if
+                         enPacket%direction%y = vHat%y
+                      else
+                         if (vHat%y > 0.) then
+                            yP = yP+1
+                         else if (vHat%y < 0.) then
+                            yP = yP-1
+                         end if
+                      end if
+                   else if ( dS == dSz ) then
+                      if (lg2D .and. perpAxis2D == "Z") then
+                         zP = 1
+                         if (vHat%z > 0.) then
+                            rVec%z = maxPerp2D
+                            vHat%z = -vHat%z
+                         else if (vHat%z < 0.) then
+                            rVec%z = minPerp2D
+                            vHat%z = -vHat%z
+                         end if
+                         enPacket%direction%z = vHat%z
+                      else
+                         if (vHat%z > 0.) then
+                            zP = zP+1
+                         else if (vHat%z < 0.) then
+                            zP = zP-1
+                         end if
+                      end if
                    else
                       print*, '! pathSegment: insanity occurred in dS assignement &
                            & [dS,dSx,dSy,dSz,vHat]', dS,dSx,dSy,dSz,vHat
@@ -2016,111 +2227,117 @@ module photon_mod
                 if(.not.lgPlaneIonization.and..not.lgSymmetricXYZ) then
                    lgReturn=.false.
 
-                   if ( rVec%y <= grid(gP)%yAxis(1)-grid(gP)%geoCorrY .or. yP<1) then
+                   if (.not. (lg2D .and. perpAxis2D == "Y")) then
+                      if ( rVec%y <= grid(gP)%yAxis(1)-grid(gP)%geoCorrY .or. yP<1) then
 
-                      ! the energy packet escapes this grid
-                      if (gP==1) then
-                         yP=1
-                         lgReturn=.true.
-                      else if (gP>1) then
-                         xP = enPacket%xP(grid(gP)%motherP)
-                         yP = enPacket%yP(grid(gP)%motherP)
-                         zP = enPacket%zP(grid(gP)%motherP)
-                         gP = grid(gP)%motherP
-                      else
-                         print*, '! pathSegment: insanity occurred - invalid gP', gP
-                         stop
+                         ! the energy packet escapes this grid
+                         if (gP==1) then
+                            yP=1
+                            lgReturn=.true.
+                         else if (gP>1) then
+                            xP = enPacket%xP(grid(gP)%motherP)
+                            yP = enPacket%yP(grid(gP)%motherP)
+                            zP = enPacket%zP(grid(gP)%motherP)
+                            gP = grid(gP)%motherP
+                         else
+                            print*, '! pathSegment: insanity occurred - invalid gP', gP
+                            stop
+                         end if
+
                       end if
 
+                      if (rVec%y > grid(gP)%yAxis(grid(gP)%ny)+grid(gP)%geoCorrY .or. yP>grid(gP)%ny) then
+
+                         if (gP==1) then
+                            ! the energy packet escapes
+                            yP = grid(gP)%ny
+                            lgReturn=.true.
+                         else if (gP>1) then
+                            xP = enPacket%xP(grid(gP)%motherP)
+                            yP =  enPacket%yP(grid(gP)%motherP)
+                            zP =  enPacket%zP(grid(gP)%motherP)
+                            gP = grid(gP)%motherP
+                         else
+                            print*, '! pathSegment: insanity occurred - invalid gP', gP
+                            stop
+                         end if
+
+                      end if
                    end if
 
-                   if (rVec%y > grid(gP)%yAxis(grid(gP)%ny)+grid(gP)%geoCorrY .or. yP>grid(gP)%ny) then
-
-                      if (gP==1) then
-                         ! the energy packet escapes
-                         yP = grid(gP)%ny
+                   if (.not. (lg2D .and. perpAxis2D == "X")) then
+                      if ( (rVec%x <= grid(gP)%xAxis(1)-grid(gP)%geoCorrX .or. xP<1) .and. gP==1) then
+                         xP=1
                          lgReturn=.true.
-                      else if (gP>1) then
+
+                      end if
+
+
+                      if ( (rVec%x <= grid(gP)%xAxis(1)-grid(gP)%geoCorrX .or. xP<1) &
+                       & .and. gP>1) then
+
                          xP = enPacket%xP(grid(gP)%motherP)
                          yP =  enPacket%yP(grid(gP)%motherP)
                          zP =  enPacket%zP(grid(gP)%motherP)
                          gP = grid(gP)%motherP
-                      else
-                         print*, '! pathSegment: insanity occurred - invalid gP', gP
-                         stop
+
                       end if
 
+
+                      if ( (rVec%x >=  grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX &
+                           & .or. xP>grid(gP)%nx) .and. gP==1 )then
+                         xP = grid(gP)%nx
+                         lgReturn=.true.
+
+                      end if
+
+                      if ( (rVec%x >=  grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX&
+                           & .or. xP>grid(gP)%nx) .and.  gP>1) then
+
+                         xP = enPacket%xP(grid(gP)%motherP)
+                         yP =  enPacket%yP(grid(gP)%motherP)
+                         zP =  enPacket%zP(grid(gP)%motherP)
+                         gP = grid(gP)%motherP
+
+                      end if
                    end if
 
-                   if ( (rVec%x <= grid(gP)%xAxis(1)-grid(gP)%geoCorrX .or. xP<1) .and. gP==1) then
-                      xP=1
-                      lgReturn=.true.
+                   if (.not. (lg2D .and. perpAxis2D == "Z")) then
+                      if ( (rVec%z <= grid(gP)%zAxis(1)-grid(gP)%geoCorrZ .or.zP<1) &
+                           & .and. gP==1) then
+                         zP=1
+                         lgReturn=.true.
 
-                   end if
+                      end if
 
+                      if ( (rVec%z <= grid(gP)%zAxis(1)-grid(gP)%geoCorrZ &
+                           & .or.zP<1) .and. gP>1) then
 
-                   if ( (rVec%x <= grid(gP)%xAxis(1)-grid(gP)%geoCorrX .or. xP<1) &
-                    & .and. gP>1) then
+                         xP = enPacket%xP(grid(gP)%motherP)
+                         yP =  enPacket%yP(grid(gP)%motherP)
+                         zP =  enPacket%zP(grid(gP)%motherP)
+                         gP = grid(gP)%motherP
 
-                      xP = enPacket%xP(grid(gP)%motherP)
-                      yP =  enPacket%yP(grid(gP)%motherP)
-                      zP =  enPacket%zP(grid(gP)%motherP)
-                      gP = grid(gP)%motherP
+                      end if
 
-                   end if
+                      if ( (rVec%z >=  grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ &
+                           & .or. zP>grid(gP)%nz) &
+                           & .and. gP==1) then
 
+                         zP = grid(gP)%nz
+                         lgReturn=.true.
 
-                   if ( (rVec%x >=  grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX &
-                        & .or. xP>grid(gP)%nx) .and. gP==1 )then
-                      xP = grid(gP)%nx
-                      lgReturn=.true.
+                      end if
 
-                   end if
+                      if ((rVec%z >=  grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ &
+                           & .or. zP>grid(gP)%nz) .and. gP>1) then
 
-                   if ( (rVec%x >=  grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX&
-                        & .or. xP>grid(gP)%nx) .and.  gP>1) then
+                         xP = enPacket%xP(grid(gP)%motherP)
+                         yP =  enPacket%yP(grid(gP)%motherP)
+                         zP =  enPacket%zP(grid(gP)%motherP)
+                         gP = grid(gP)%motherP
 
-                      xP = enPacket%xP(grid(gP)%motherP)
-                      yP =  enPacket%yP(grid(gP)%motherP)
-                      zP =  enPacket%zP(grid(gP)%motherP)
-                      gP = grid(gP)%motherP
-
-                   end if
-
-                   if ( (rVec%z <= grid(gP)%zAxis(1)-grid(gP)%geoCorrZ .or.zP<1) &
-                        & .and. gP==1) then
-                      zP=1
-                      lgReturn=.true.
-
-                   end if
-
-                   if ( (rVec%z <= grid(gP)%zAxis(1)-grid(gP)%geoCorrZ &
-                        & .or.zP<1) .and. gP>1) then
-
-                      xP = enPacket%xP(grid(gP)%motherP)
-                      yP =  enPacket%yP(grid(gP)%motherP)
-                      zP =  enPacket%zP(grid(gP)%motherP)
-                      gP = grid(gP)%motherP
-
-                   end if
-
-                   if ( (rVec%z >=  grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ &
-                        & .or. zP>grid(gP)%nz) &
-                        & .and. gP==1) then
-
-                      zP = grid(gP)%nz
-                      lgReturn=.true.
-
-                   end if
-
-                   if ((rVec%z >=  grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ &
-                        & .or. zP>grid(gP)%nz) .and. gP>1) then
-
-                      xP = enPacket%xP(grid(gP)%motherP)
-                      yP =  enPacket%yP(grid(gP)%motherP)
-                      zP =  enPacket%zP(grid(gP)%motherP)
-                      gP = grid(gP)%motherP
-
+                      end if
                    end if
 
                    if (lgReturn) then
@@ -2726,6 +2943,43 @@ module photon_mod
                      rVec%z = grid(1)%zAxis(1)
                   end if
 
+               end if
+
+               if (lg2D) then
+                  select case (perpAxis2D)
+                  case ("Z")
+                     zP = 1
+                     enPacket%zP(1) = 1
+                     if (rVec%z <= minPerp2D) then
+                        rVec%z = minPerp2D
+                        if (vHat%z < 0.) vHat%z = -vHat%z
+                     else if (rVec%z >= maxPerp2D) then
+                        rVec%z = maxPerp2D
+                        if (vHat%z > 0.) vHat%z = -vHat%z
+                     end if
+                  case ("Y")
+                     yP = 1
+                     enPacket%yP(1) = 1
+                     if (rVec%y <= minPerp2D) then
+                        rVec%y = minPerp2D
+                        if (vHat%y < 0.) vHat%y = -vHat%y
+                     else if (rVec%y >= maxPerp2D) then
+                        rVec%y = maxPerp2D
+                        if (vHat%y > 0.) vHat%y = -vHat%y
+                     end if
+                  case ("X")
+                     xP = 1
+                     enPacket%xP(1) = 1
+                     if (rVec%x <= minPerp2D) then
+                        rVec%x = minPerp2D
+                        if (vHat%x < 0.) vHat%x = -vHat%x
+                     else if (rVec%x >= maxPerp2D) then
+                        rVec%x = maxPerp2D
+                        if (vHat%x > 0.) vHat%x = -vHat%x
+                     end if
+                  end select
+                  enPacket%direction = vHat
+                  enPacket%position = rVec
                end if
 
             end if

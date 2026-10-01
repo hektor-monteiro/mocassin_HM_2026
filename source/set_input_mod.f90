@@ -23,6 +23,8 @@ module set_input_mod
         character(len=50)   :: in_file          ! input file
         character(len=50)   :: keyword          ! input parameter keyword
         character(len=50)   :: multiPhotoSources ! stars file
+        character(len=200)  :: inputLine         ! line reader for 2D keyword
+        character(len=50)   :: planeArg          ! 2D plane argument
 
         logical :: lgOutputExists ! to check for existence of output directory
         real(kind=8)        :: nphotonsin ! to allow scientific notation in input
@@ -166,7 +168,38 @@ module set_input_mod
                !print*, keyword, lgIsotropic
             case("2D")
                lg2D = .true.
-               !print*, keyword, lg2D
+               backspace 10
+               inputLine = ""
+               read(unit=10, fmt='(A)', iostat=ios) inputLine
+               plane2D = "XY"
+               planeArg = "XY"
+               read(inputLine, *, iostat=ios) keyword, planeArg
+               if (ios == 0) then
+                  plane2D = trim(planeArg)
+               end if
+               ! convert to uppercase
+               do j = 1, len_trim(plane2D)
+                  if (plane2D(j:j) >= 'a' .and. plane2D(j:j) <= 'z') then
+                     plane2D(j:j) = char(ichar(plane2D(j:j)) - 32)
+                  end if
+               end do
+               select case (trim(plane2D))
+               case ("XY", "YX")
+                  plane2D = "XY"
+                  perpAxis2D = "Z"
+               case ("XZ", "ZX")
+                  plane2D = "XZ"
+                  perpAxis2D = "Y"
+               case ("YZ", "ZY")
+                  plane2D = "YZ"
+                  perpAxis2D = "X"
+               case default
+                  print*, "! readInput: unrecognized 2D plane: '", trim(plane2D), "'. Must be 'XY', 'XZ', or 'YZ'."
+                  stop
+               end select
+               if (taskid == 0) then
+                  print*, "2D mode enabled in plane: ", trim(plane2D), " (perpendicular reflection axis: ", perpAxis2D, ")"
+               end if
             case("nstages")
                backspace 10
                read(unit=10, fmt=*, iostat=ios) keyword, nstages
@@ -703,6 +736,21 @@ module set_input_mod
            nyIn = 1
            nzIn = 1
            lgSymmetricXYZ = .true.
+        else if (lg2D) then
+           nxIn3D = nxIn
+           nyIn3D = nyIn
+           nzIn3D = nzIn
+           select case (perpAxis2D)
+           case ('Z')
+              nzIn = 1
+              if (.not. lgDfile .and. Rnz < 0.) Rnz = Rnx
+           case ('Y')
+              nyIn = 1
+              if (.not. lgDfile .and. Rny < 0.) Rny = Rnx
+           case ('X')
+              nxIn = 1
+              if (.not. lgDfile .and. Rnx < 0.) Rnx = Rny
+           end select
         else if (lgPlaneIonization .and. lg2d) then
            print*, "! readInput: planeIonization and 2D options are not compatible"
            stop

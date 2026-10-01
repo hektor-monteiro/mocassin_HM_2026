@@ -599,6 +599,92 @@ module continuum_mod
 
            getVolumeCon = getVolumeCon/8.
 
+        else if (lg2D) then
+           select case (perpAxis2D)
+           case ('Z')
+              if ((xP>1) .and. (xP<grid%nx)) then
+                 dx = abs(grid%xAxis(xP+1)-grid%xAxis(xP-1))/2.
+              else if (xP==1) then
+                 if (lgSymmetricXYZ) then
+                    dx = abs(grid%xAxis(xP+1)-grid%xAxis(xP))/2.
+                 else
+                    dx = abs(grid%xAxis(xP+1)-grid%xAxis(xP))
+                 end if
+              else if (xP==grid%nx) then
+                 dx = abs(grid%xAxis(xP)-grid%xAxis(xP-1))
+              end if
+
+              if ((yP>1) .and. (yP<grid%ny)) then
+                 dy = abs(grid%yAxis(yP+1)-grid%yAxis(yP-1))/2.
+              else if (yP==1) then
+                 if (lgSymmetricXYZ) then
+                    dy = abs(grid%yAxis(yP+1)-grid%yAxis(yP))/2.
+                 else
+                    dy = abs(grid%yAxis(yP+1)-grid%yAxis(yP))
+                 end if
+              else if (yP==grid%ny) then
+                 dy = abs(grid%yAxis(yP)-grid%yAxis(yP-1))
+              end if
+              dz = deltaPerp2D
+
+           case ('Y')
+              if ((xP>1) .and. (xP<grid%nx)) then
+                 dx = abs(grid%xAxis(xP+1)-grid%xAxis(xP-1))/2.
+              else if (xP==1) then
+                 if (lgSymmetricXYZ) then
+                    dx = abs(grid%xAxis(xP+1)-grid%xAxis(xP))/2.
+                 else
+                    dx = abs(grid%xAxis(xP+1)-grid%xAxis(xP))
+                 end if
+              else if (xP==grid%nx) then
+                 dx = abs(grid%xAxis(xP)-grid%xAxis(xP-1))
+              end if
+              dy = deltaPerp2D
+
+              if ((zP>1) .and. (zP<grid%nz)) then
+                 dz = abs(grid%zAxis(zP+1)-grid%zAxis(zP-1))/2.
+              else if (zP==1) then
+                 if (lgSymmetricXYZ) then
+                    dz = abs(grid%zAxis(zP+1)-grid%zAxis(zP))/2.
+                 else
+                    dz = abs(grid%zAxis(zP+1)-grid%zAxis(zP))
+                 end if
+              else if (zP==grid%nz) then
+                 dz = abs(grid%zAxis(zP)-grid%zAxis(zP-1))
+              end if
+
+           case ('X')
+              dx = deltaPerp2D
+              if ((yP>1) .and. (yP<grid%ny)) then
+                 dy = abs(grid%yAxis(yP+1)-grid%yAxis(yP-1))/2.
+              else if (yP==1) then
+                 if (lgSymmetricXYZ) then
+                    dy = abs(grid%yAxis(yP+1)-grid%yAxis(yP))/2.
+                 else
+                    dy = abs(grid%yAxis(yP+1)-grid%yAxis(yP))
+                 end if
+              else if (yP==grid%ny) then
+                 dy = abs(grid%yAxis(yP)-grid%yAxis(yP-1))
+              end if
+
+              if ((zP>1) .and. (zP<grid%nz)) then
+                 dz = abs(grid%zAxis(zP+1)-grid%zAxis(zP-1))/2.
+              else if (zP==1) then
+                 if (lgSymmetricXYZ) then
+                    dz = abs(grid%zAxis(zP+1)-grid%zAxis(zP))/2.
+                 else
+                    dz = abs(grid%zAxis(zP+1)-grid%zAxis(zP))
+                 end if
+              else if (zP==grid%nz) then
+                 dz = abs(grid%zAxis(zP)-grid%zAxis(zP-1))
+              end if
+           end select
+
+           dx = dx/1.e15
+           dy = dy/1.e15
+           dz = dz/1.e15
+           getVolumeCon = dx*dy*dz
+
         else
 
            if ( (xP>1) .and. (xP<grid%nx) ) then
