@@ -50,6 +50,7 @@ module output_mod
         real                        :: Te10000  ! TeUsed/10000.miser_qinfo -A
         real, parameter             :: hcryd = 2.1799153e-11!
         real                        :: radius, dz, dr
+        real                        :: r2D, xCell, yCell, zCell, xStar, yStar, zStar, weight2D
 
         ! lexingotn
         !        real, allocatable :: denominatorIon(:,:,:) ! denominator for IonVol calculations
@@ -436,6 +437,88 @@ module output_mod
                        end if
 
                         dV = getVolume(grid(iG), i, j, k)
+
+                        if (lg2D) then
+                           if (allocated(starPosition)) then
+                              xStar = starPosition(1)%x
+                              yStar = starPosition(1)%y
+                              zStar = starPosition(1)%z
+                           else
+                              xStar = 0.0
+                              yStar = 0.0
+                              zStar = 0.0
+                           end if
+
+                           select case (perpAxis2D)
+                           case ('Z')
+                              if (lgSymmetricXYZ) then
+                                 if (i == 1) then
+                                    xCell = (grid(iG)%xAxis(2) - grid(iG)%xAxis(1)) / 4.0
+                                 else
+                                    xCell = grid(iG)%xAxis(i)
+                                 end if
+                                 if (j == 1) then
+                                    yCell = (grid(iG)%yAxis(2) - grid(iG)%yAxis(1)) / 4.0
+                                 else
+                                    yCell = grid(iG)%yAxis(j)
+                                 end if
+                              else
+                                 xCell = grid(iG)%xAxis(i)
+                                 yCell = grid(iG)%yAxis(j)
+                              end if
+                              r2D = sqrt((xCell - xStar)**2 + (yCell - yStar)**2)
+
+                           case ('Y')
+                              if (lgSymmetricXYZ) then
+                                 if (i == 1) then
+                                    xCell = (grid(iG)%xAxis(2) - grid(iG)%xAxis(1)) / 4.0
+                                 else
+                                    xCell = grid(iG)%xAxis(i)
+                                 end if
+                                 if (k == 1) then
+                                    zCell = (grid(iG)%zAxis(2) - grid(iG)%zAxis(1)) / 4.0
+                                 else
+                                    zCell = grid(iG)%zAxis(k)
+                                 end if
+                              else
+                                 xCell = grid(iG)%xAxis(i)
+                                 zCell = grid(iG)%zAxis(k)
+                              end if
+                              r2D = sqrt((xCell - xStar)**2 + (zCell - zStar)**2)
+
+                           case ('X')
+                              if (lgSymmetricXYZ) then
+                                 if (j == 1) then
+                                    yCell = (grid(iG)%yAxis(2) - grid(iG)%yAxis(1)) / 4.0
+                                 else
+                                    yCell = grid(iG)%yAxis(j)
+                                 end if
+                                 if (k == 1) then
+                                    zCell = (grid(iG)%zAxis(2) - grid(iG)%zAxis(1)) / 4.0
+                                 else
+                                    zCell = grid(iG)%zAxis(k)
+                                 end if
+                              else
+                                 yCell = grid(iG)%yAxis(j)
+                                 zCell = grid(iG)%zAxis(k)
+                              end if
+                              r2D = sqrt((yCell - yStar)**2 + (zCell - zStar)**2)
+                           end select
+
+                           r2D = max(r2D, 1.0e-30)
+
+                           if (deltaPerp2D > 0.0) then
+                              if (lgSymmetricXYZ) then
+                                 weight2D = r2D / deltaPerp2D
+                              else
+                                 weight2D = 2.0 * r2D / deltaPerp2D
+                              end if
+                           else
+                              weight2D = 1.0
+                           end if
+
+                           dV = dV * weight2D
+                        end if
 
 
 

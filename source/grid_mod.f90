@@ -939,7 +939,11 @@ module grid_mod
            if (grid(iG)%nx > 1) then
               grid(iG)%geoCorrX = (grid(iG)%xAxis(grid(iG)%nx) - grid(iG)%xAxis(grid(iG)%nx-1))/2.
            else if (lg2D .and. perpAxis2D == "X") then
-              grid(iG)%geoCorrX = deltaPerp2D/2.
+              if (lgSymmetricXYZ) then
+                 grid(iG)%geoCorrX = deltaPerp2D
+              else
+                 grid(iG)%geoCorrX = deltaPerp2D/2.
+              end if
            else
               grid(iG)%geoCorrX = 0.
            end if
@@ -948,7 +952,11 @@ module grid_mod
               if (grid(iG)%ny > 1) then
                  grid(iG)%geoCorrY = (grid(iG)%yAxis(grid(iG)%ny) - grid(iG)%yAxis(grid(iG)%ny-1))/2.
               else if (lg2D .and. perpAxis2D == "Y") then
-                 grid(iG)%geoCorrY = deltaPerp2D/2.
+                 if (lgSymmetricXYZ) then
+                    grid(iG)%geoCorrY = deltaPerp2D
+                 else
+                    grid(iG)%geoCorrY = deltaPerp2D/2.
+                 end if
               else
                  grid(iG)%geoCorrY = 0.
               end if
@@ -956,7 +964,11 @@ module grid_mod
               if (grid(iG)%nz > 1) then
                  grid(iG)%geoCorrZ = (grid(iG)%zAxis(grid(iG)%nz) - grid(iG)%zAxis(grid(iG)%nz-1))/2.
               else if (lg2D .and. perpAxis2D == "Z") then
-                 grid(iG)%geoCorrZ = deltaPerp2D/2.
+                 if (lgSymmetricXYZ) then
+                    grid(iG)%geoCorrZ = deltaPerp2D
+                 else
+                    grid(iG)%geoCorrZ = deltaPerp2D/2.
+                 end if
               else
                  grid(iG)%geoCorrZ = 0.
               end if
@@ -3896,7 +3908,11 @@ end function getVolume
          if (grid(iG)%nx > 1) then
             grid(iG)%geoCorrX = (grid(iG)%xAxis(grid(iG)%nx) - grid(iG)%xAxis(grid(iG)%nx-1))/2.
          else if (lg2D .and. perpAxis2D == "X") then
-            grid(iG)%geoCorrX = deltaPerp2D/2.
+            if (lgSymmetricXYZ) then
+               grid(iG)%geoCorrX = deltaPerp2D
+            else
+               grid(iG)%geoCorrX = deltaPerp2D/2.
+            end if
          else
             grid(iG)%geoCorrX = 0.
          end if
@@ -3905,7 +3921,11 @@ end function getVolume
             if (grid(iG)%ny > 1) then
                grid(iG)%geoCorrY = (grid(iG)%yAxis(grid(iG)%ny) - grid(iG)%yAxis(grid(iG)%ny-1))/2.
             else if (lg2D .and. perpAxis2D == "Y") then
-               grid(iG)%geoCorrY = deltaPerp2D/2.
+               if (lgSymmetricXYZ) then
+                  grid(iG)%geoCorrY = deltaPerp2D
+               else
+                  grid(iG)%geoCorrY = deltaPerp2D/2.
+               end if
             else
                grid(iG)%geoCorrY = 0.
             end if
@@ -3913,7 +3933,11 @@ end function getVolume
             if (grid(iG)%nz > 1) then
                grid(iG)%geoCorrZ = (grid(iG)%zAxis(grid(iG)%nz) - grid(iG)%zAxis(grid(iG)%nz-1))/2.
             else if (lg2D .and. perpAxis2D == "Z") then
-               grid(iG)%geoCorrZ = deltaPerp2D/2.
+               if (lgSymmetricXYZ) then
+                  grid(iG)%geoCorrZ = deltaPerp2D
+               else
+                  grid(iG)%geoCorrZ = deltaPerp2D/2.
+               end if
             else
                grid(iG)%geoCorrZ = 0.
             end if
