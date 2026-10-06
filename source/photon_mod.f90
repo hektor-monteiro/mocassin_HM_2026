@@ -1176,7 +1176,13 @@ module photon_mod
           character(len=7)                :: packetType ! stellar, diffuse, dustEmitted?
 
           logical                         :: lgScattered=.False. ! is the packet scattering with dust?
-          logical                         :: lgReturn
+          logical                         :: lgReturn, lgEscaped
+
+          ! Variables for 2D cylindrical (R, Z) ray tracing
+          real(8)                         :: A_cyl, B_cyl, C_out, C_in, R2_cyl
+          real(8)                         :: delta_out, delta_in, ds_out, ds_in, s_cand
+          real(8)                         :: R_in, R_out_c, Z_in, Z_out_c, R_cyl
+          logical                         :: lgTargetInner
 
 
           if (enPacket%iG == 1) then
@@ -1243,31 +1249,63 @@ module photon_mod
           gP = enPacket%iG
 
           if (lg2D) then
-             select case (perpAxis2D)
-             case ("Z")
-                zP = 1
-                enPacket%zP(1) = 1
-                if (lgSymmetricXYZ .and. rVec%z <= minPerp2D .and. vHat%z < 0.) then
-                   rVec%z = minPerp2D
-                   vHat%z = -vHat%z
+             if (lgCylinder2D) then
+                R_cyl = sqrt(dble(rVec%x)**2 + dble(rVec%y)**2)
+                call locate(grid(gP)%xAxis, real(R_cyl), xP)
+                if (xP == 0) xP = 1
+                if (xP < grid(gP)%nx) then
+                   if (R_cyl > dble(grid(gP)%xAxis(xP+1) + grid(gP)%xAxis(xP))/2.0d0) xP = xP + 1
                 end if
-             case ("Y")
+                if (xP > grid(gP)%nx) xP = grid(gP)%nx
+                if (xP < 1) xP = 1
+
                 yP = 1
-                enPacket%yP(1) = 1
-                if (lgSymmetricXYZ .and. rVec%y <= minPerp2D .and. vHat%y < 0.) then
-                   rVec%y = minPerp2D
-                   vHat%y = -vHat%y
+                enPacket%yP(igpp) = 1
+
+                call locate(grid(gP)%zAxis, rVec%z, zP)
+                if (zP == 0) zP = 1
+                if (zP < grid(gP)%nz) then
+                   if (rVec%z > (grid(gP)%zAxis(zP+1) + grid(gP)%zAxis(zP))/2.0) zP = zP + 1
                 end if
-             case ("X")
-                xP = 1
-                enPacket%xP(1) = 1
-                if (lgSymmetricXYZ .and. rVec%x <= minPerp2D .and. vHat%x < 0.) then
-                   rVec%x = minPerp2D
-                   vHat%x = -vHat%x
+                if (zP > grid(gP)%nz) zP = grid(gP)%nz
+                if (zP < 1) zP = 1
+
+                if (lgSymmetricXYZ .and. rVec%z <= grid(gP)%zAxis(1) .and. vHat%z < 0.) then
+                   rVec%z = grid(gP)%zAxis(1)
+                   vHat%z = -vHat%z
+                   enPacket%direction%z = vHat%z
                 end if
-             end select
-             enPacket%position = rVec
-             enPacket%direction = vHat
+                enPacket%position = rVec
+                enPacket%direction = vHat
+                enPacket%xP(igpp) = xP
+                enPacket%zP(igpp) = zP
+             else
+                select case (perpAxis2D)
+                case ("Z")
+                   zP = 1
+                   enPacket%zP(1) = 1
+                   if (lgSymmetricXYZ .and. rVec%z <= minPerp2D .and. vHat%z < 0.) then
+                      rVec%z = minPerp2D
+                      vHat%z = -vHat%z
+                   end if
+                case ("Y")
+                   yP = 1
+                   enPacket%yP(1) = 1
+                   if (lgSymmetricXYZ .and. rVec%y <= minPerp2D .and. vHat%y < 0.) then
+                      rVec%y = minPerp2D
+                      vHat%y = -vHat%y
+                   end if
+                case ("X")
+                   xP = 1
+                   enPacket%xP(1) = 1
+                   if (lgSymmetricXYZ .and. rVec%x <= minPerp2D .and. vHat%x < 0.) then
+                      rVec%x = minPerp2D
+                      vHat%x = -vHat%x
+                   end if
+                end select
+                enPacket%position = rVec
+                enPacket%direction = vHat
+             end if
           end if
 
           ! initialise distance from walls
@@ -1368,6 +1406,85 @@ module photon_mod
 
 
                 ! find distances from all walls
+                if (lg2D .and. lgCylinder2D) then
+                   yP = 1
+                   dSy = 1.e35
+
+                   ! Radial cylinder boundaries for cell xP
+                   if (xP == 1) then
+                      R_in = 0.0d0
+                      R_out_c = dble(grid(gP)%xAxis(2) + grid(gP)%xAxis(1)) / 2.0d0
+                   else if (xP < grid(gP)%nx) then
+                      R_in = dble(grid(gP)%xAxis(xP) + grid(gP)%xAxis(xP-1)) / 2.0d0
+                      R_out_c = dble(grid(gP)%xAxis(xP+1) + grid(gP)%xAxis(xP)) / 2.0d0
+                   else
+                      R_in = dble(grid(gP)%xAxis(grid(gP)%nx) + grid(gP)%xAxis(grid(gP)%nx-1)) / 2.0d0
+                      R_out_c = dble(grid(gP)%xAxis(grid(gP)%nx))
+                   end if
+
+                   ! Z plane boundaries for cell zP
+                   if (zP == 1) then
+                      Z_in = dble(grid(gP)%zAxis(1))
+                      Z_out_c = dble(grid(gP)%zAxis(2) + grid(gP)%zAxis(1)) / 2.0d0
+                   else if (zP < grid(gP)%nz) then
+                      Z_in = dble(grid(gP)%zAxis(zP) + grid(gP)%zAxis(zP-1)) / 2.0d0
+                      Z_out_c = dble(grid(gP)%zAxis(zP+1) + grid(gP)%zAxis(zP)) / 2.0d0
+                   else
+                      Z_in = dble(grid(gP)%zAxis(grid(gP)%nz) + grid(gP)%zAxis(grid(gP)%nz-1)) / 2.0d0
+                      Z_out_c = dble(grid(gP)%zAxis(grid(gP)%nz))
+                   end if
+
+                   ! Distance to Z boundaries
+                   if (vHat%z > 1.e-10) then
+                      dSz = real((Z_out_c - dble(rVec%z)) / dble(vHat%z))
+                   else if (vHat%z < -1.e-10) then
+                      dSz = real((Z_in - dble(rVec%z)) / dble(vHat%z))
+                      if (zP == 1 .and. dSz <= 1.e-10) then
+                         if (lgSymmetricXYZ) then
+                            rVec%z = grid(gP)%zAxis(1)
+                            vHat%z = -vHat%z
+                            enPacket%direction%z = vHat%z
+                            dSz = real((Z_out_c - dble(rVec%z)) / dble(vHat%z))
+                         end if
+                      end if
+                   else
+                      dSz = 1.e35
+                   end if
+
+                   ! Distance to radial cylinder boundaries
+                   A_cyl = dble(vHat%x)**2 + dble(vHat%y)**2
+                   B_cyl = 2.0d0 * (dble(rVec%x) * dble(vHat%x) + dble(rVec%y) * dble(vHat%y))
+                   R2_cyl = dble(rVec%x)**2 + dble(rVec%y)**2
+
+                   if (A_cyl < 1.d-20) then
+                      dSx = 1.e35
+                      lgTargetInner = .false.
+                   else
+                      C_out = R2_cyl - R_out_c**2
+                      delta_out = max(0.0d0, B_cyl**2 - 4.0d0 * A_cyl * C_out)
+                      ds_out = (-B_cyl + sqrt(delta_out)) / (2.0d0 * A_cyl)
+                      if (ds_out < 0.0d0) ds_out = 0.0d0
+
+                      ds_in = 1.d35
+                      if (xP > 1 .and. B_cyl < -1.d-10) then
+                         C_in = R2_cyl - R_in**2
+                         delta_in = B_cyl**2 - 4.0d0 * A_cyl * C_in
+                         if (delta_in >= 0.0d0) then
+                            s_cand = (-B_cyl - sqrt(delta_in)) / (2.0d0 * A_cyl)
+                            if (s_cand > 1.d-10) ds_in = s_cand
+                         end if
+                      end if
+
+                      if (ds_in < ds_out) then
+                         dSx = real(ds_in)
+                         lgTargetInner = .true.
+                      else
+                         dSx = real(ds_out)
+                         lgTargetInner = .false.
+                      end if
+                   end if
+
+                else
 
                 if (lgSymmetricXYZ) then
                    if ( rVec%x <= grid(1)%xAxis(1) ) then
@@ -1576,10 +1693,26 @@ module photon_mod
                    end if
 
                 end if
+                end if
 
                 if (grid(gP)%active(xP,yP,zP)>=0) exit
              
              end do ! j safe limit loop
+
+             if (lg2D .and. lgCylinder2D) then
+                if (abs(dSz) < 1.e-10) then
+                   dSz = real((grid(gP)%zAxis(grid(gP)%nz) - grid(gP)%zAxis(1)) / real(grid(gP)%nz))
+                end if
+                if (abs(dSx) < 1.e-10) then
+                   dSx = real((grid(gP)%xAxis(grid(gP)%nx) - grid(gP)%xAxis(1)) / real(grid(gP)%nx))
+                end if
+
+                dSx = abs(dSx)
+                dSy = 1.e35
+                dSz = abs(dSz)
+                dS = min(dSx, dSz)
+                if (dS <= 0.0) dS = 1.e-10
+             else
 
              ! cater for cells on cell wall
              if ( abs(dSx)<1.e-10 ) then
@@ -1639,6 +1772,8 @@ module photon_mod
                 stop
              end if
 
+          end if
+
              ! calculate the optical depth to the next cell wall
              tauCell = dS*grid(gP)%opacity(grid(gP)%active(xP,yP,zP), enPacket%nuP)
 
@@ -1678,13 +1813,15 @@ module photon_mod
                 end if
 
                 if (lgSymmetricXYZ .and. gP==1) then
-                   if ( rVec%x <= grid(gP)%xAxis(1) ) then
-                      if (vHat%x<0.) vHat%x = -vHat%x
-                      rVec%x = grid(gP)%xAxis(1)
-                   end if
-                   if ( rVec%y <= grid(gP)%yAxis(1) ) then
-                      if (vHat%y<0.) vHat%y = -vHat%y
-                      rVec%y = grid(gP)%yAxis(1)
+                   if (.not. (lg2D .and. lgCylinder2D)) then
+                      if ( rVec%x <= grid(gP)%xAxis(1) ) then
+                         if (vHat%x<0.) vHat%x = -vHat%x
+                         rVec%x = grid(gP)%xAxis(1)
+                      end if
+                      if ( rVec%y <= grid(gP)%yAxis(1) ) then
+                         if (vHat%y<0.) vHat%y = -vHat%y
+                         rVec%y = grid(gP)%yAxis(1)
+                      end if
                    end if
                    if ( rVec%z <= grid(gP)%zAxis(1) ) then
                       if (vHat%z<0.) vHat%z = -vHat%z
@@ -1693,25 +1830,34 @@ module photon_mod
                 end if
 
                 if (lg2D) then
-                   select case (perpAxis2D)
-                   case ("Z")
-                      if (lgSymmetricXYZ .and. rVec%z <= minPerp2D .and. vHat%z < 0.) then
-                         rVec%z = minPerp2D
+                   if (lgCylinder2D) then
+                      if (lgSymmetricXYZ .and. rVec%z <= grid(gP)%zAxis(1) .and. vHat%z < 0.) then
+                         rVec%z = grid(gP)%zAxis(1)
                          vHat%z = -vHat%z
                       end if
-                   case ("Y")
-                      if (lgSymmetricXYZ .and. rVec%y <= minPerp2D .and. vHat%y < 0.) then
-                         rVec%y = minPerp2D
-                         vHat%y = -vHat%y
-                      end if
-                   case ("X")
-                      if (lgSymmetricXYZ .and. rVec%x <= minPerp2D .and. vHat%x < 0.) then
-                         rVec%x = minPerp2D
-                         vHat%x = -vHat%x
-                      end if
-                   end select
-                   enPacket%direction = vHat
-                   enPacket%position = rVec
+                      enPacket%direction = vHat
+                      enPacket%position = rVec
+                   else
+                      select case (perpAxis2D)
+                      case ("Z")
+                         if (lgSymmetricXYZ .and. rVec%z <= minPerp2D .and. vHat%z < 0.) then
+                            rVec%z = minPerp2D
+                            vHat%z = -vHat%z
+                         end if
+                      case ("Y")
+                         if (lgSymmetricXYZ .and. rVec%y <= minPerp2D .and. vHat%y < 0.) then
+                            rVec%y = minPerp2D
+                            vHat%y = -vHat%y
+                         end if
+                      case ("X")
+                         if (lgSymmetricXYZ .and. rVec%x <= minPerp2D .and. vHat%x < 0.) then
+                            rVec%x = minPerp2D
+                            vHat%x = -vHat%x
+                         end if
+                      end select
+                      enPacket%direction = vHat
+                      enPacket%position = rVec
+                   end if
                 end if
 
                 ! add contribution of the packet to the radiation field
@@ -1937,14 +2083,18 @@ module photon_mod
                       vHat%z = enPacket%direction%z
 
                       if (lg2D) then
-                         select case (perpAxis2D)
-                         case ("Z")
-                            if (lgSymmetricXYZ .and. rVec%z <= minPerp2D .and. vHat%z < 0.) vHat%z = -vHat%z
-                         case ("Y")
-                            if (lgSymmetricXYZ .and. rVec%y <= minPerp2D .and. vHat%y < 0.) vHat%y = -vHat%y
-                         case ("X")
-                            if (lgSymmetricXYZ .and. rVec%x <= minPerp2D .and. vHat%x < 0.) vHat%x = -vHat%x
-                         end select
+                         if (lgCylinder2D) then
+                            if (lgSymmetricXYZ .and. rVec%z <= grid(gP)%zAxis(1) .and. vHat%z < 0.) vHat%z = -vHat%z
+                         else
+                            select case (perpAxis2D)
+                            case ("Z")
+                               if (lgSymmetricXYZ .and. rVec%z <= minPerp2D .and. vHat%z < 0.) vHat%z = -vHat%z
+                            case ("Y")
+                               if (lgSymmetricXYZ .and. rVec%y <= minPerp2D .and. vHat%y < 0.) vHat%y = -vHat%y
+                            case ("X")
+                               if (lgSymmetricXYZ .and. rVec%x <= minPerp2D .and. vHat%x < 0.) vHat%x = -vHat%x
+                            end select
+                         end if
                          enPacket%direction = vHat
                       end if
 
@@ -2133,12 +2283,65 @@ module photon_mod
                 end if
 
                 if (.not.lg1D) then
+                   if (lg2D .and. lgCylinder2D) then
+                      if (dS == dSz) then
+                         if (vHat%z > 0.) then
+                            zP = zP + 1
+                         else if (vHat%z < 0.) then
+                            if (zP > 1) then
+                               zP = zP - 1
+                            else
+                               if (lgSymmetricXYZ) then
+                                  rVec%z = grid(gP)%zAxis(1)
+                                  vHat%z = -vHat%z
+                                  enPacket%direction%z = vHat%z
+                                  zP = 1
+                               else
+                                  zP = 0
+                               end if
+                            end if
+                         end if
+                      else if (dS == dSx) then
+                         if (lgTargetInner) then
+                            xP = xP - 1
+                         else
+                            xP = xP + 1
+                         end if
+                      end if
+                      yP = 1
+                      enPacket%xP(igpp) = xP
+                      enPacket%yP(igpp) = 1
+                      enPacket%zP(igpp) = zP
+                   else
                    if ( dS == dSx ) then
                       if (lg2D .and. perpAxis2D == "X") then
                          if (vHat%x > 0.) then
-                            rVec%x = maxPerp2D
-                            xP = grid(gP)%nx + 1
-                            enPacket%xP(igpp) = xP
+                            if (lgBuffer2D) then
+                               rVec%x = maxPerp2D
+                               call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "X", lgEscaped)
+                               if (lgEscaped) then
+                                  xP = grid(gP)%nx + 1
+                                  enPacket%xP(igpp) = xP
+                               else
+                                  absTau = 0.
+                                  if (grid(gP)%active(xP,yP,zP) > 0) then
+                                     tauCell = R_out * grid(gP)%opacity(grid(gP)%active(xP,yP,zP), enPacket%nuP)
+                                  else
+                                     tauCell = 0.
+                                  end if
+                                  call calculate_pass_prob_and_weight(tauCell, enPacket%weight, passProb, weightFactor)
+                                  enPacket%weight = enPacket%weight * weightFactor
+                               end if
+                            else if (enPacket%lgStellar .or. .not. lgSpecular2D) then
+                               rVec%x = maxPerp2D
+                               xP = grid(gP)%nx + 1
+                               enPacket%xP(igpp) = xP
+                            else
+                               rVec%x = maxPerp2D
+                               xP = 1
+                               vHat%x = -vHat%x
+                               enPacket%direction%x = vHat%x
+                            end if
                          else if (vHat%x < 0.) then
                             rVec%x = minPerp2D
                             if (lgSymmetricXYZ) then
@@ -2146,8 +2349,30 @@ module photon_mod
                                vHat%x = -vHat%x
                                enPacket%direction%x = vHat%x
                             else
-                               xP = 0
-                               enPacket%xP(igpp) = xP
+                               if (lgBuffer2D) then
+                                  rVec%x = minPerp2D
+                                  call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "X", lgEscaped)
+                                  if (lgEscaped) then
+                                     xP = 0
+                                     enPacket%xP(igpp) = xP
+                                  else
+                                     absTau = 0.
+                                     if (grid(gP)%active(xP,yP,zP) > 0) then
+                                        tauCell = R_out * grid(gP)%opacity(grid(gP)%active(xP,yP,zP), enPacket%nuP)
+                                     else
+                                        tauCell = 0.
+                                     end if
+                                     call calculate_pass_prob_and_weight(tauCell, enPacket%weight, passProb, weightFactor)
+                                     enPacket%weight = enPacket%weight * weightFactor
+                                  end if
+                               else if (enPacket%lgStellar .or. .not. lgSpecular2D) then
+                                  xP = 0
+                                  enPacket%xP(igpp) = xP
+                               else
+                                  xP = 1
+                                  vHat%x = -vHat%x
+                                  enPacket%direction%x = vHat%x
+                               end if
                             end if
                          end if
                       else
@@ -2160,9 +2385,32 @@ module photon_mod
                    else if ( dS == dSy ) then
                       if (lg2D .and. perpAxis2D == "Y") then
                          if (vHat%y > 0.) then
-                            rVec%y = maxPerp2D
-                            yP = grid(gP)%ny + 1
-                            enPacket%yP(igpp) = yP
+                            if (lgBuffer2D) then
+                               rVec%y = maxPerp2D
+                               call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "Y", lgEscaped)
+                               if (lgEscaped) then
+                                  yP = grid(gP)%ny + 1
+                                  enPacket%yP(igpp) = yP
+                               else
+                                  absTau = 0.
+                                  if (grid(gP)%active(xP,yP,zP) > 0) then
+                                     tauCell = R_out * grid(gP)%opacity(grid(gP)%active(xP,yP,zP), enPacket%nuP)
+                                  else
+                                     tauCell = 0.
+                                  end if
+                                  call calculate_pass_prob_and_weight(tauCell, enPacket%weight, passProb, weightFactor)
+                                  enPacket%weight = enPacket%weight * weightFactor
+                               end if
+                            else if (enPacket%lgStellar .or. .not. lgSpecular2D) then
+                               rVec%y = maxPerp2D
+                               yP = grid(gP)%ny + 1
+                               enPacket%yP(igpp) = yP
+                            else
+                               rVec%y = maxPerp2D
+                               yP = 1
+                               vHat%y = -vHat%y
+                               enPacket%direction%y = vHat%y
+                            end if
                          else if (vHat%y < 0.) then
                             rVec%y = minPerp2D
                             if (lgSymmetricXYZ) then
@@ -2170,8 +2418,30 @@ module photon_mod
                                vHat%y = -vHat%y
                                enPacket%direction%y = vHat%y
                             else
-                               yP = 0
-                               enPacket%yP(igpp) = yP
+                               if (lgBuffer2D) then
+                                  rVec%y = minPerp2D
+                                  call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "Y", lgEscaped)
+                                  if (lgEscaped) then
+                                     yP = 0
+                                     enPacket%yP(igpp) = yP
+                                  else
+                                     absTau = 0.
+                                     if (grid(gP)%active(xP,yP,zP) > 0) then
+                                        tauCell = R_out * grid(gP)%opacity(grid(gP)%active(xP,yP,zP), enPacket%nuP)
+                                     else
+                                        tauCell = 0.
+                                     end if
+                                     call calculate_pass_prob_and_weight(tauCell, enPacket%weight, passProb, weightFactor)
+                                     enPacket%weight = enPacket%weight * weightFactor
+                                  end if
+                               else if (enPacket%lgStellar .or. .not. lgSpecular2D) then
+                                  yP = 0
+                                  enPacket%yP(igpp) = yP
+                               else
+                                  yP = 1
+                                  vHat%y = -vHat%y
+                                  enPacket%direction%y = vHat%y
+                               end if
                             end if
                          end if
                       else
@@ -2184,9 +2454,32 @@ module photon_mod
                    else if ( dS == dSz ) then
                       if (lg2D .and. perpAxis2D == "Z") then
                          if (vHat%z > 0.) then
-                            rVec%z = maxPerp2D
-                            zP = grid(gP)%nz + 1
-                            enPacket%zP(igpp) = zP
+                            if (lgBuffer2D) then
+                               rVec%z = maxPerp2D
+                               call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "Z", lgEscaped)
+                               if (lgEscaped) then
+                                  zP = grid(gP)%nz + 1
+                                  enPacket%zP(igpp) = zP
+                               else
+                                  absTau = 0.
+                                  if (grid(gP)%active(xP,yP,zP) > 0) then
+                                     tauCell = R_out * grid(gP)%opacity(grid(gP)%active(xP,yP,zP), enPacket%nuP)
+                                  else
+                                     tauCell = 0.
+                                  end if
+                                  call calculate_pass_prob_and_weight(tauCell, enPacket%weight, passProb, weightFactor)
+                                  enPacket%weight = enPacket%weight * weightFactor
+                                end if
+                            else if (enPacket%lgStellar .or. .not. lgSpecular2D) then
+                               rVec%z = maxPerp2D
+                               zP = grid(gP)%nz + 1
+                               enPacket%zP(igpp) = zP
+                            else
+                               rVec%z = maxPerp2D
+                               zP = 1
+                               vHat%z = -vHat%z
+                               enPacket%direction%z = vHat%z
+                            end if
                          else if (vHat%z < 0.) then
                             rVec%z = minPerp2D
                             if (lgSymmetricXYZ) then
@@ -2194,8 +2487,30 @@ module photon_mod
                                vHat%z = -vHat%z
                                enPacket%direction%z = vHat%z
                             else
-                               zP = 0
-                               enPacket%zP(igpp) = zP
+                               if (lgBuffer2D) then
+                                  rVec%z = minPerp2D
+                                  call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "Z", lgEscaped)
+                                  if (lgEscaped) then
+                                     zP = 0
+                                     enPacket%zP(igpp) = zP
+                                  else
+                                     absTau = 0.
+                                     if (grid(gP)%active(xP,yP,zP) > 0) then
+                                        tauCell = R_out * grid(gP)%opacity(grid(gP)%active(xP,yP,zP), enPacket%nuP)
+                                     else
+                                        tauCell = 0.
+                                     end if
+                                     call calculate_pass_prob_and_weight(tauCell, enPacket%weight, passProb, weightFactor)
+                                     enPacket%weight = enPacket%weight * weightFactor
+                                  end if
+                               else if (enPacket%lgStellar .or. .not. lgSpecular2D) then
+                                  zP = 0
+                                  enPacket%zP(igpp) = zP
+                               else
+                                  zP = 1
+                                  vHat%z = -vHat%z
+                                  enPacket%direction%z = vHat%z
+                               end if
                             end if
                          end if
                       else
@@ -2209,6 +2524,7 @@ module photon_mod
                       print*, '! pathSegment: insanity occurred in dS assignement &
                            & [dS,dSx,dSy,dSz,vHat]', dS,dSx,dSy,dSz,vHat
                    end if
+                   end if
                 else
                    radius = 1.e10*sqrt((rVec%x/1.e10)*(rVec%x/1.e10) + &
                         & (rVec%y/1.e10)*(rVec%y/1.e10) + &
@@ -2218,7 +2534,7 @@ module photon_mod
                 end if
 
                 ! be 6/6/06
-                if(.not.lgPlaneIonization.and..not.lgSymmetricXYZ) then
+                if(.not.lgPlaneIonization.and..not.lgSymmetricXYZ.and..not.(lg2D .and. lgCylinder2D)) then
                    lgReturn=.false.
 
                    if ( rVec%y <= grid(gP)%yAxis(1)-grid(gP)%geoCorrY .or. yP<1) then
@@ -2653,22 +2969,38 @@ module photon_mod
 
                 if (.not.lgPlaneIonization) then
 
-                   if ( (.not.lgSymmetricXYZ .and. (rVec%x<=grid(1)%xAxis(1)-grid(1)%geoCorrX .or.&
+                   if ( (lg2D .and. lgCylinder2D .and. ( &
+                        xP > grid(gP)%nx .or. xP < 1 .or. &
+                        zP > grid(gP)%nz .or. zP < 1 .or. &
+                        sqrt(dble(rVec%x)**2 + dble(rVec%y)**2) >= dble(grid(gP)%xAxis(grid(gP)%nx) + grid(gP)%geoCorrX) .or. &
+                        rVec%z >= grid(gP)%zAxis(grid(gP)%nz) + grid(gP)%geoCorrZ .or. &
+                        (.not.lgSymmetricXYZ .and. rVec%z <= grid(gP)%zAxis(1) - grid(gP)%geoCorrZ) .or. &
+                        (radius >= R_out .and. R_out > 0.) )) .or. &
+                        ((.not.(lg2D .and. lgCylinder2D)) .and. ( &
+                        (.not.lgSymmetricXYZ .and. (rVec%x<=grid(1)%xAxis(1)-grid(1)%geoCorrX .or.&
                         & rVec%y<=grid(1)%yAxis(1)-grid(1)%geoCorrY .or. rVec%z<=grid(1)%zAxis(1)-&
                         & grid(1)%geoCorrZ)) .or.&
                         & (rVec%x >= grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX) .or.&
                         &(rVec%y >= grid(gP)%yAxis(grid(gP)%ny)+grid(gP)%geoCorrY) .or.&
                         &(rVec%z >= grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ) .or. &
-                        & xP>grid(gP)%nx .or. yP>grid(gP)%ny .or. zP>grid(gP)%nz ) then
+                        & xP>grid(gP)%nx .or. yP>grid(gP)%ny .or. zP>grid(gP)%nz ))) then
 
                   if (gP==1) then
 
-                     if (enPacket%xP(1) > grid(1)%nx) xP = grid(1)%nx
-                     if (enPacket%yP(1) > grid(1)%ny) yP = grid(1)%ny
-                     if (enPacket%zP(1) > grid(1)%nz) zP = grid(1)%nz
-                     if (enPacket%xP(1) < 1) xP = 1
-                     if (enPacket%yP(1) < 1) yP = 1
-                     if (enPacket%zP(1) < 1) zP = 1
+                     if (lg2D .and. lgCylinder2D) then
+                        if (xP > grid(1)%nx) xP = grid(1)%nx
+                        if (xP < 1) xP = 1
+                        yP = 1
+                        if (zP > grid(1)%nz) zP = grid(1)%nz
+                        if (zP < 1) zP = 1
+                     else
+                        if (enPacket%xP(1) > grid(1)%nx) xP = grid(1)%nx
+                        if (enPacket%yP(1) > grid(1)%ny) yP = grid(1)%ny
+                        if (enPacket%zP(1) > grid(1)%nz) zP = grid(1)%nz
+                        if (enPacket%xP(1) < 1) xP = 1
+                        if (enPacket%yP(1) < 1) yP = 1
+                        if (enPacket%zP(1) < 1) zP = 1
+                     end if
 
 
                      ! the energy packet escapes
@@ -2910,17 +3242,19 @@ module photon_mod
                      stop
                   end if
 
-                  if ( rVec%x <= grid(1)%xAxis(1) .or. (gP==1 .and. xP<1)) then
-                     if (vHat%x<0.) vHat%x = -vHat%x
-                     enPacket%xP(1) = 1
-                     xP = 1
-                     rVec%x = grid(gP)%xAxis(1)
-                  end if
-                  if ( rVec%y <= grid(1)%yAxis(1) .or. (gP==1 .and. yP<1)) then
-                     if (vHat%y<0.) vHat%y = -vHat%y
-                     enPacket%yP(1)=1
-                     yP = 1
-                     rVec%y = grid(gP)%yAxis(1)
+                  if (.not. (lg2D .and. lgCylinder2D)) then
+                     if ( rVec%x <= grid(1)%xAxis(1) .or. (gP==1 .and. xP<1)) then
+                        if (vHat%x<0.) vHat%x = -vHat%x
+                        enPacket%xP(1) = 1
+                        xP = 1
+                        rVec%x = grid(gP)%xAxis(1)
+                     end if
+                     if ( rVec%y <= grid(1)%yAxis(1) .or. (gP==1 .and. yP<1)) then
+                        if (vHat%y<0.) vHat%y = -vHat%y
+                        enPacket%yP(1)=1
+                        yP = 1
+                        rVec%y = grid(gP)%yAxis(1)
+                     end if
                   end if
                   if ( rVec%z <= grid(1)%zAxis(1) .or. (gP==1 .and. zP<1)) then
                      if (vHat%z<0.) vHat%z = -vHat%z
@@ -3338,6 +3672,229 @@ module photon_mod
 !   inpacket%direction%z =  nzp
 
  end subroutine hg
+
+    subroutine bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, axis, lgEscaped)
+       implicit none
+       type(photon_packet), intent(inout) :: enPacket
+       type(vector), intent(inout)        :: rVec
+       type(vector), intent(inout)        :: vHat
+       integer, intent(inout)             :: xP, yP, zP
+       integer, intent(in)                :: gP
+       character(len=1), intent(in)       :: axis
+       logical, intent(out)               :: lgEscaped
+
+       integer :: act, bounce, maxBounces, irepeat, nuP_new
+       real    :: perpVal, v_perp, d_bnd, opac, tau_bnd, rnd, tau_int, d_abs
+       real    :: innerBnd, outerBnd, dirSign, radius
+       logical :: targetIsOuter
+
+       act = grid(gP)%active(xP, yP, zP)
+       if (act <= 0) then
+          lgEscaped = .true.
+          return
+       end if
+
+       select case (axis)
+       case ("Y")
+          v_perp = vHat%y
+          if (v_perp > 0.) then
+             innerBnd = maxPerp2D
+             outerBnd = maxPerp2D + deltaPerp2D
+             dirSign = 1.0
+          else
+             innerBnd = minPerp2D
+             outerBnd = minPerp2D - deltaPerp2D
+             dirSign = -1.0
+          end if
+       case ("X")
+          v_perp = vHat%x
+          if (v_perp > 0.) then
+             innerBnd = maxPerp2D
+             outerBnd = maxPerp2D + deltaPerp2D
+             dirSign = 1.0
+          else
+             innerBnd = minPerp2D
+             outerBnd = minPerp2D - deltaPerp2D
+             dirSign = -1.0
+          end if
+       case ("Z")
+          v_perp = vHat%z
+          if (v_perp > 0.) then
+             innerBnd = maxPerp2D
+             outerBnd = maxPerp2D + deltaPerp2D
+             dirSign = 1.0
+          else
+             innerBnd = minPerp2D
+             outerBnd = minPerp2D - deltaPerp2D
+             dirSign = -1.0
+          end if
+       end select
+
+       perpVal = innerBnd
+       maxBounces = 10
+
+       do bounce = 1, maxBounces
+          opac = grid(gP)%opacity(act, enPacket%nuP)
+          if (opac <= 1.e-30) then
+             if (dirSign * v_perp > 0.) then
+                lgEscaped = .true.
+                return
+             else
+                lgEscaped = .false.
+                exit
+             end if
+          end if
+
+          if (dirSign > 0.) then
+             if (v_perp > 1.e-10) then
+                d_bnd = (outerBnd - perpVal) / v_perp
+                targetIsOuter = .true.
+             else if (v_perp < -1.e-10) then
+                d_bnd = (innerBnd - perpVal) / v_perp
+                targetIsOuter = .false.
+             else
+                d_bnd = deltaPerp2D
+                targetIsOuter = .true.
+             end if
+          else
+             if (v_perp < -1.e-10) then
+                d_bnd = (outerBnd - perpVal) / v_perp
+                targetIsOuter = .true.
+             else if (v_perp > 1.e-10) then
+                d_bnd = (innerBnd - perpVal) / v_perp
+                targetIsOuter = .false.
+             else
+                d_bnd = deltaPerp2D
+                targetIsOuter = .true.
+             end if
+          end if
+
+          if (d_bnd < 0.) d_bnd = 0.
+          tau_bnd = d_bnd * opac
+
+          call random_number(rnd)
+          if (rnd >= 1.0) rnd = 0.9999999
+          tau_int = -log(1.0 - rnd)
+
+          if (tau_int >= tau_bnd) then
+             if (targetIsOuter) then
+                lgEscaped = .true.
+                return
+             else
+                lgEscaped = .false.
+                perpVal = innerBnd
+                exit
+             end if
+          else
+             d_abs = tau_int / opac
+             perpVal = perpVal + d_abs * v_perp
+
+             rVec = rVec + d_abs * vHat
+
+             radius = sqrt((rVec%x/1.e10)**2 + (rVec%y/1.e10)**2 + (rVec%z/1.e10)**2) * 1.e10
+             if (R_out > 0. .and. radius >= R_out) then
+                lgEscaped = .true.
+                return
+             end if
+
+             call getNu2(grid(gP)%recPDF(act, 1:nbins), nuP_new)
+             if (nuP_new < 1) nuP_new = 1
+             if (nuP_new >= nbins) nuP_new = nbins - 1
+             enPacket%nuP = nuP_new
+             enPacket%nu = nuArray(nuP_new)
+             enPacket%lgStellar = .false.
+
+             do irepeat = 1, 1000
+                vHat = randomUnitVector()
+                if (vHat%x /= 0. .and. vHat%y /= 0. .and. vHat%z /= 0.) exit
+             end do
+
+             select case (axis)
+             case ("Y"); v_perp = vHat%y
+             case ("X"); v_perp = vHat%x
+             case ("Z"); v_perp = vHat%z
+             end select
+          end if
+       end do
+
+       if (bounce > maxBounces) then
+          lgEscaped = .true.
+          return
+       end if
+
+       select case (axis)
+       case ("Y")
+          rVec%y = innerBnd
+          if (dirSign > 0. .and. vHat%y > 0.) vHat%y = -vHat%y
+          if (dirSign < 0. .and. vHat%y < 0.) vHat%y = -vHat%y
+          enPacket%direction = vHat
+          enPacket%position = rVec
+          yP = 1
+          if (gP == 1) then
+             call locate(grid(1)%xAxis, rVec%x, xP)
+             if (xP == 0) xP = 1
+             if (xP < grid(1)%nx) then
+                if (rVec%x > (grid(1)%xAxis(xP+1)+grid(1)%xAxis(xP))/2.) xP = xP + 1
+             end if
+             if (xP > grid(1)%nx) xP = grid(1)%nx
+             if (xP < 1) xP = 1
+             call locate(grid(1)%zAxis, rVec%z, zP)
+             if (zP == 0) zP = 1
+             if (zP < grid(1)%nz) then
+                if (rVec%z > (grid(1)%zAxis(zP+1)+grid(1)%zAxis(zP))/2.) zP = zP + 1
+             end if
+             if (zP > grid(1)%nz) zP = grid(1)%nz
+             if (zP < 1) zP = 1
+          end if
+       case ("X")
+          rVec%x = innerBnd
+          if (dirSign > 0. .and. vHat%x > 0.) vHat%x = -vHat%x
+          if (dirSign < 0. .and. vHat%x < 0.) vHat%x = -vHat%x
+          enPacket%direction = vHat
+          enPacket%position = rVec
+          xP = 1
+          if (gP == 1) then
+             call locate(grid(1)%yAxis, rVec%y, yP)
+             if (yP == 0) yP = 1
+             if (yP < grid(1)%ny) then
+                if (rVec%y > (grid(1)%yAxis(yP+1)+grid(1)%yAxis(yP))/2.) yP = yP + 1
+             end if
+             if (yP > grid(1)%ny) yP = grid(1)%ny
+             if (yP < 1) yP = 1
+             call locate(grid(1)%zAxis, rVec%z, zP)
+             if (zP == 0) zP = 1
+             if (zP < grid(1)%nz) then
+                if (rVec%z > (grid(1)%zAxis(zP+1)+grid(1)%zAxis(zP))/2.) zP = zP + 1
+             end if
+             if (zP > grid(1)%nz) zP = grid(1)%nz
+             if (zP < 1) zP = 1
+          end if
+       case ("Z")
+          rVec%z = innerBnd
+          if (dirSign > 0. .and. vHat%z > 0.) vHat%z = -vHat%z
+          if (dirSign < 0. .and. vHat%z < 0.) vHat%z = -vHat%z
+          enPacket%direction = vHat
+          enPacket%position = rVec
+          zP = 1
+          if (gP == 1) then
+             call locate(grid(1)%xAxis, rVec%x, xP)
+             if (xP == 0) xP = 1
+             if (xP < grid(1)%nx) then
+                if (rVec%x > (grid(1)%xAxis(xP+1)+grid(1)%xAxis(xP))/2.) xP = xP + 1
+             end if
+             if (xP > grid(1)%nx) xP = grid(1)%nx
+             if (xP < 1) xP = 1
+             call locate(grid(1)%yAxis, rVec%y, yP)
+             if (yP == 0) yP = 1
+             if (yP < grid(1)%ny) then
+                if (rVec%y > (grid(1)%yAxis(yP+1)+grid(1)%yAxis(yP))/2.) yP = yP + 1
+             end if
+             if (yP > grid(1)%ny) yP = grid(1)%ny
+             if (yP < 1) yP = 1
+          end if
+       end select
+
+    end subroutine bufferTransfer2D
 
 end subroutine energyPacketDriver
 

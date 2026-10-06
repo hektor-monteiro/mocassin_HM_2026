@@ -25,6 +25,8 @@ module set_input_mod
         character(len=50)   :: multiPhotoSources ! stars file
         character(len=200)  :: inputLine         ! line reader for 2D keyword
         character(len=50)   :: planeArg          ! 2D plane argument
+        character(len=50)   :: symArg            ! 2D symmetry axis argument
+        character(len=50)   :: specArg           ! 2D specular reflection argument
 
         logical :: lgOutputExists ! to check for existence of output directory
         real(kind=8)        :: nphotonsin ! to allow scientific notation in input
@@ -171,10 +173,12 @@ module set_input_mod
                backspace 10
                inputLine = ""
                read(unit=10, fmt='(A)', iostat=ios) inputLine
-               plane2D = "XY"
-               planeArg = "XY"
-               read(inputLine, *, iostat=ios) keyword, planeArg
-               if (ios == 0) then
+               plane2D = "XZ"
+               planeArg = "XZ"
+               symArg = ""
+               specArg = ""
+               read(inputLine, *, iostat=ios) keyword, planeArg, symArg, specArg
+               if (ios == 0 .or. ios == -1) then
                   plane2D = trim(planeArg)
                end if
                ! convert to uppercase
@@ -184,21 +188,150 @@ module set_input_mod
                   end if
                end do
                select case (trim(plane2D))
-               case ("XY", "YX")
-                  plane2D = "XY"
-                  perpAxis2D = "Z"
                case ("XZ", "ZX")
                   plane2D = "XZ"
                   perpAxis2D = "Y"
                case ("YZ", "ZY")
                   plane2D = "YZ"
                   perpAxis2D = "X"
+               case ("XY", "YX")
+                  plane2D = "XY"
+                  perpAxis2D = "Z"
                case default
-                  print*, "! readInput: unrecognized 2D plane: '", trim(plane2D), "'. Must be 'XY', 'XZ', or 'YZ'."
+                  print*, "! readInput: unrecognized 2D plane: '", trim(plane2D), "'. Must be 'XZ', 'YZ', or 'XY'."
                   stop
                end select
+
+               ! symmetry axis handling
+               if (len_trim(symArg) > 0) then
+                  do j = 1, len_trim(symArg)
+                     if (symArg(j:j) >= 'a' .and. symArg(j:j) <= 'z') then
+                        symArg(j:j) = char(ichar(symArg(j:j)) - 32)
+                     end if
+                  end do
+                  if (trim(symArg) == "CYLINDER" .or. trim(symArg) == "CYLINDRICAL" .or. trim(symArg) == "AXISYMMETRIC") then
+                     lgCylinder2D = .true.
+                     lgBuffer2D = .false.
+                     lgSpecular2D = .false.
+                     select case (plane2D)
+                     case ("XZ", "YZ")
+                        symmetryAxis2D = "Z"
+                     case ("XY")
+                        symmetryAxis2D = "Y"
+                     end select
+                  else if (trim(symArg) == "NOSPECULAR" .or. trim(symArg) == "NO_SPECULAR") then
+                     lgBuffer2D = .false.
+                     lgSpecular2D = .false.
+                     lgCylinder2D = .false.
+                     select case (plane2D)
+                     case ("XZ", "YZ")
+                        symmetryAxis2D = "Z"
+                     case ("XY")
+                        symmetryAxis2D = "Y"
+                     end select
+                  else if (trim(symArg) == "SPECULAR") then
+                     lgBuffer2D = .false.
+                     lgSpecular2D = .true.
+                     lgCylinder2D = .false.
+                     select case (plane2D)
+                     case ("XZ", "YZ")
+                        symmetryAxis2D = "Z"
+                     case ("XY")
+                        symmetryAxis2D = "Y"
+                     end select
+                  else if (trim(symArg) == "BUFFER" .or. trim(symArg) == "GHOST") then
+                     lgBuffer2D = .true.
+                     lgSpecular2D = .false.
+                     lgCylinder2D = .false.
+                     select case (plane2D)
+                     case ("XZ", "YZ")
+                        symmetryAxis2D = "Z"
+                     case ("XY")
+                        symmetryAxis2D = "Y"
+                     end select
+                  else
+                     symmetryAxis2D = symArg(1:1)
+                  end if
+               else
+                  select case (plane2D)
+                  case ("XZ", "YZ")
+                     symmetryAxis2D = "Z"
+                  case ("XY")
+                     symmetryAxis2D = "Y"
+                  end select
+               end if
+
+               if (len_trim(specArg) > 0) then
+                  do j = 1, len_trim(specArg)
+                     if (specArg(j:j) >= 'a' .and. specArg(j:j) <= 'z') then
+                        specArg(j:j) = char(ichar(specArg(j:j)) - 32)
+                     end if
+                  end do
+                  if (trim(specArg) == "CYLINDER" .or. trim(specArg) == "CYLINDRICAL" .or. trim(specArg) == "AXISYMMETRIC") then
+                     lgCylinder2D = .true.
+                     lgBuffer2D = .false.
+                     lgSpecular2D = .false.
+                  else if (trim(specArg) == "NOSPECULAR" .or. trim(specArg) == "NO_SPECULAR") then
+                     lgBuffer2D = .false.
+                     lgSpecular2D = .false.
+                     lgCylinder2D = .false.
+                  else if (trim(specArg) == "SPECULAR") then
+                     lgBuffer2D = .false.
+                     lgSpecular2D = .true.
+                     lgCylinder2D = .false.
+                  else if (trim(specArg) == "BUFFER" .or. trim(specArg) == "GHOST") then
+                     lgBuffer2D = .true.
+                     lgSpecular2D = .false.
+                     lgCylinder2D = .false.
+                  end if
+               end if
+
                if (taskid == 0) then
-                  print*, "2D mode enabled in plane: ", trim(plane2D), " (perpendicular reflection axis: ", perpAxis2D, ")"
+                  if (lgCylinder2D) then
+                     print*, "2D mode enabled in plane: ", trim(plane2D), " with symmetry axis: ", symmetryAxis2D, &
+                          & " (TRUE AXISYMMETRIC CYLINDRICAL MONTE CARLO)"
+                  else if (lgBuffer2D) then
+                     print*, "2D mode enabled in plane: ", trim(plane2D), " with symmetry axis: ", symmetryAxis2D, &
+                          & " (perpendicular axis: ", perpAxis2D, ", boundary: GHOST BUFFER RE-EMISSION)"
+                  else if (lgSpecular2D) then
+                     print*, "2D mode enabled in plane: ", trim(plane2D), " with symmetry axis: ", symmetryAxis2D, &
+                          & " (perpendicular axis: ", perpAxis2D, ", boundary: SPECULAR REFLECTION)"
+                  else
+                     print*, "2D mode enabled in plane: ", trim(plane2D), " with symmetry axis: ", symmetryAxis2D, &
+                          & " (perpendicular axis: ", perpAxis2D, ", boundary: FREE ESCAPE)"
+                  end if
+               end if
+            case("cylinder", "cylindrical", "axisymmetric")
+               lgCylinder2D = .true.
+               lgBuffer2D = .false.
+               lgSpecular2D = .false.
+               if (taskid == 0) print*, "2D mode set to TRUE AXISYMMETRIC CYLINDRICAL MONTE CARLO"
+            case("nospecular", "noSpecular")
+               lgCylinder2D = .false.
+               lgBuffer2D = .false.
+               lgSpecular2D = .false.
+               if (taskid == 0) print*, "2D perpendicular boundary set to FREE ESCAPE"
+            case("specular")
+               lgCylinder2D = .false.
+               lgBuffer2D = .false.
+               lgSpecular2D = .true.
+               if (taskid == 0) print*, "2D perpendicular boundary set to SPECULAR REFLECTION"
+            case("buffer", "ghostBuffer")
+               lgCylinder2D = .false.
+               lgBuffer2D = .true.
+               lgSpecular2D = .false.
+               if (taskid == 0) print*, "2D perpendicular boundary set to GHOST BUFFER RE-EMISSION"
+            case("symmetryAxis")
+               backspace 10
+               symArg = ""
+               read(unit=10, fmt=*, iostat=ios) keyword, symArg
+               if (len_trim(symArg) > 0) then
+                  do j = 1, len_trim(symArg)
+                     if (symArg(j:j) >= 'a' .and. symArg(j:j) <= 'z') then
+                        symArg(j:j) = char(ichar(symArg(j:j)) - 32)
+                     end if
+                  end do
+                  symmetryAxis2D = symArg(1:1)
                end if
             case("nstages")
                backspace 10
@@ -750,6 +883,27 @@ module set_input_mod
            case ('X')
               nxIn = 1
               if (.not. lgDfile .and. Rnx < 0.) Rnx = Rny
+           end select
+
+           select case (symmetryAxis2D)
+           case ("Z")
+              if (plane2D /= "XZ" .and. plane2D /= "YZ") then
+                 print*, "! readInput: 2D plane '", trim(plane2D), "' does not contain symmetry axis Z. Must be XZ or YZ."
+                 stop
+              end if
+           case ("Y")
+              if (plane2D /= "XY" .and. plane2D /= "YZ") then
+                 print*, "! readInput: 2D plane '", trim(plane2D), "' does not contain symmetry axis Y. Must be XY or YZ."
+                 stop
+              end if
+           case ("X")
+              if (plane2D /= "XY" .and. plane2D /= "XZ") then
+                 print*, "! readInput: 2D plane '", trim(plane2D), "' does not contain symmetry axis X. Must be XY or XZ."
+                 stop
+              end if
+           case default
+              print*, "! readInput: unrecognized 2D symmetry axis: '", symmetryAxis2D, "'. Must be 'Z', 'Y', or 'X'."
+              stop
            end select
         else if (lgPlaneIonization .and. lg2d) then
            print*, "! readInput: planeIonization and 2D options are not compatible"

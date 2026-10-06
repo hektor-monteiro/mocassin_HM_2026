@@ -50,7 +50,7 @@ module output_mod
         real                        :: Te10000  ! TeUsed/10000.miser_qinfo -A
         real, parameter             :: hcryd = 2.1799153e-11!
         real                        :: radius, dz, dr
-        real                        :: r2D, xCell, yCell, zCell, xStar, yStar, zStar, weight2D
+        real                        :: r2D, xCell, yCell, zCell, xStar, yStar, zStar, weight2D, rCyl, rAxisMin
 
         ! lexingotn
         !        real, allocatable :: denominatorIon(:,:,:) ! denominator for IonVol calculations
@@ -507,13 +507,77 @@ module output_mod
 
                            r2D = max(r2D, 1.0e-30)
 
+                           ! Calculate cylindrical distance R_cyl from symmetry axis of revolution
+                           select case (symmetryAxis2D)
+                           case ('Z')
+                              select case (perpAxis2D)
+                              case ('Y')
+                                 ! Slice is XZ (perp Y), distance to Z-axis is |xCell - xStar|
+                                 rCyl = abs(xCell - xStar)
+                                 rAxisMin = grid(iG)%xAxis(1)
+                              case ('X')
+                                 ! Slice is YZ (perp X), distance to Z-axis is |yCell - yStar|
+                                 rCyl = abs(yCell - yStar)
+                                 rAxisMin = grid(iG)%yAxis(1)
+                              case default
+                                 rCyl = sqrt((xCell - xStar)**2 + (yCell - yStar)**2)
+                                 rAxisMin = min(grid(iG)%xAxis(1), grid(iG)%yAxis(1))
+                              end select
+
+                           case ('Y')
+                              select case (perpAxis2D)
+                              case ('Z')
+                                 ! Slice is XY (perp Z), distance to Y-axis is |xCell - xStar|
+                                 rCyl = abs(xCell - xStar)
+                                 rAxisMin = grid(iG)%xAxis(1)
+                              case ('X')
+                                 ! Slice is YZ (perp X), distance to Y-axis is |zCell - zStar|
+                                 rCyl = abs(zCell - zStar)
+                                 rAxisMin = grid(iG)%zAxis(1)
+                              case default
+                                 rCyl = sqrt((xCell - xStar)**2 + (zCell - zStar)**2)
+                                 rAxisMin = min(grid(iG)%xAxis(1), grid(iG)%zAxis(1))
+                              end select
+
+                           case ('X')
+                              select case (perpAxis2D)
+                              case ('Z')
+                                 ! Slice is XY (perp Z), distance to X-axis is |yCell - yStar|
+                                 rCyl = abs(yCell - yStar)
+                                 rAxisMin = grid(iG)%yAxis(1)
+                              case ('Y')
+                                 ! Slice is XZ (perp Y), distance to X-axis is |zCell - zStar|
+                                 rCyl = abs(zCell - zStar)
+                                 rAxisMin = grid(iG)%zAxis(1)
+                              case default
+                                 rCyl = sqrt((yCell - yStar)**2 + (zCell - zStar)**2)
+                                 rAxisMin = min(grid(iG)%yAxis(1), grid(iG)%zAxis(1))
+                              end select
+                           end select
+
+                           rCyl = max(rCyl, 1.0e-30)
+
                            if (deltaPerp2D > 0.0) then
                               if (lgSymmetricXYZ) then
-                                 weight2D = r2D / deltaPerp2D
+                                 ! Octant ring volume: (pi/2) * rCyl * dR * dZ.
+                                 ! Multiplying by 8 at the end gives 4*pi * rCyl * dR * dZ
+                                 ! = 2 * (2*pi * rCyl * dR * dZ), covering full 2*pi azimuth and +-Z.
+                                 weight2D = (Pi / 2.0) * rCyl / deltaPerp2D
                               else
-                                 weight2D = 2.0 * r2D / deltaPerp2D
+                                 if (rAxisMin < 0.0) then
+                                    ! Slice covers both sides (-R to +R) of symmetry axis.
+                                    ! Each side sweeps pi radians (total 2*pi).
+                                    weight2D = Pi * rCyl / deltaPerp2D
+                                 else
+                                    ! Slice covers one side (0 to +R), sweeps full 2*pi.
+                                    weight2D = 2.0 * Pi * rCyl / deltaPerp2D
+                                 end if
                               end if
                            else
+                              weight2D = 1.0
+                           end if
+
+                           if (lgCylinder2D) then
                               weight2D = 1.0
                            end if
 

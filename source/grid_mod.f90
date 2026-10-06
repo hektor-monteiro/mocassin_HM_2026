@@ -3162,7 +3162,7 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
         write(40, *) nstages, ' emittingGrid'
         write(40, *) lgMultistars, ' lgMultiStars'
         if (lg2D) then
-           write(40,*)  lg2D, ' ', trim(plane2D), minPerp2D, maxPerp2D, deltaPerp2D, ' 2D geometry'
+           write(40,*)  lg2D, ' ', trim(plane2D), ' ', symmetryAxis2D, minPerp2D, maxPerp2D, deltaPerp2D, ' 2D geometry'
         else
            write(40,*)  lg2D, ' 2D geometry?'
         end if
@@ -3186,6 +3186,7 @@ function getVolume(grid, xP, yP, zP)
   ! local variables
   real :: dx, dy, dz         ! cartesian axes increments in [cm]
   real :: factor
+  real :: R_in, R_out_c, R_in_15, R_out_15, dz_15
 
   if (lg1D) then
     if (nGrids > 1) then
@@ -3205,7 +3206,40 @@ function getVolume(grid, xP, yP, zP)
     getVolume = getVolume/8.
 
   else if (lg2D) then
-     select case (perpAxis2D)
+     if (lgCylinder2D) then
+        ! True axisymmetric cylindrical ring volume
+        if (xP == 1) then
+           R_in = 0.0
+           R_out_c = (grid%xAxis(2) + grid%xAxis(1)) / 2.0
+        else if (xP < grid%nx) then
+           R_in = (grid%xAxis(xP) + grid%xAxis(xP-1)) / 2.0
+           R_out_c = (grid%xAxis(xP+1) + grid%xAxis(xP)) / 2.0
+        else
+           R_in = (grid%xAxis(grid%nx) + grid%xAxis(grid%nx-1)) / 2.0
+           R_out_c = grid%xAxis(grid%nx)
+        end if
+
+        if (zP == 1) then
+           dz = (grid%zAxis(2) - grid%zAxis(1)) / 2.0
+        else if (zP < grid%nz) then
+           dz = (grid%zAxis(zP+1) - grid%zAxis(zP-1)) / 2.0
+        else
+           dz = (grid%zAxis(grid%nz) - grid%zAxis(grid%nz-1)) / 2.0
+        end if
+
+        R_in_15 = R_in / 1.e15
+        R_out_15 = R_out_c / 1.e15
+        dz_15 = dz / 1.e15
+
+        if (lgSymmetricXYZ) then
+           ! Octant ring volume: (pi / 4) * (R_out^2 - R_in^2) * dz
+           getVolume = (Pi / 4.0) * (R_out_15**2 - R_in_15**2) * dz_15
+        else
+           ! Full ring volume: pi * (R_out^2 - R_in^2) * dz
+           getVolume = Pi * (R_out_15**2 - R_in_15**2) * dz_15
+        end if
+     else
+        select case (perpAxis2D)
      case ('Z')
         if ((xP > 1) .and. (xP < grid%nx)) then
            dx = abs(grid%xAxis(xP+1) - grid%xAxis(xP-1)) / 2.0
@@ -3286,10 +3320,11 @@ function getVolume(grid, xP, yP, zP)
         end if
      end select
 
-     dx = dx / 1.e15
-     dy = dy / 1.e15
-     dz = dz / 1.e15
-     getVolume = dx * dy * dz
+        dx = dx / 1.e15
+        dy = dy / 1.e15
+        dz = dz / 1.e15
+        getVolume = dx * dy * dz
+     end if
 
   else
     ! Determine the factor based on lgSymmetricXYZ
@@ -3485,22 +3520,32 @@ end function getVolume
       read(77, '(A)') line2D
       read(line2D, *, iostat=ios) lg2D
       if (ios == 0 .and. lg2D) then
-         read(line2D, *, iostat=ios) lg2D, plane2D, minPerp2D, maxPerp2D, deltaPerp2D
+         read(line2D, *, iostat=ios) lg2D, plane2D, symmetryAxis2D, minPerp2D, maxPerp2D, deltaPerp2D
          if (ios /= 0) then
-            plane2D = "XY"
-            perpAxis2D = "Z"
-         else
-            select case (trim(plane2D))
-            case ("XZ", "xz", "ZX", "zx")
+            read(line2D, *, iostat=ios) lg2D, plane2D, minPerp2D, maxPerp2D, deltaPerp2D
+            if (ios /= 0) then
                plane2D = "XZ"
                perpAxis2D = "Y"
-            case ("YZ", "yz", "ZY", "zy")
-               plane2D = "YZ"
-               perpAxis2D = "X"
-            case default
-               plane2D = "XY"
-               perpAxis2D = "Z"
-            end select
+               symmetryAxis2D = "Z"
+            end if
+         end if
+         select case (trim(plane2D))
+         case ("XZ", "xz", "ZX", "zx")
+            plane2D = "XZ"
+            perpAxis2D = "Y"
+         case ("YZ", "yz", "ZY", "zy")
+            plane2D = "YZ"
+            perpAxis2D = "X"
+         case default
+            plane2D = "XY"
+            perpAxis2D = "Z"
+         end select
+         if (symmetryAxis2D /= 'X' .and. symmetryAxis2D /= 'Y' .and. symmetryAxis2D /= 'Z') then
+            if (plane2D == "XZ" .or. plane2D == "YZ") then
+               symmetryAxis2D = "Z"
+            else
+               symmetryAxis2D = "Y"
+            end if
          end if
       else
          lg2D = .false.

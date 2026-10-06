@@ -23,6 +23,10 @@ module common_mod
     logical         :: lg2D=.false.             ! 2D?
     character(len=2):: plane2D = "XY"           ! 2D symmetry plane: 'XY', 'XZ', or 'YZ'
     character(len=1):: perpAxis2D = 'Z'         ! perpendicular reflection axis: 'Z', 'Y', or 'X'
+    character(len=1):: symmetryAxis2D = 'Z'     ! 2D axis of revolution / rotational symmetry: 'Z', 'X', or 'Y'
+    logical         :: lgSpecular2D = .false.   ! specular reflection for diffuse packets at perpendicular boundaries
+    logical         :: lgBuffer2D = .true.      ! ghost cell buffer absorption/re-emission at perpendicular boundaries
+    logical         :: lgCylinder2D = .false.   ! true 3D axisymmetric cylindrical Monte Carlo
     real            :: minPerp2D = 0.0          ! lower bound of 2D central slice [cm]
     real            :: maxPerp2D = 0.0          ! upper bound of 2D central slice [cm]
     real            :: deltaPerp2D = 0.0        ! thickness of 2D central slice [cm]
