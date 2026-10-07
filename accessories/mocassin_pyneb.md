@@ -62,14 +62,22 @@ The test line list is provided at `benchmarks/test_Problem/input/lines_plot_and_
    - **O II Multiplet 1 (V1)** ($3s\,^4\text{P} - 3p\,^4\text{D}^\circ$): 4649.13 Å (principal), 4650.84 Å, 4661.63 Å, 4676.23 Å, 4673.73 Å, 4641.81 Å, 4638.86 Å.
    - **Other O II ORLs**: 4089.29 Å ($3d\,^4\text{F} - 4f\,\text{G}[5]^\circ$, M48), 4596.18 Å ($3s'\,^2\text{D} - 3p'\,^2\text{F}^\circ$, M15).
    - **C II ORLs**: 4267.00 Å ($3d\,^2\text{D} - 4f\,^2\text{F}^\circ$, classic ADF line), 6578.05 Å ($3s\,^2\text{S} - 3p\,^2\text{P}^\circ$).
-   - **N II ORLs**: Multiplet 3 (5679.56 Å, 5666.63 Å, 5676.02 Å), 4630.54 Å (M5), 4041.31 Å (M39).
+   - **N II ORLs**: Multiplet 3 (5679.56 Å, 5666.63 Å, 5676.02 Å, 5686.21 Å, 5710.77 Å, 5730.65 Å), Multiplet 4 (5005.15 Å, 5001.48 Å, 5001.14 Å), Multiplet 5 (4630.54 Å, 4621.39 Å, 4607.16 Å, 4601.48 Å), Multiplet 28 (5941.65 Å, 5931.78 Å), Multiplet 39 (4041.31 Å, 4043.53 Å, 4035.08 Å).
 
-3. **Permitted Recombination Lines Contaminating Auroral / Diagnostic Lines**:
+3. **Permitted Recombination Lines Contaminating Auroral / Nebular Diagnostics**:
    - **O II Multiplet 2 (V2)** ($3s\,^4\text{P} - 3p\,^4\text{P}^\circ$):
      - **O II 4366.89 Å** ($5/2 - 5/2$) & **4366.53 Å** ($3d\,^4\text{F} - 4f\,\text{D}[3]^\circ$): Directly blend with and contaminate the weak auroral [O III] $\lambda 4363.21$ line in low/intermediate resolution spectra ($R \lesssim 1200$), artificially boosting the measured flux and causing overestimates in derived $T_e([\text{O III}])$.
-     - **O II 4349.43 Å** ($3/2 - 5/2$): The clean reference line of Multiplet 2, used observationally to deblend and subtract the 4366.89 Å contribution.
+     - **O II 4349.43 Å** ($3/2 - 5/2$): Clean reference line of Multiplet 2, used observationally to deblend and subtract the 4366.89 Å contribution.
      - **Other V2 lines**: 4317.14 Å, 4319.63 Å, 4336.86 Å, 4345.56 Å, 4325.76 Å, 4357.25 Å.
-   - **Other nearby permitted lines**: O II 4369.27 Å (M65), O II 4371.61 Å (M44), N II 5686.21/5710.77 Å (near [N II] 5755), and O II 7318.99 Å (blends with [O II] 7320).
+   - **N II Multiplet 4 (V4)** ($3p\,^3\text{D} - 3d\,^3\text{F}^\circ$):
+     - **N II 5005.15 Å** ($3p\,^3\text{D}_3 - 3d\,^3\text{F}_4^\circ$): Lies only $1.7\text{ \AA}$ away from nebular [O III] $\lambda 5006.84$, blending in low-resolution spectra.
+     - **N II 5001.48 Å** & **5001.14 Å**: Accompanying V4 lines in the blue wing of [O III] $\lambda 5007$.
+   - **[N II] $\lambda 5755$ Auroral Line Contamination**:
+     - **Recombination cascade excitation $I_R(\lambda 5755)$**: Recombination of $N^{2+}$ directly populates the upper level of forbidden [N II] $\lambda 5754.60$, parametrized by Liu et al. (2000, MNRAS 315, 101):
+       $$\frac{I_R(\lambda 5755)}{I(\text{H}\beta)} = 3.19 \left(\frac{T_e}{10^4\text{ K}}\right)^{0.30} \times \frac{N^{2+}}{\text{H}^+}$$
+       where $(N^{2+}/\text{H}^+)$ is derived directly from the N II $\lambda 5679.56$ ORL.
+     - **Nearby Permitted N II ORLs**: N II 5730.65 Å and 5710.77 Å (Multiplet 3) near the 5755 auroral line.
+   - **Other nearby permitted lines**: O II 4369.27 Å (M65), O II 4371.61 Å (M44), and O II 7318.99 Å (blends with [O II] 7320).
 
 ---
 
@@ -114,7 +122,7 @@ N(2+) / H(+)    [N III] 57m     N II 5679.56          5.405e-05      3.385e-05  
 ```
 *Because `test_Problem` is a chemically homogeneous photoionization model, the theoretical ADF for oxygen and carbon is expected to be ~1.0. PyNeb yields $\text{ADF} = 1.01$, validating atomic consistency across the 3D volume.*
 
-### 3. Auroral Line Recombination Contamination Assessment
+### 3. Auroral Line Recombination Contamination Assessments
 ```text
 ==========================================================================================
 Auroral Line Contamination Assessment: [O III] 4363 by Permitted O II ORLs
@@ -127,9 +135,21 @@ Auroral Line Contamination Assessment: [O III] 4363 by Permitted O II ORLs
   Blend Contamination Fraction                           :     0.056% of [O III] 4363
   Uncontaminated Ratio R([O III]) = (4959+5007)/4363     :      79.53 -> Te = 13884.3 K
   Contaminated Ratio (including unresolved O II blend)   :      79.49 -> Te = 13884.3 K (delta Te =  +0.0 K)
+  Nearby Permitted N II 5005.15 (Multiplet 4) (Hb=100)   :     0.0109 (near [O III] 5007)
+==========================================================================================
+
+==========================================================================================
+Auroral Line Contamination Assessment: [N II] 5755 by N II Recombination Lines
+==========================================================================================
+  Forbidden [N II] 5754.60 Intensity (Hb=100)            :     5.2809
+  Recombination Cascade Excitation I_R(5755) (Hb=100)    :     0.0120 (Liu et al. 2000)
+  Nearby Permitted N II ORLs (5731, 5711 A) (Hb=100)     :     0.0027
+  Total Recombination Contribution to [N II] 5755        :     0.0147 (  0.28%)
+  Uncontaminated Ratio R([N II]) = (6548+6584)/5755      :      58.60 -> Te = 11364.7 K
+  Contaminated Ratio (including recombination effects)   :      58.44 -> Te = 11377.6 K (delta Te = +12.9 K)
 ==========================================================================================
 ```
-*In low-temperature ($T_e \lesssim 9,000\text{ K}$) nebulae or objects with large Abundance Discrepancy Factors where ORLs are heavily enhanced and [O III] 4363 is weak, this unresolved blend can contribute several percent or tens of percent to the measured 4363 flux, leading to significant overestimates in the derived [O III] electron temperature.*
+*In low-temperature ($T_e \lesssim 9,000\text{ K}$) nebulae or objects with large Abundance Discrepancy Factors where ORLs are heavily enhanced and auroral lines are weak, these unresolved blends and recombination cascade excitations can contribute several percent or tens of percent to the measured auroral fluxes, leading to significant overestimates in the derived electron temperatures.*
 
 ---
 

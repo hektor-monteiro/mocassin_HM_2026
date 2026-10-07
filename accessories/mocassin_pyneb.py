@@ -879,6 +879,13 @@ class MocassinPyNebCalculator:
                 if 4315.0 <= r['wave'] <= 4370.0 and ('V2' in r['label'] or 'M2' in r['label']):
                     o2_m2_lines.append(r)
 
+        # Check N II Multiplet 4 lines near [O III] 5007
+        n2_5005 = None
+        for r in results:
+            if r['elem'] == 'N' and r['spec'] == 2 and r['type'] == 'REC' and abs(r['wave'] - 5005.15) < 0.5:
+                n2_5005 = r
+                break
+
         if o3_4363 and (o2_4366_89 or o2_4366_53):
             I_4363_pure = o3_4363['I_ratio']
             I_5007 = o3_5007['I_ratio'] if o3_5007 else 0.0
@@ -927,7 +934,83 @@ class MocassinPyNebCalculator:
                 'Te_pure': Te_pure,
                 'Te_blend': Te_blend,
                 'delta_Te': delta_Te,
-                'mean_Ne': mean_Ne
+                'mean_Ne': mean_Ne,
+                'I_n2_5005': n2_5005['I_ratio'] if n2_5005 else 0.0
+            }
+
+        # 2. [N II] 5755 auroral contamination by N II recombination lines
+        n2_5755 = None
+        n2_6584 = None
+        n2_6548 = None
+        n2_5680 = None
+        n2_near_5755 = 0.0
+
+        for r in results:
+            if r['status'] != 'OK':
+                continue
+            if r['elem'] == 'N' and r['spec'] == 2:
+                if r['type'] == 'CEL':
+                    if abs(r['wave'] - 5754.60) < 2.0:
+                        n2_5755 = r
+                    elif abs(r['wave'] - 6583.45) < 3.0:
+                        n2_6584 = r
+                    elif abs(r['wave'] - 6548.05) < 3.0:
+                        n2_6548 = r
+                elif r['type'] == 'REC':
+                    if abs(r['wave'] - 5679.56) < 2.0:
+                        n2_5680 = r
+                    if abs(r['wave'] - 5730.65) < 1.0 or abs(r['wave'] - 5710.77) < 1.0:
+                        n2_near_5755 += r['I_ratio']
+
+        if n2_5755 and n2_6584 and n2_5680:
+            I_5755_pure = n2_5755['I_ratio']
+            I_6584 = n2_6584['I_ratio']
+            I_6548 = n2_6548['I_ratio'] if n2_6548 else (I_6584 / 2.94)
+
+            mean_Te_N = float(np.average(self.grid.Te, weights=self.grid.Ne * self.grid.get_ion_density(7, 2) * self.grid.dV))
+            mean_Ne_N = float(np.average(self.grid.Ne, weights=self.grid.Ne * self.grid.get_ion_density(7, 2) * self.grid.dV))
+            em_hb_N = float(self.get_rec_atom('H', 1).getEmissivity(mean_Te_N, mean_Ne_N, 4, 2))
+            em_5680 = float(self.get_rec_atom('N', 2).getEmissivity(mean_Te_N, mean_Ne_N, wave=5679.56))
+
+            abun_n2_orl = n2_5680['I_ratio'] * (em_hb_N / em_5680) if em_5680 > 0 else 0.0
+            # Recombination excitation of [N II] 5755 (Liu et al. 2000, MNRAS 315, 101, eq. 1)
+            I_R_5755 = 3.19 * ((mean_Te_N / 10000.0)**0.30) * abun_n2_orl if mean_Te_N > 0 else 0.0
+            I_tot_contam_5755 = I_R_5755 + n2_near_5755
+            contam_frac_5755 = (I_tot_contam_5755 / I_5755_pure * 100.0) if I_5755_pure > 0 else 0.0
+
+            R_pure_N = (I_6548 + I_6584) / I_5755_pure if I_5755_pure > 0 else np.nan
+            R_rec_N = (I_6548 + I_6584) / (I_5755_pure + I_tot_contam_5755) if (I_5755_pure + I_tot_contam_5755) > 0 else np.nan
+
+            n2_atom = self.get_atom('N', 2)
+            Te_pure_N = np.nan
+            Te_rec_N = np.nan
+            delta_Te_N = np.nan
+            if not np.isnan(R_pure_N):
+                try:
+                    Te_pure_N = float(n2_atom.getTemDen(int_ratio=R_pure_N, den=mean_Ne_N, to_eval='(L(6548)+L(6584))/L(5755)'))
+                except Exception:
+                    pass
+                try:
+                    Te_rec_N = float(n2_atom.getTemDen(int_ratio=R_rec_N, den=mean_Ne_N, to_eval='(L(6548)+L(6584))/L(5755)'))
+                except Exception:
+                    pass
+                if not (np.isnan(Te_pure_N) or np.isnan(Te_rec_N)):
+                    delta_Te_N = Te_rec_N - Te_pure_N
+
+            diags['N2_5755'] = {
+                'I_5755_pure': I_5755_pure,
+                'I_6584': I_6584,
+                'I_6548': I_6548,
+                'I_R_5755': I_R_5755,
+                'I_near_5755': n2_near_5755,
+                'I_tot_contam': I_tot_contam_5755,
+                'contam_frac_pct': contam_frac_5755,
+                'R_pure': R_pure_N,
+                'R_rec': R_rec_N,
+                'Te_pure': Te_pure_N,
+                'Te_rec': Te_rec_N,
+                'delta_Te': delta_Te_N,
+                'mean_Ne': mean_Ne_N
             }
 
         return diags
@@ -1109,23 +1192,41 @@ def print_results_table(results, adf_diag=None, moc_hb_lum=None, contam_diag=Non
                 print(f"  -> Total O II Multiplet 1 (V1) Sum I(V1)/I(Hb) = {d['orl_v1_sum_ratio']:.4e} ({d['orl_v1_sum_ratio']*100:.4f} on Hb=100)")
         print("=" * 75)
 
-    if contam_diag and 'O3_4363' in contam_diag:
-        c = contam_diag['O3_4363']
-        print("\n" + "=" * 90)
-        print("Auroral Line Contamination Assessment: [O III] 4363 by Permitted O II ORLs")
-        print("=" * 90)
-        print(f"  Forbidden [O III] 4363.21 Intensity (Hb=100)           : {c['I_4363_pure']*100.0:10.4f}")
-        print(f"  Permitted O II 4366.89 (Multiplet 2, 5/2-5/2) (Hb=100)  : {c['I_4366_89']*100.0:10.4f}")
-        if c['I_4366_53'] > 0:
-            print(f"  Permitted O II 4366.53 (3d 4F - 4f D[3]0) (Hb=100)     : {c['I_4366_53']*100.0:10.4f}")
-        print(f"  Total Permitted O II Blend near 4363 A (Hb=100)        : {c['I_blend_total']*100.0:10.4f}")
-        if c['I_m2_sum'] > 0:
-            print(f"  Total O II Multiplet 2 (V2) Sum (Hb=100)               : {c['I_m2_sum']*100.0:10.4f}")
-        print(f"  Blend Contamination Fraction                           : {c['blend_frac_pct']:9.3f}% of [O III] 4363")
-        if not np.isnan(c['R_pure']):
-            print(f"  Uncontaminated Ratio R([O III]) = (4959+5007)/4363     : {c['R_pure']:10.2f} -> Te = {c['Te_pure']:7.1f} K")
-            print(f"  Contaminated Ratio (including unresolved O II blend)   : {c['R_blend']:10.2f} -> Te = {c['Te_blend']:7.1f} K (delta Te = {c['delta_Te']:+5.1f} K)")
-        print("=" * 90)
+    if contam_diag:
+        if 'O3_4363' in contam_diag:
+            c = contam_diag['O3_4363']
+            print("\n" + "=" * 90)
+            print("Auroral Line Contamination Assessment: [O III] 4363 by Permitted O II ORLs")
+            print("=" * 90)
+            print(f"  Forbidden [O III] 4363.21 Intensity (Hb=100)           : {c['I_4363_pure']*100.0:10.4f}")
+            print(f"  Permitted O II 4366.89 (Multiplet 2, 5/2-5/2) (Hb=100)  : {c['I_4366_89']*100.0:10.4f}")
+            if c['I_4366_53'] > 0:
+                print(f"  Permitted O II 4366.53 (3d 4F - 4f D[3]0) (Hb=100)     : {c['I_4366_53']*100.0:10.4f}")
+            print(f"  Total Permitted O II Blend near 4363 A (Hb=100)        : {c['I_blend_total']*100.0:10.4f}")
+            if c['I_m2_sum'] > 0:
+                print(f"  Total O II Multiplet 2 (V2) Sum (Hb=100)               : {c['I_m2_sum']*100.0:10.4f}")
+            print(f"  Blend Contamination Fraction                           : {c['blend_frac_pct']:9.3f}% of [O III] 4363")
+            if not np.isnan(c['R_pure']):
+                print(f"  Uncontaminated Ratio R([O III]) = (4959+5007)/4363     : {c['R_pure']:10.2f} -> Te = {c['Te_pure']:7.1f} K")
+                print(f"  Contaminated Ratio (including unresolved O II blend)   : {c['R_blend']:10.2f} -> Te = {c['Te_blend']:7.1f} K (delta Te = {c['delta_Te']:+5.1f} K)")
+            if c.get('I_n2_5005', 0) > 0:
+                print(f"  Nearby Permitted N II 5005.15 (Multiplet 4) (Hb=100)   : {c['I_n2_5005']*100.0:10.4f} (near [O III] 5007)")
+            print("=" * 90)
+
+        if 'N2_5755' in contam_diag:
+            cn = contam_diag['N2_5755']
+            print("\n" + "=" * 90)
+            print("Auroral Line Contamination Assessment: [N II] 5755 by N II Recombination Lines")
+            print("=" * 90)
+            print(f"  Forbidden [N II] 5754.60 Intensity (Hb=100)            : {cn['I_5755_pure']*100.0:10.4f}")
+            print(f"  Recombination Cascade Excitation I_R(5755) (Hb=100)    : {cn['I_R_5755']*100.0:10.4f} (Liu et al. 2000)")
+            if cn['I_near_5755'] > 0:
+                print(f"  Nearby Permitted N II ORLs (5731, 5711 A) (Hb=100)     : {cn['I_near_5755']*100.0:10.4f}")
+            print(f"  Total Recombination Contribution to [N II] 5755        : {cn['I_tot_contam']*100.0:10.4f} ({cn['contam_frac_pct']:6.2f}%)")
+            if not np.isnan(cn['R_pure']):
+                print(f"  Uncontaminated Ratio R([N II]) = (6548+6584)/5755      : {cn['R_pure']:10.2f} -> Te = {cn['Te_pure']:7.1f} K")
+                print(f"  Contaminated Ratio (including recombination effects)   : {cn['R_rec']:10.2f} -> Te = {cn['Te_rec']:7.1f} K (delta Te = {cn['delta_Te']:+5.1f} K)")
+            print("=" * 90)
 
 
 def save_results_csv(results, outfile):

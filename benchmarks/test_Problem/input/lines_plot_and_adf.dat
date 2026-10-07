@@ -123,9 +123,26 @@ O2      4357.25     REC     O II 4357.25 (V2, 5/2-1/2)
 O2      4369.27     REC     O II 4369.27 (M65, 3p 2P0 - 3d 2D)
 O2      4371.61     REC     O II 4371.61 (M44, 3p 2F0 - 4d 2F)
 
-# N II Multiplet 3 lines in the vicinity of auroral [N II] 5754.6 line
-N2      5686.21     REC     N II 5686.21 (M3, 3s 3P - 3p 3D)
-N2      5710.77     REC     N II 5710.77 (M3, 3s 3P - 3p 3D, near [N II] 5755)
+# N II Multiplet 4 (3p 3D - 3d 3F0) lines blending with / near nebular [O III] 5007:
+N2      5005.15     REC     N II 5005.15 (M4, 3p 3D3 - 3d 3F4, blends with [O III] 5007)
+N2      5001.48     REC     N II 5001.48 (M4, 3p 3D2 - 3d 3F3, near [O III] 5007)
+N2      5001.14     REC     N II 5001.14 (M4, 3p 3D1 - 3d 3F2, near [O III] 5007)
+
+# N II Multiplet 3 (3s 3P0 - 3p 3D) lines in the vicinity of auroral [N II] 5754.6:
+N2      5730.65     REC     N II 5730.65 (M3, 3s 3P2 - 3p 3D1, near [N II] 5755)
+N2      5710.77     REC     N II 5710.77 (M3, 3s 3P2 - 3p 3D2, near [N II] 5755)
+N2      5686.21     REC     N II 5686.21 (M3, 3s 3P1 - 3p 3D2)
+
+# N II Multiplet 28 (3d 3D0 - 4f G) optical recombination lines:
+N2      5941.65     REC     N II 5941.65 (M28, 3d 3D1 - 4f G[7/2])
+N2      5931.78     REC     N II 5931.78 (M28, 3d 3D2 - 4f G[9/2])
+
+# N II Multiplet 5 (3p 3P - 3d 3F0) & Multiplet 39 optical recombination lines:
+N2      4621.39     REC     N II 4621.39 (M5, 3p 3P1 - 3d 3F2)
+N2      4607.16     REC     N II 4607.16 (M5, 3p 3P2 - 3d 3F2)
+N2      4601.48     REC     N II 4601.48 (M5, 3p 3P0 - 3d 3F1)
+N2      4043.53     REC     N II 4043.53 (M39, 3d 3D0 - 4f F[5/2])
+N2      4035.08     REC     N II 4035.08 (M39, 3d 3D0 - 4f F[5/2])
 
 # O II Multiplet 66 line in the vicinity of auroral [O II] 7319.9 line
 O2      7318.99     REC     O II 7318.99 (M66, 3s' 2D - 3p' 2F0, blends with [O II] 7320)
