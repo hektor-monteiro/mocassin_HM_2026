@@ -1,0 +1,102 @@
+# ==============================================================================
+# Emission line list for MOCASSIN / PyNeb line intensity integration
+#
+# Format:
+#   Ion   Wavelength   Type   Label
+#
+# Notes:
+#   - Ion: Element symbol followed by spectrum number (e.g. O3 for O III, H1 for H I)
+#   - Wavelength: in Angstroms (e.g. 5006.84) or microns (e.g. 157.7m or 1577287)
+#   - Type: 'CEL' (Collisional Excitation Line) or 'REC' (Optical Recombination Line)
+#   - Label: Optional descriptive text
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Lines from benchmarks/test_Problem/input/plot.in
+# ------------------------------------------------------------------------------
+# Hydrogen and Helium Recombination Lines
+H1      6562.80     REC     H-alpha
+H1      4861.33     REC     H-beta
+H1      4340.47     REC     H-gamma
+He1     5875.66     REC     He I 5876
+He1     6678.15     REC     He I 6678
+He1     4471.50     REC     He I 4471
+He2     1640.42     REC     He II 1640
+He2     4685.68     REC     He II 4686
+He2     5411.52     REC     He II 5411
+
+# Carbon Forbidden / Semi-forbidden CELs
+C1      8727.13     CEL     [C I] 8727
+C2      1577287.0   CEL     [C II] 158m
+C3      1908.73     CEL     C III] 1908
+C3      1906.68     CEL     C III] 1906
+
+# Nitrogen Forbidden CELs
+N1      5197.90     CEL     [N I] 5198
+N1      5200.26     CEL     [N I] 5200
+N2      6548.05     CEL     [N II] 6548
+N2      6583.45     CEL     [N II] 6584
+N2      5754.60     CEL     [N II] 5755
+N2      1218026.0   CEL     [N II] 122m
+N3      573394.0    CEL     [N III] 57m
+
+# Oxygen Forbidden CELs
+O1      6300.30     CEL     [O I] 6300
+O1      5577.34     CEL     [O I] 5577
+O1      631711.0    CEL     [O I] 63m
+O1      1455604.0   CEL     [O I] 145m
+O2      3728.81     CEL     [O II] 3729
+O2      3726.03     CEL     [O II] 3726
+O2      7319.92     CEL     [O II] 7320
+O2      7330.20     CEL     [O II] 7330
+O3      5006.84     CEL     [O III] 5007
+O3      4363.21     CEL     [O III] 4363
+O3      518134.0    CEL     [O III] 52m
+O3      883392.0    CEL     [O III] 88m
+
+# Neon Forbidden CELs
+Ne3     3868.76     CEL     [Ne III] 3869
+Ne3     3967.46     CEL     [Ne III] 3967
+
+# Sulfur Forbidden CELs
+S2      6730.82     CEL     [S II] 6731
+S2      6716.44     CEL     [S II] 6716
+S3      6312.06     CEL     [S III] 6312
+S3      186811.0    CEL     [S III] 18.7m
+S3      9068.62     CEL     [S III] 9069
+
+# Chlorine Forbidden CELs
+Cl3     5537.87     CEL     [Cl III] 5538
+Cl3     5517.71     CEL     [Cl III] 5518
+
+# Argon Forbidden CELs
+Ar3     7135.79     CEL     [Ar III] 7136
+Ar4     4740.12     CEL     [Ar IV] 4740
+Ar4     4711.26     CEL     [Ar IV] 4711
+
+# ------------------------------------------------------------------------------
+# 2. Planetary Nebula Abundance Discrepancy Factor (ADF) Recombination Lines (ORLs)
+# ------------------------------------------------------------------------------
+# O II Multiplet 1 (V1) 3s 4P - 3p 4D0 (recombining ion: O 3 / O2+)
+O2      4649.13     REC     O II 4649.13 (V1, 5/2-7/2)
+O2      4650.84     REC     O II 4650.84 (V1, 1/2-1/2)
+O2      4661.63     REC     O II 4661.63 (V1, 3/2-5/2)
+O2      4676.23     REC     O II 4676.23 (V1, 3/2-7/2)
+O2      4673.73     REC     O II 4673.73 (V1, 1/2-3/2)
+O2      4641.81     REC     O II 4641.81 (V1, 3/2-3/2)
+O2      4638.86     REC     O II 4638.86 (V1, 1/2-1/2)
+
+# O II Other High-Order Multiplet ORLs
+O2      4089.29     REC     O II 4089.29 (3d 4F - 4f G[5]0, M48)
+O2      4596.18     REC     O II 4596.18 (3s' 2D - 3p' 2F0, M15)
+
+# C II Optical Recombination Lines (recombining ion: C 3 / C2+)
+C2      4267.00     REC     C II 4267.00 (3d 2D - 4f 2F0, classic ADF ORL)
+C2      6578.05     REC     C II 6578.05 (3s 2S - 3p 2P0)
+
+# N II Optical Recombination Lines (recombining ion: N 3 / N2+)
+N2      5679.56     REC     N II 5679.56 (3s 3P - 3p 3D, M3, classic ADF ORL)
+N2      5666.63     REC     N II 5666.63 (3s 3P - 3p 3D, M3)
+N2      5676.02     REC     N II 5676.02 (3s 3P - 3p 3D, M3)
+N2      4630.54     REC     N II 4630.54 (3p 3P - 3d 3F0, M5)
+N2      4041.31     REC     N II 4041.31 (3d 3D0 - 4f F[7/2], M39)
