@@ -64,6 +64,13 @@ The test line list is provided at `benchmarks/test_Problem/input/lines_plot_and_
    - **C II ORLs**: 4267.00 Å ($3d\,^2\text{D} - 4f\,^2\text{F}^\circ$, classic ADF line), 6578.05 Å ($3s\,^2\text{S} - 3p\,^2\text{P}^\circ$).
    - **N II ORLs**: Multiplet 3 (5679.56 Å, 5666.63 Å, 5676.02 Å), 4630.54 Å (M5), 4041.31 Å (M39).
 
+3. **Permitted Recombination Lines Contaminating Auroral / Diagnostic Lines**:
+   - **O II Multiplet 2 (V2)** ($3s\,^4\text{P} - 3p\,^4\text{P}^\circ$):
+     - **O II 4366.89 Å** ($5/2 - 5/2$) & **4366.53 Å** ($3d\,^4\text{F} - 4f\,\text{D}[3]^\circ$): Directly blend with and contaminate the weak auroral [O III] $\lambda 4363.21$ line in low/intermediate resolution spectra ($R \lesssim 1200$), artificially boosting the measured flux and causing overestimates in derived $T_e([\text{O III}])$.
+     - **O II 4349.43 Å** ($3/2 - 5/2$): The clean reference line of Multiplet 2, used observationally to deblend and subtract the 4366.89 Å contribution.
+     - **Other V2 lines**: 4317.14 Å, 4319.63 Å, 4336.86 Å, 4345.56 Å, 4325.76 Å, 4357.25 Å.
+   - **Other nearby permitted lines**: O II 4369.27 Å (M65), O II 4371.61 Å (M44), N II 5686.21/5710.77 Å (near [N II] 5755), and O II 7318.99 Å (blends with [O II] 7320).
+
 ---
 
 ## Verification on `benchmarks/test_Problem/`
@@ -106,6 +113,23 @@ N(2+) / H(+)    [N III] 57m     N II 5679.56          5.405e-05      3.385e-05  
 ===========================================================================
 ```
 *Because `test_Problem` is a chemically homogeneous photoionization model, the theoretical ADF for oxygen and carbon is expected to be ~1.0. PyNeb yields $\text{ADF} = 1.01$, validating atomic consistency across the 3D volume.*
+
+### 3. Auroral Line Recombination Contamination Assessment
+```text
+==========================================================================================
+Auroral Line Contamination Assessment: [O III] 4363 by Permitted O II ORLs
+==========================================================================================
+  Forbidden [O III] 4363.21 Intensity (Hb=100)           :    28.7904
+  Permitted O II 4366.89 (Multiplet 2, 5/2-5/2) (Hb=100)  :     0.0151
+  Permitted O II 4366.53 (3d 4F - 4f D[3]0) (Hb=100)     :     0.0011
+  Total Permitted O II Blend near 4363 A (Hb=100)        :     0.0162
+  Total O II Multiplet 2 (V2) Sum (Hb=100)               :     0.0916
+  Blend Contamination Fraction                           :     0.056% of [O III] 4363
+  Uncontaminated Ratio R([O III]) = (4959+5007)/4363     :      79.53 -> Te = 13884.3 K
+  Contaminated Ratio (including unresolved O II blend)   :      79.49 -> Te = 13884.3 K (delta Te =  +0.0 K)
+==========================================================================================
+```
+*In low-temperature ($T_e \lesssim 9,000\text{ K}$) nebulae or objects with large Abundance Discrepancy Factors where ORLs are heavily enhanced and [O III] 4363 is weak, this unresolved blend can contribute several percent or tens of percent to the measured 4363 flux, leading to significant overestimates in the derived [O III] electron temperature.*
 
 ---
 

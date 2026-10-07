@@ -100,3 +100,32 @@ N2      5666.63     REC     N II 5666.63 (3s 3P - 3p 3D, M3)
 N2      5676.02     REC     N II 5676.02 (3s 3P - 3p 3D, M3)
 N2      4630.54     REC     N II 4630.54 (3p 3P - 3d 3F0, M5)
 N2      4041.31     REC     N II 4041.31 (3d 3D0 - 4f F[7/2], M39)
+
+# ------------------------------------------------------------------------------
+# 3. Permitted Lines Contaminating Diagnostic Ratios (e.g. [O III] 4363, [N II] 5755)
+# ------------------------------------------------------------------------------
+# [O III] 4959 nebular companion for (4959+5007)/4363 temperature diagnostic
+O3      4958.91     CEL     [O III] 4959
+
+# O II Multiplet 2 (V2) 3s 4P - 3p 4P0 (recombining ion: O 3 / O2+)
+# Permitted lines that directly blend with / contaminate weak auroral [O III] 4363.21:
+O2      4366.89     REC     O II 4366.89 (V2, 5/2-5/2, blends with [O III] 4363)
+O2      4366.53     REC     O II 4366.53 (3d 4F - 4f D[3]0, blends with [O III] 4363)
+O2      4349.43     REC     O II 4349.43 (V2, 3/2-5/2, V2 reference line)
+O2      4317.14     REC     O II 4317.14 (V2, 5/2-3/2)
+O2      4319.63     REC     O II 4319.63 (V2, 3/2-3/2)
+O2      4336.86     REC     O II 4336.86 (V2, 1/2-3/2)
+O2      4345.56     REC     O II 4345.56 (V2, 3/2-1/2)
+O2      4325.76     REC     O II 4325.76 (V2, 1/2-1/2)
+O2      4357.25     REC     O II 4357.25 (V2, 5/2-1/2)
+
+# Other nearby permitted O II lines in the 4360-4375 A region
+O2      4369.27     REC     O II 4369.27 (M65, 3p 2P0 - 3d 2D)
+O2      4371.61     REC     O II 4371.61 (M44, 3p 2F0 - 4d 2F)
+
+# N II Multiplet 3 lines in the vicinity of auroral [N II] 5754.6 line
+N2      5686.21     REC     N II 5686.21 (M3, 3s 3P - 3p 3D)
+N2      5710.77     REC     N II 5710.77 (M3, 3s 3P - 3p 3D, near [N II] 5755)
+
+# O II Multiplet 66 line in the vicinity of auroral [O II] 7319.9 line
+O2      7318.99     REC     O II 7318.99 (M66, 3s' 2D - 3p' 2F0, blends with [O II] 7320)

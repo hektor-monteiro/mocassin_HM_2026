@@ -846,6 +846,92 @@ class MocassinPyNebCalculator:
 
         return diagnostics
 
+    def compute_auroral_contamination_diagnostics(self, results):
+        """
+        Assess recombination line contamination of weak auroral temperature diagnostic lines,
+        focusing primarily on [O III] 4363.21 contaminated by permitted O II Multiplet 2 lines
+        (such as 4366.89 and 4366.53 A).
+        """
+        diags = {}
+
+        o3_4363 = None
+        o3_5007 = None
+        o3_4959 = None
+        o2_4366_89 = None
+        o2_4366_53 = None
+        o2_m2_lines = []
+
+        for r in results:
+            if r['status'] != 'OK':
+                continue
+            if r['elem'] == 'O' and r['spec'] == 3 and r['type'] == 'CEL':
+                if abs(r['wave'] - 4363.21) < 2.0:
+                    o3_4363 = r
+                elif abs(r['wave'] - 5006.84) < 5.0:
+                    o3_5007 = r
+                elif abs(r['wave'] - 4958.91) < 5.0:
+                    o3_4959 = r
+            elif r['elem'] == 'O' and r['spec'] == 2 and r['type'] == 'REC':
+                if abs(r['wave'] - 4366.89) < 0.2:
+                    o2_4366_89 = r
+                elif abs(r['wave'] - 4366.53) < 0.2:
+                    o2_4366_53 = r
+                if 4315.0 <= r['wave'] <= 4370.0 and ('V2' in r['label'] or 'M2' in r['label']):
+                    o2_m2_lines.append(r)
+
+        if o3_4363 and (o2_4366_89 or o2_4366_53):
+            I_4363_pure = o3_4363['I_ratio']
+            I_5007 = o3_5007['I_ratio'] if o3_5007 else 0.0
+            I_4959 = o3_4959['I_ratio'] if o3_4959 else (I_5007 / 2.98 if I_5007 > 0 else 0.0)
+
+            I_blend = 0.0
+            if o2_4366_89:
+                I_blend += o2_4366_89['I_ratio']
+            if o2_4366_53:
+                I_blend += o2_4366_53['I_ratio']
+
+            blend_frac = (I_blend / I_4363_pure * 100.0) if I_4363_pure > 0 else 0.0
+            I_m2_sum = sum(r['I_ratio'] for r in o2_m2_lines)
+
+            R_pure = (I_4959 + I_5007) / I_4363_pure if (I_4363_pure > 0 and (I_4959 + I_5007) > 0) else np.nan
+            R_blend = (I_4959 + I_5007) / (I_4363_pure + I_blend) if ((I_4363_pure + I_blend) > 0 and (I_4959 + I_5007) > 0) else np.nan
+
+            Te_pure = np.nan
+            Te_blend = np.nan
+            delta_Te = np.nan
+            mean_Ne = float(np.average(self.grid.Ne, weights=self.grid.Ne * self.grid.get_ion_density(8, 3) * self.grid.dV))
+            if not np.isnan(R_pure):
+                o3_atom = self.get_atom('O', 3)
+                try:
+                    Te_pure = float(o3_atom.getTemDen(int_ratio=R_pure, den=mean_Ne, to_eval='(L(4959)+L(5007))/L(4363)'))
+                except Exception:
+                    pass
+                try:
+                    Te_blend = float(o3_atom.getTemDen(int_ratio=R_blend, den=mean_Ne, to_eval='(L(4959)+L(5007))/L(4363)'))
+                except Exception:
+                    pass
+                if not (np.isnan(Te_pure) or np.isnan(Te_blend)):
+                    delta_Te = Te_blend - Te_pure
+
+            diags['O3_4363'] = {
+                'I_4363_pure': I_4363_pure,
+                'I_5007': I_5007,
+                'I_4959': I_4959,
+                'I_4366_89': o2_4366_89['I_ratio'] if o2_4366_89 else 0.0,
+                'I_4366_53': o2_4366_53['I_ratio'] if o2_4366_53 else 0.0,
+                'I_blend_total': I_blend,
+                'I_m2_sum': I_m2_sum,
+                'blend_frac_pct': blend_frac,
+                'R_pure': R_pure,
+                'R_blend': R_blend,
+                'Te_pure': Te_pure,
+                'Te_blend': Te_blend,
+                'delta_Te': delta_Te,
+                'mean_Ne': mean_Ne
+            }
+
+        return diags
+
 
 # ==============================================================================
 # 5. Output and Reporting & MOCASSIN Comparison
@@ -952,7 +1038,7 @@ def compare_with_mocassin(results, moc_lines):
         best_m = None
         best_dw = 1e9
         for ml in moc_lines:
-            if ml['elem'] == elem_num and ml['stage'] == stage:
+            if ml['elem'] == elem_num and ml['stage'] == stage and ml.get('type') == r.get('type'):
                 dw = abs(ml['wave'] - wave)
                 tol = max(5.0, 0.005 * wave)
                 if dw <= tol and dw < best_dw:
@@ -966,7 +1052,7 @@ def compare_with_mocassin(results, moc_lines):
                 r['diff_pct'] = 100.0 * (r['I_ratio'] - best_m['flux']) / best_m['flux']
 
 
-def print_results_table(results, adf_diag=None, moc_hb_lum=None):
+def print_results_table(results, adf_diag=None, moc_hb_lum=None, contam_diag=None):
     """Print results table to terminal."""
     if not results:
         print("No line results to display.")
@@ -1022,6 +1108,24 @@ def print_results_table(results, adf_diag=None, moc_hb_lum=None):
             if 'orl_v1_sum_ratio' in d and d['orl_v1_sum_ratio'] > 0:
                 print(f"  -> Total O II Multiplet 1 (V1) Sum I(V1)/I(Hb) = {d['orl_v1_sum_ratio']:.4e} ({d['orl_v1_sum_ratio']*100:.4f} on Hb=100)")
         print("=" * 75)
+
+    if contam_diag and 'O3_4363' in contam_diag:
+        c = contam_diag['O3_4363']
+        print("\n" + "=" * 90)
+        print("Auroral Line Contamination Assessment: [O III] 4363 by Permitted O II ORLs")
+        print("=" * 90)
+        print(f"  Forbidden [O III] 4363.21 Intensity (Hb=100)           : {c['I_4363_pure']*100.0:10.4f}")
+        print(f"  Permitted O II 4366.89 (Multiplet 2, 5/2-5/2) (Hb=100)  : {c['I_4366_89']*100.0:10.4f}")
+        if c['I_4366_53'] > 0:
+            print(f"  Permitted O II 4366.53 (3d 4F - 4f D[3]0) (Hb=100)     : {c['I_4366_53']*100.0:10.4f}")
+        print(f"  Total Permitted O II Blend near 4363 A (Hb=100)        : {c['I_blend_total']*100.0:10.4f}")
+        if c['I_m2_sum'] > 0:
+            print(f"  Total O II Multiplet 2 (V2) Sum (Hb=100)               : {c['I_m2_sum']*100.0:10.4f}")
+        print(f"  Blend Contamination Fraction                           : {c['blend_frac_pct']:9.3f}% of [O III] 4363")
+        if not np.isnan(c['R_pure']):
+            print(f"  Uncontaminated Ratio R([O III]) = (4959+5007)/4363     : {c['R_pure']:10.2f} -> Te = {c['Te_pure']:7.1f} K")
+            print(f"  Contaminated Ratio (including unresolved O II blend)   : {c['R_blend']:10.2f} -> Te = {c['Te_blend']:7.1f} K (delta Te = {c['delta_Te']:+5.1f} K)")
+        print("=" * 90)
 
 
 def save_results_csv(results, outfile):
@@ -1128,11 +1232,12 @@ def main():
             if moc_lines:
                 compare_with_mocassin(results, moc_lines)
 
-    # ADF diagnostics
+    # ADF and auroral contamination diagnostics
     adf_diag = calc.compute_adf_diagnostics(results) if args.adf else None
+    contam_diag = calc.compute_auroral_contamination_diagnostics(results) if args.adf else None
 
     # Print results
-    print_results_table(results, adf_diag, moc_hb_lum)
+    print_results_table(results, adf_diag, moc_hb_lum, contam_diag)
 
     # Export if requested
     if args.output:
