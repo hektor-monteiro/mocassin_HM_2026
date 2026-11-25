@@ -2592,6 +2592,7 @@ endif
 
       ! find the run of the optical depths from the illuminated
       ! surface to the edge of the nebula
+      if (taskid /= 0) return
 
       ! allocate space for temporary optical depth arrays
       allocate (outTau(1:nbins), stat = err)
