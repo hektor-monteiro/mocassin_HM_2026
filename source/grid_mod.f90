@@ -3156,7 +3156,8 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
         write(40, *) nstages, ' emittingGrid'
         write(40, *) lgMultistars, ' lgMultiStars'
         if (lg2D) then
-           write(40,*)  lg2D, ' ', trim(plane2D), ' ', symmetryAxis2D, minPerp2D, maxPerp2D, deltaPerp2D, ' 2D geometry'
+           write(40,*)  lg2D, ' ', trim(plane2D), ' ', symmetryAxis2D, minPerp2D, maxPerp2D, deltaPerp2D, &
+                & lgCylinder2D, lgBuffer2D, lgSpecular2D, ' 2D geometry'
         else
            write(40,*)  lg2D, ' 2D geometry?'
         end if
@@ -3365,6 +3366,138 @@ function getVolume(grid, xP, yP, zP)
   end if
 
 end function getVolume
+
+!> Returns the azimuthal revolution weight transforming a planar 2D slice cell
+!! volume into its corresponding 3D toroidal volume (1.0 in 1D/3D/lgCylinder2D).
+function getWeight2D(grid, i, j, k) result(weight2D)
+  implicit none
+
+  type(grid_type), intent(in) :: grid
+  integer, intent(in)         :: i, j, k
+  real                        :: weight2D
+
+  real :: xCell, yCell, zCell, xStar, yStar, zStar, rCyl, rAxisMin
+
+  weight2D = 1.0
+  if (.not. lg2D .or. lgCylinder2D) return
+
+  if (allocated(starPosition)) then
+     xStar = starPosition(1)%x
+     yStar = starPosition(1)%y
+     zStar = starPosition(1)%z
+  else
+     xStar = 0.0
+     yStar = 0.0
+     zStar = 0.0
+  end if
+
+  select case (perpAxis2D)
+  case ('Z')
+     if (lgSymmetricXYZ) then
+        if (i == 1 .and. grid%nx > 1) then
+           xCell = (grid%xAxis(2) - grid%xAxis(1)) / 4.0
+        else
+           xCell = grid%xAxis(i)
+        end if
+        if (j == 1 .and. grid%ny > 1) then
+           yCell = (grid%yAxis(2) - grid%yAxis(1)) / 4.0
+        else
+           yCell = grid%yAxis(j)
+        end if
+     else
+        xCell = grid%xAxis(i)
+        yCell = grid%yAxis(j)
+     end if
+  case ('Y')
+     if (lgSymmetricXYZ) then
+        if (i == 1 .and. grid%nx > 1) then
+           xCell = (grid%xAxis(2) - grid%xAxis(1)) / 4.0
+        else
+           xCell = grid%xAxis(i)
+        end if
+        if (k == 1 .and. grid%nz > 1) then
+           zCell = (grid%zAxis(2) - grid%zAxis(1)) / 4.0
+        else
+           zCell = grid%zAxis(k)
+        end if
+     else
+        xCell = grid%xAxis(i)
+        zCell = grid%zAxis(k)
+     end if
+  case ('X')
+     if (lgSymmetricXYZ) then
+        if (j == 1 .and. grid%ny > 1) then
+           yCell = (grid%yAxis(2) - grid%yAxis(1)) / 4.0
+        else
+           yCell = grid%yAxis(j)
+        end if
+        if (k == 1 .and. grid%nz > 1) then
+           zCell = (grid%zAxis(2) - grid%zAxis(1)) / 4.0
+        else
+           zCell = grid%zAxis(k)
+        end if
+     else
+        yCell = grid%yAxis(j)
+        zCell = grid%zAxis(k)
+     end if
+  end select
+
+  select case (symmetryAxis2D)
+  case ('Z')
+     select case (perpAxis2D)
+     case ('Y')
+        rCyl = abs(xCell - xStar)
+        rAxisMin = grid%xAxis(1)
+     case ('X')
+        rCyl = abs(yCell - yStar)
+        rAxisMin = grid%yAxis(1)
+     case default
+        rCyl = sqrt((xCell - xStar)**2 + (yCell - yStar)**2)
+        rAxisMin = min(grid%xAxis(1), grid%yAxis(1))
+     end select
+  case ('Y')
+     select case (perpAxis2D)
+     case ('Z')
+        rCyl = abs(xCell - xStar)
+        rAxisMin = grid%xAxis(1)
+     case ('X')
+        rCyl = abs(zCell - zStar)
+        rAxisMin = grid%zAxis(1)
+     case default
+        rCyl = sqrt((xCell - xStar)**2 + (zCell - zStar)**2)
+        rAxisMin = min(grid%xAxis(1), grid%zAxis(1))
+     end select
+  case ('X')
+     select case (perpAxis2D)
+     case ('Z')
+        rCyl = abs(yCell - yStar)
+        rAxisMin = grid%yAxis(1)
+     case ('Y')
+        rCyl = abs(zCell - zStar)
+        rAxisMin = grid%zAxis(1)
+     case default
+        rCyl = sqrt((yCell - yStar)**2 + (zCell - zStar)**2)
+        rAxisMin = min(grid%yAxis(1), grid%zAxis(1))
+     end select
+  end select
+
+  rCyl = max(rCyl, 1.0e-30)
+
+  if (deltaPerp2D > 0.0) then
+     if (lgSymmetricXYZ) then
+        weight2D = (Pi / 2.0) * rCyl / deltaPerp2D
+     else
+        if (rAxisMin < 0.0) then
+           weight2D = Pi * rCyl / deltaPerp2D
+        else
+           weight2D = 2.0 * Pi * rCyl / deltaPerp2D
+        end if
+     end if
+  else
+     weight2D = 1.0
+  end if
+
+end function getWeight2D
     
 
     subroutine resetGrid(grid)
@@ -3390,7 +3523,7 @@ end function getVolume
       integer, parameter :: nSeries = 17
 
       real                 :: radius, dPerp
-      character(len=200)   :: line2D
+      character(len=256)   :: line2D
 
       print*, 'resetGrid in'
 
@@ -3514,13 +3647,20 @@ end function getVolume
       read(77, '(A)') line2D
       read(line2D, *, iostat=ios) lg2D
       if (ios == 0 .and. lg2D) then
-         read(line2D, *, iostat=ios) lg2D, plane2D, symmetryAxis2D, minPerp2D, maxPerp2D, deltaPerp2D
+         read(line2D, *, iostat=ios) lg2D, plane2D, symmetryAxis2D, minPerp2D, maxPerp2D, deltaPerp2D, &
+              & lgCylinder2D, lgBuffer2D, lgSpecular2D
          if (ios /= 0) then
-            read(line2D, *, iostat=ios) lg2D, plane2D, minPerp2D, maxPerp2D, deltaPerp2D
+            lgCylinder2D = .false.
+            lgBuffer2D   = .true.
+            lgSpecular2D = .false.
+            read(line2D, *, iostat=ios) lg2D, plane2D, symmetryAxis2D, minPerp2D, maxPerp2D, deltaPerp2D
             if (ios /= 0) then
-               plane2D = "XZ"
-               perpAxis2D = "Y"
-               symmetryAxis2D = "Z"
+               read(line2D, *, iostat=ios) lg2D, plane2D, minPerp2D, maxPerp2D, deltaPerp2D
+               if (ios /= 0) then
+                  plane2D = "XZ"
+                  perpAxis2D = "Y"
+                  symmetryAxis2D = "Z"
+               end if
             end if
          end if
          select case (trim(plane2D))
@@ -3543,6 +3683,9 @@ end function getVolume
          end if
       else
          lg2D = .false.
+         lgCylinder2D = .false.
+         lgBuffer2D   = .false.
+         lgSpecular2D = .false.
       end if
       read(77, *) lgEcho, echot1, echot2, echoTemp
       read(77,*) lgNosource
@@ -4038,6 +4181,14 @@ end function getVolume
       call locate(grid(1)%xAxis, 0., iOrigin)
       call locate(grid(1)%yAxis, 0., jOrigin)
       call locate(grid(1)%zAxis, 0., kOrigin)
+
+      if (lg2D) then
+         select case (perpAxis2D)
+         case ("Z"); kOrigin = 1
+         case ("Y"); jOrigin = 1
+         case ("X"); iOrigin = 1
+         end select
+      end if
 
       if (taskid == 0) print*, 'Mothergrid origin at cell:  ' , iOrigin, jOrigin, kOrigin
 

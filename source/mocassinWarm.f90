@@ -53,10 +53,7 @@ program MoCaSSiNwarm
     end if
 
     ! reset the 3D cartesian grid
-     do iGrid = 1, nGrids
-       call resetGrid(grid3D(iGrid)) 
-    end do
-   call resetGrid(grid3D)
+    call resetGrid(grid3D)
 
     call setStarPosition(grid3D(1)%xAxis,grid3D(1)%yAxis,grid3D(1)%zAxis,grid3D)
 
