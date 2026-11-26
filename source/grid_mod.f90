@@ -752,7 +752,7 @@ module grid_mod
                     do iy = 1, grid(iG)%ny
                        do iz = 1, grid(iG)%nz
                           if (grid(iG)%active(ix,iy,iz)>0) then
-                             dV = getVolume(grid(iG),ix,iy,iz)
+                             dV = getVolume(grid(iG),ix,iy,iz) * getWeight2D(grid(iG),ix,iy,iz)
                              do elem = 1, nElements
                                 totalGasMass = totalGasMass + &
                                      & grid(iG)%Hden(grid(iG)%active(ix,iy,iz))*dV*&
@@ -808,7 +808,7 @@ module grid_mod
                              else
                                 nsp = 1
                              end if
-                             dV = getVolume(grid(iG),ix,iy,iz)
+                             dV = getVolume(grid(iG),ix,iy,iz) * getWeight2D(grid(iG),ix,iy,iz)
                              do ai = 1, nsizes
                                 do nspec = 1, nspeciesPart(nsp)
                                    if (grainRadius(ai) >= componentMinRadius(nsp, nspec) .and. grainRadius(ai) <= componentMaxRadius(nsp, nspec)) then
@@ -1988,7 +1988,7 @@ module grid_mod
                     
                     if (grid%active(i,j,k)>0) then
 
-                       dV = getVolume(grid,i,j,k)
+                       dV = getVolume(grid,i,j,k) * getWeight2D(grid,i,j,k)
 
                        if (lgGas) then
                           gasCell = 0.
@@ -2865,7 +2865,7 @@ if (allocated(ionDenUsed)) deallocate (ionDenUsed)
                     do iz = 1, grid(iG)%nz
                        if (grid(iG)%active(ix,iy,iz)>0) then
 
-                          dV = getVolume(grid(iG),ix,iy,iz)
+                          dV = getVolume(grid(iG),ix,iy,iz) * getWeight2D(grid(iG),ix,iy,iz)
 
                           if (lgGas) then
                              gasCell = 0.
