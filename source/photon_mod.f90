@@ -1461,7 +1461,7 @@ module photon_mod
 
                    ! Distance to Z boundaries
                    if (vHat%z > 1.e-10) then
-                      dSz = real((Z_out_c - dble(rVec%z)) / dble(vHat%z))
+                      dSz = max(0.0, real((Z_out_c - dble(rVec%z)) / dble(vHat%z)))
                    else if (vHat%z < -1.e-10) then
                       dSz = real((Z_in - dble(rVec%z)) / dble(vHat%z))
                       if (zP == 1 .and. dSz <= 1.e-10) then
@@ -1469,8 +1469,12 @@ module photon_mod
                             rVec%z = grid(gP)%zAxis(1)
                             vHat%z = -vHat%z
                             enPacket%direction%z = vHat%z
-                            dSz = real((Z_out_c - dble(rVec%z)) / dble(vHat%z))
+                            dSz = max(0.0, real((Z_out_c - dble(rVec%z)) / dble(vHat%z)))
+                         else
+                            dSz = 0.0
                          end if
+                      else if (dSz < 0.0) then
+                         dSz = 0.0
                       end if
                    else
                       dSz = 1.e35
@@ -1486,17 +1490,25 @@ module photon_mod
                       lgTargetInner = .false.
                    else
                       C_out = R2_cyl - R_out_c**2
-                      delta_out = max(0.0d0, B_cyl**2 - 4.0d0 * A_cyl * C_out)
-                      ds_out = (-B_cyl + sqrt(delta_out)) / (2.0d0 * A_cyl)
-                      if (ds_out < 0.0d0) ds_out = 0.0d0
+                      if (C_out >= 0.0d0 .and. B_cyl > 0.0d0) then
+                         ds_out = 0.0d0
+                      else
+                         delta_out = max(0.0d0, B_cyl**2 - 4.0d0 * A_cyl * C_out)
+                         ds_out = (-B_cyl + sqrt(delta_out)) / (2.0d0 * A_cyl)
+                         if (ds_out < 0.0d0) ds_out = 0.0d0
+                      end if
 
                       ds_in = 1.d35
                       if (xP > 1 .and. B_cyl < -1.d-10) then
                          C_in = R2_cyl - R_in**2
-                         delta_in = B_cyl**2 - 4.0d0 * A_cyl * C_in
-                         if (delta_in >= 0.0d0) then
-                            s_cand = (-B_cyl - sqrt(delta_in)) / (2.0d0 * A_cyl)
-                            if (s_cand > 1.d-10) ds_in = s_cand
+                         if (C_in <= 0.0d0) then
+                            if (B_cyl < -1.d-6 * sqrt(R2_cyl * A_cyl)) ds_in = 0.0d0
+                         else
+                            delta_in = B_cyl**2 - 4.0d0 * A_cyl * C_in
+                            if (delta_in >= 0.0d0) then
+                               s_cand = (-B_cyl - sqrt(delta_in)) / (2.0d0 * A_cyl)
+                               if (s_cand >= 0.0d0) ds_in = s_cand
+                            end if
                          end if
                       end if
 
@@ -1725,18 +1737,10 @@ module photon_mod
              end do ! j safe limit loop
 
              if (lg2D .and. lgCylinder2D) then
-                if (abs(dSz) < 1.e-10) then
-                   dSz = real((grid(gP)%zAxis(grid(gP)%nz) - grid(gP)%zAxis(1)) / real(grid(gP)%nz))
-                end if
-                if (abs(dSx) < 1.e-10) then
-                   dSx = real((grid(gP)%xAxis(grid(gP)%nx) - grid(gP)%xAxis(1)) / real(grid(gP)%nx))
-                end if
-
-                dSx = abs(dSx)
+                dSx = max(0.0, dSx)
                 dSy = 1.e35
-                dSz = abs(dSz)
+                dSz = max(0.0, dSz)
                 dS = min(dSx, dSz)
-                if (dS <= 0.0) dS = 1.e-10
              else
 
              ! cater for cells on cell wall
