@@ -2348,6 +2348,7 @@ module photon_mod
                             if (lgBuffer2D) then
                                rVec%x = maxPerp2D
                                call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "X", lgEscaped)
+                               if (enPacket%lgLine) return
                                if (lgEscaped) then
                                   xP = grid(gP)%nx + 1
                                   enPacket%xP(igpp) = xP
@@ -2381,6 +2382,7 @@ module photon_mod
                                if (lgBuffer2D) then
                                   rVec%x = minPerp2D
                                   call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "X", lgEscaped)
+                                  if (enPacket%lgLine) return
                                   if (lgEscaped) then
                                      xP = 0
                                      enPacket%xP(igpp) = xP
@@ -2417,6 +2419,7 @@ module photon_mod
                             if (lgBuffer2D) then
                                rVec%y = maxPerp2D
                                call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "Y", lgEscaped)
+                               if (enPacket%lgLine) return
                                if (lgEscaped) then
                                   yP = grid(gP)%ny + 1
                                   enPacket%yP(igpp) = yP
@@ -2450,6 +2453,7 @@ module photon_mod
                                if (lgBuffer2D) then
                                   rVec%y = minPerp2D
                                   call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "Y", lgEscaped)
+                                  if (enPacket%lgLine) return
                                   if (lgEscaped) then
                                      yP = 0
                                      enPacket%yP(igpp) = yP
@@ -2486,6 +2490,7 @@ module photon_mod
                             if (lgBuffer2D) then
                                rVec%z = maxPerp2D
                                call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "Z", lgEscaped)
+                               if (enPacket%lgLine) return
                                if (lgEscaped) then
                                   zP = grid(gP)%nz + 1
                                   enPacket%zP(igpp) = zP
@@ -2519,6 +2524,7 @@ module photon_mod
                                if (lgBuffer2D) then
                                   rVec%z = minPerp2D
                                   call bufferTransfer2D(enPacket, rVec, vHat, xP, yP, zP, gP, "Z", lgEscaped)
+                                  if (enPacket%lgLine) return
                                   if (lgEscaped) then
                                      zP = 0
                                      enPacket%zP(igpp) = zP
@@ -3712,10 +3718,10 @@ module photon_mod
        character(len=1), intent(in)       :: axis
        logical, intent(out)               :: lgEscaped
 
-       integer :: act, bounce, maxBounces, irepeat, nuP_new
+       integer :: act, bounce, maxBounces, irepeat, nuP_new, ihg, iierr
        real    :: perpVal, v_perp, d_bnd, opac, tau_bnd, rnd, tau_int, d_abs
-       real    :: innerBnd, outerBnd, dirSign, radius
-       logical :: targetIsOuter
+       real    :: innerBnd, outerBnd, dirSign, radius, probSca, rnd_sca, rnd_line
+       logical :: targetIsOuter, lgScatBuf
 
        act = grid(gP)%active(xP, yP, zP)
        if (act <= 0) then
@@ -3826,17 +3832,92 @@ module photon_mod
                 return
              end if
 
-             call getNu2(grid(gP)%recPDF(act, 1:nbins), nuP_new)
-             if (nuP_new < 1) nuP_new = 1
-             if (nuP_new >= nbins) nuP_new = nbins - 1
-             enPacket%nuP = nuP_new
-             enPacket%nu = nuArray(nuP_new)
-             enPacket%lgStellar = .false.
+             ! Check dust scattering before absorption, matching pathSegment
+             lgScatBuf = .false.
+             if (lgDust) then
+                probSca = grid(gP)%scaOpac(act, enPacket%nuP) / opac
+                call random_number(rnd_sca)
+                rnd_sca = 1.0 - rnd_sca
+                if (rnd_sca <= probSca) lgScatBuf = .true.
+             end if
 
-             do irepeat = 1, 1000
-                vHat = randomUnitVector()
-                if (vHat%x /= 0. .and. vHat%y /= 0. .and. vHat%z /= 0.) exit
-             end do
+             if (lgScatBuf) then
+                scaInt = scaInt + 1.
+                enPacket%lgStellar = .false.
+                if (lgIsotropic) then
+                   do irepeat = 1, 1000
+                      vHat = randomUnitVector()
+                      if (vHat%x /= 0. .and. vHat%y /= 0. .and. vHat%z /= 0.) exit
+                   end do
+                else
+                   enPacket%direction = vHat
+                   do ihg = 1, 10
+                      call hg(enPacket, iierr)
+                      if (iierr == 0) exit
+                   end do
+                   if (iierr == 0) then
+                      vHat = enPacket%direction
+                   else
+                      do irepeat = 1, 1000
+                         vHat = randomUnitVector()
+                         if (vHat%x /= 0. .and. vHat%y /= 0. .and. vHat%z /= 0.) exit
+                      end do
+                   end if
+                end if
+             else
+                absInt = absInt + 1.
+
+                if (.not. lgGas) then
+                   ! Pure dust: re-emit thermal continuum from dustPDF
+                   call getNu2(grid(gP)%dustPDF(act, 1:nbins), nuP_new)
+                   if (nuP_new < 1) nuP_new = 1
+                   if (nuP_new >= nbins) nuP_new = nbins - 1
+                   enPacket%nuP = nuP_new
+                   enPacket%nu = nuArray(nuP_new)
+                   enPacket%lgStellar = .false.
+                   enPacket%origin(1) = gP
+                   enPacket%origin(2) = act
+
+                   do irepeat = 1, 1000
+                      vHat = randomUnitVector()
+                      if (vHat%x /= 0. .and. vHat%y /= 0. .and. vHat%z /= 0.) exit
+                   end do
+                else
+                   ! Gas (or gas+dust): account for optically thin line escape vs continuum re-emission
+                   call random_number(rnd_line)
+                   rnd_line = 1.0 - rnd_line
+                   if (rnd_line <= grid(gP)%totalLines(act)) then
+                      if (lgDebug) then
+                         call getNu2(grid(gP)%linePDF(act, :), nuP_new, lgDiscrete=.true.)
+                         if (nuP_new >= 1) then
+                            grid(gP)%linePackets(act, nuP_new) = grid(gP)%linePackets(act, nuP_new) + &
+                                 & deltaE(iStar) * enPacket%weight
+                         end if
+                      else
+                         nuP_new = 0
+                      end if
+                      enPacket%nuP = nuP_new
+                      enPacket%lgLine = .true.
+                      enPacket%lgStellar = .false.
+                      lgEscaped = .false.
+                      return
+                   else
+                      call getNu2(grid(gP)%recPDF(act, 1:nbins), nuP_new)
+                      if (nuP_new < 1) nuP_new = 1
+                      if (nuP_new >= nbins) nuP_new = nbins - 1
+                      enPacket%nuP = nuP_new
+                      enPacket%nu = nuArray(nuP_new)
+                      enPacket%lgStellar = .false.
+                      enPacket%origin(1) = gP
+                      enPacket%origin(2) = act
+
+                      do irepeat = 1, 1000
+                         vHat = randomUnitVector()
+                         if (vHat%x /= 0. .and. vHat%y /= 0. .and. vHat%z /= 0.) exit
+                      end do
+                   end if
+                end if
+             end if
 
              select case (axis)
              case ("Y"); v_perp = vHat%y
