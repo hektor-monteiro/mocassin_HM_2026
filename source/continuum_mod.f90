@@ -603,6 +603,10 @@ module continuum_mod
 
         else if (lg2D) then
            if (lgCylinder2D) then
+              if (grid%nx < 2 .or. grid%nz < 2) then
+                 print*, "! getVolumeCon: 2D cylinder requires nx >= 2 and nz >= 2", grid%nx, grid%nz
+                 stop
+              end if
               ! True axisymmetric cylindrical ring volume matching getVolume
               if (xP == 1) then
                  R_in_c = 0.0

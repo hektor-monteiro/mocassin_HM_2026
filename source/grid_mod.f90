@@ -3308,6 +3308,10 @@ function getVolume(grid, xP, yP, zP)
 
   else if (lg2D) then
      if (lgCylinder2D) then
+        if (grid%nx < 2 .or. grid%nz < 2) then
+           print*, "! getVolume: 2D cylinder requires nx >= 2 and nz >= 2", grid%nx, grid%nz
+           stop
+        end if
         ! True axisymmetric cylindrical ring volume
         if (xP == 1) then
            R_in = 0.0

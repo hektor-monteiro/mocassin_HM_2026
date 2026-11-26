@@ -885,6 +885,18 @@ module set_input_mod
               if (.not. lgDfile .and. Rnx < 0.) Rnx = Rny
            end select
 
+           if (lgCylinder2D) then
+              if (trim(plane2D) /= "XZ" .or. symmetryAxis2D /= "Z") then
+                 print*, "! readInput: 2D cylinder mode requires plane XZ with symmetry axis Z (got plane='", &
+                      & trim(plane2D), "', axis='", symmetryAxis2D, "')."
+                 stop
+              end if
+              if (.not. lgDfile .and. (nxIn(1) < 2 .or. nzIn(1) < 2)) then
+                 print*, "! readInput: 2D cylinder mode requires nx >= 2 and nz >= 2 (got nx=", nxIn(1), ", nz=", nzIn(1), ")."
+                 stop
+              end if
+           end if
+
            select case (symmetryAxis2D)
            case ("Z")
               if (plane2D /= "XZ" .and. plane2D /= "YZ") then
@@ -905,7 +917,9 @@ module set_input_mod
               print*, "! readInput: unrecognized 2D symmetry axis: '", symmetryAxis2D, "'. Must be 'Z', 'Y', or 'X'."
               stop
            end select
-        else if (lgPlaneIonization .and. lg2d) then
+        end if
+
+        if (lgPlaneIonization .and. lg2d) then
            print*, "! readInput: planeIonization and 2D options are not compatible"
            stop
         else if (resLinesTransfer >= minConvergence .and. resLinesTransfer /= 101. .and. lgDust) then
