@@ -572,7 +572,8 @@ module continuum_mod
 
         real                       :: dx, &             ! cartesian axes increments
 &                                      dy, &             ! in [cm]
-&                                      dz                !
+&                                      dz, &             !
+&                                      R_in_c, R_out_c, R_in_15, R_out_15, dz_15
 
         if (lg1D) then
            if (nGrids>1) then
@@ -600,7 +601,38 @@ module continuum_mod
            getVolumeCon = getVolumeCon/8.
 
         else if (lg2D) then
-           select case (perpAxis2D)
+           if (lgCylinder2D) then
+              ! True axisymmetric cylindrical ring volume matching getVolume
+              if (xP == 1) then
+                 R_in_c = 0.0
+                 R_out_c = (grid%xAxis(2) + grid%xAxis(1)) / 2.0
+              else if (xP < grid%nx) then
+                 R_in_c = (grid%xAxis(xP) + grid%xAxis(xP-1)) / 2.0
+                 R_out_c = (grid%xAxis(xP+1) + grid%xAxis(xP)) / 2.0
+              else
+                 R_in_c = (grid%xAxis(grid%nx) + grid%xAxis(grid%nx-1)) / 2.0
+                 R_out_c = grid%xAxis(grid%nx)
+              end if
+
+              if (zP == 1) then
+                 dz = (grid%zAxis(2) - grid%zAxis(1)) / 2.0
+              else if (zP < grid%nz) then
+                 dz = (grid%zAxis(zP+1) - grid%zAxis(zP-1)) / 2.0
+              else
+                 dz = (grid%zAxis(grid%nz) - grid%zAxis(grid%nz-1)) / 2.0
+              end if
+
+              R_in_15 = R_in_c / 1.e15
+              R_out_15 = R_out_c / 1.e15
+              dz_15 = dz / 1.e15
+
+              if (lgSymmetricXYZ) then
+                 getVolumeCon = (Pi / 4.0) * (R_out_15**2 - R_in_15**2) * dz_15
+              else
+                 getVolumeCon = Pi * (R_out_15**2 - R_in_15**2) * dz_15
+              end if
+           else
+              select case (perpAxis2D)
            case ('Z')
               if ((xP>1) .and. (xP<grid%nx)) then
                  dx = abs(grid%xAxis(xP+1)-grid%xAxis(xP-1))/2.
@@ -678,12 +710,13 @@ module continuum_mod
               else if (zP==grid%nz) then
                  dz = abs(grid%zAxis(zP)-grid%zAxis(zP-1))
               end if
-           end select
+              end select
 
-           dx = dx/1.e15
-           dy = dy/1.e15
-           dz = dz/1.e15
-           getVolumeCon = dx*dy*dz
+              dx = dx/1.e15
+              dy = dy/1.e15
+              dz = dz/1.e15
+              getVolumeCon = dx*dy*dz
+           end if
 
         else
 
