@@ -671,20 +671,15 @@ module elements_mod
        ! find out the number of lines and what files are available
        nLines = 0
 
-       ! HI recombination lines
-       do iup = 3, 15
-          do ilow = 2, min(8,iup-1)
+       ! HI recombination lines (matches outputGas indexing iup=ilow+1..30)
+       do ilow = 2, 8
+          do iup = ilow+1, 30
              nLines = nLines + 1
           end do
        end do
 
-       ! HeI singlet recombination lines
-       do i = 1, 9
-          nLines = nLines + 1
-       end do
-
-       ! HeI triplet recombination lines
-       do i = 1, 11
+       ! HeI recombination lines (34 lines from Benjamin, Skillman & Smits)
+       do i = 1, 34
           nLines = nLines + 1
        end do
 

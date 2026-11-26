@@ -63,7 +63,6 @@ module common_mod
     real, allocatable   :: KNsigmaArray(:,:)    ! Klein Nishina calc PDFs (nbins,180)
     real, allocatable   :: KNsigmaT(:)          ! Klein Nishina cross-sections integrated over the solid angle
     real, allocatable   :: PcompArray (:,:)
-    real, allocatable   :: twoDscaleJ(:)
 
     integer         :: radio4p9GHzP   !
 

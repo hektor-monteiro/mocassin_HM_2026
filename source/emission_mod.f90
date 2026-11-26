@@ -832,13 +832,17 @@ module emission_mod
 
         if (lgDebug) then
            i = 1
-           do iup = 3, 15
-              do ilow = 2, min(8, iup-1)
-                 if (i == 1) then
-                    grids(iG)%linePDF(cellPUsed, i) = real(HIRecLines(iup, ilow) / grids(iG)%totalLines(cellPUsed))
+           do ilow = 2, 8
+              do iup = ilow+1, 30
+                 if (iup <= 15) then
+                    if (i == 1) then
+                       grids(iG)%linePDF(cellPUsed, i) = real(HIRecLines(iup, ilow) / grids(iG)%totalLines(cellPUsed))
+                    else
+                       grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(cellPUsed, i-1) + &
+&                           real(HIRecLines(iup, ilow) / grids(iG)%totalLines(cellPUsed))
+                    end if
                  else
-                    grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(cellPUsed, i-1) + &
-&                        real(HIRecLines(iup, ilow) / grids(iG)%totalLines(cellPUsed))
+                    grids(iG)%linePDF(cellPUsed, i) = grids(iG)%linePDF(cellPUsed, i-1)
                  end if
                  i = i+1
               end do

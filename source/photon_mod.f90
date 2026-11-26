@@ -712,13 +712,16 @@ module photon_mod
         ! this subroutine determines the frequency of a newly created photon packet
         ! according to the given probability density
         ! optimized: utilizes bisection (binary search) to locate nu on array
-        subroutine getNu2(probDen, nuP)
+        subroutine getNu2(probDen, nuP, lgDiscrete)
 
             real, dimension(:), intent(in) :: probDen    ! probability density function
             integer, intent(out)           :: nuP        ! frequency index of the new packet
+            logical, intent(in), optional  :: lgDiscrete ! true for discrete line CDFs (no continuum clamp)
 
             real                           :: random     ! random number
             integer                        :: ilow, ihigh, imid ! bisection indices
+            integer                        :: nProb
+            logical                        :: useDiscrete
 
             ! get a random number
             call random_number(random)
@@ -727,6 +730,28 @@ module photon_mod
             do while (random <= 0.0 .or. random >= 0.9999999)
                call random_number(random)
             end do
+
+            nProb = size(probDen)
+            useDiscrete = (nProb /= nbins)
+            if (present(lgDiscrete)) then
+               if (lgDiscrete) useDiscrete = .true.
+            end if
+
+            if (useDiscrete) then
+               nuP = nProb
+               ilow = 1
+               ihigh = nProb
+               do while (ilow <= ihigh)
+                  imid = (ilow + ihigh) / 2
+                  if (random <= probDen(imid)) then
+                     nuP = imid
+                     ihigh = imid - 1
+                  else
+                     ilow = imid + 1
+                  end if
+               end do
+               return
+            end if
 
             ! Binary search (bisection) matching the exact index mapping of the legacy code
             nuP = 1
@@ -921,7 +946,7 @@ module photon_mod
                    ! line photon
                    ! line photons escape so don't care which one it is unless debugging
                    if (lgDebug) then
-                      call getNu2( grid(gP)%linePDF(grid(gP)%active(xP(igPn),yP(igPn),zP(igPn)),:), nuP )
+                      call getNu2( grid(gP)%linePDF(grid(gP)%active(xP(igPn),yP(igPn),zP(igPn)),:), nuP, lgDiscrete=.true. )
 
                       if (nuP < 1) then
                          print*, "! newPhotonPacket: insanity occurred in line photon &

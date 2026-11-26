@@ -90,7 +90,24 @@ module iteration_mod
               if (lgGas) then
                  ! zero out PDF arrays
                  grid(iG)%recPDF(0:grid(iG)%nCells, 1:nbins) = 0.
-                 if (lgDebug) grid(iG)%linePDF(0:grid(iG)%nCells, 1:nLines)    = 0.
+                 if (lgDebug .and. nLines > 0) then
+                    if (.not. allocated(grid(iG)%linePDF)) then
+                       allocate(grid(iG)%linePDF(0:grid(iG)%nCells, 1:nLines), stat = err)
+                       if (err /= 0) then
+                          print*, "! iterateMC: can't allocate grid%linePDF memory"
+                          stop
+                       end if
+                    end if
+                    if (.not. allocated(grid(iG)%linePackets)) then
+                       allocate(grid(iG)%linePackets(0:grid(iG)%nCells, 1:nLines), stat = err)
+                       if (err /= 0) then
+                          print*, "! iterateMC: can't allocate grid%linePackets memory"
+                          stop
+                       end if
+                       grid(iG)%linePackets(0:grid(iG)%nCells, 1:nLines) = 0.
+                    end if
+                    grid(iG)%linePDF(0:grid(iG)%nCells, 1:nLines) = 0.
+                 end if
                  grid(iG)%totalLines(0:grid(iG)%nCells) = 0.
 
                  ! zero out Balmer jump
@@ -679,19 +696,12 @@ module iteration_mod
                              end if
                              grid(iG)%JSte(grid(iG)%active(i,j,k),freq) = &
                                   & JSteTemp(grid(iG)%active(i,j,k),freq)
-                             if (lg2D) grid(iG)%JSte(grid(iG)%active(i,j,k),freq) = &
-                                  & grid(iG)%JSte(grid(iG)%active(i,j,k),freq)/&
-                                  & TwoDscaleJ(grid(iG)%active(i,j,k))
 
                           end do
                           if (lgDebug) then
                              do freq = 1, nLines
                                 grid(iG)%linePackets(grid(iG)%active(i,j,k),freq) &
                                      & = linePacketsTemp(grid(iG)%active(i,j,k),freq)
-                                if (lg2D) grid(iG)%JDif(grid(iG)%active(i,j,k),freq) = &
-                                     & grid(iG)%JDif(grid(iG)%active(i,j,k),freq)/&
-                                     & TwoDscaleJ(grid(iG)%active(i,j,k))
-
                              end do
                           end if
                        end if

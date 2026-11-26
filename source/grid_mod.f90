@@ -1091,7 +1091,6 @@ module grid_mod
         real, allocatable                  :: HdenTemp(:,:,:) ! temporary Hden
         real, allocatable                  :: NdustTemp(:,:,:) ! temporary dust number density arra
         real, allocatable                  :: dustAbunIndexTemp(:,:,:) ! temporary dust abundance index array
-        real, allocatable                  :: twoDscaleJTemp(:)
 
 
 
@@ -1579,11 +1578,6 @@ module grid_mod
                 end do
              end do
           end do
-
-
-          allocate(TwoDscaleJ(grid%nCells))
-          TwoDscaleJ = 1.
-
 
 
           print*, '! setMotherGrid: active cells :', grid%nCells
@@ -3922,8 +3916,6 @@ end function getVolume
 
 
          if (lg2D .and. iG==1) then
-            allocate(TwoDscaleJ(grid(iG)%nCells))
-            TwoDscaleJ = 1.
             if (deltaPerp2D <= 0.) then
                if (grid(1)%nx > 1) then
                   dPerp = abs(grid(1)%xAxis(2) - grid(1)%xAxis(1))
