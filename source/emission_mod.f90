@@ -1821,7 +1821,7 @@ module emission_mod
 
       type(grid_type), intent(inout) :: grids(*) ! incoming grids
 
-      type(vector) :: uHat, rVec ! direction and position vectors
+      type(vector) :: uHat, uHatOrig, rVec ! direction and position vectors
 
       real    :: a0,DeltaNuD ! line centre xSec [cm^2] and doppler width
       real    :: bFac
@@ -1835,6 +1835,9 @@ module emission_mod
       real    :: gasdensity,gastemperature ! properties of the cells along the line of travel
       real    :: gasdensity0,gastemperature0 ! local cell properties
       real :: k_dTest=0.5e-20, HdenTest=0.252, ionFracTest=0.5, TeTest=1.e4
+      real    :: perpMinLoc, perpMaxLoc
+      double precision :: R_in_c, R_out_c, Z_in_c, Z_out_c
+      double precision :: A_cyl, B_cyl, R2_cyl, C_out, C_in, delta_out, delta_in, ds_out, ds_in, s_cand
 
 
       integer, intent(in) :: xPin,yPin,zPin,gPin ! incoming cell pointers
@@ -1850,6 +1853,7 @@ module emission_mod
       integer             :: ndirx, ndiry,ndirz ! number of directions to sample tau
 
       logical             :: lgTest
+      logical             :: lgTargetInner
 
 
       lgTest = .false.
@@ -1937,6 +1941,7 @@ module emission_mod
                   uHat = rotateZ(uHat,real(kdir)*Pi/2.)
 
                   tau_mu = 0.
+                  uHatOrig = uHat
 
                   rVec%x = grids(gPin)%xAxis(xPin)
                   rVec%y = grids(gPin)%yAxis(yPin)
@@ -1946,6 +1951,30 @@ module emission_mod
                   yp = ypin
                   zp = zpin
                   gp = gpin
+
+                  if (lg2D) then
+                     if (lgCylinder2D) then
+                        yp = 1
+                        rVec%y = 0.0
+                     else
+                        if (lgBuffer2D) then
+                           if (lgSymmetricXYZ) then
+                              perpMinLoc = minPerp2D
+                           else
+                              perpMinLoc = minPerp2D - deltaPerp2D
+                           end if
+                           perpMaxLoc = maxPerp2D + deltaPerp2D
+                        else
+                           perpMinLoc = minPerp2D
+                           perpMaxLoc = maxPerp2D
+                        end if
+                        select case (perpAxis2D)
+                        case ("X"); xp = 1; rVec%x = 0.0
+                        case ("Y"); yp = 1; rVec%y = 0.0
+                        case ("Z"); zp = 1; rVec%z = 0.0
+                        end select
+                     end if
+                  end if
 
 
                   do icount = 1, safeLimit
@@ -2008,8 +2037,109 @@ module emission_mod
                      end if
 
                      ! find distances from all walls
+                     if (lg2D .and. lgCylinder2D) then
+                        yP = 1
+                        dSy = 1.e35
+                        lgTargetInner = .false.
 
-                     if (uHat%x>0.) then
+                        if (xP == 1) then
+                           R_in_c = 0.0d0
+                           R_out_c = dble(grids(gP)%xAxis(2) + grids(gP)%xAxis(1)) / 2.0d0
+                        else if (xP < grids(gP)%nx) then
+                           R_in_c = dble(grids(gP)%xAxis(xP) + grids(gP)%xAxis(xP-1)) / 2.0d0
+                           R_out_c = dble(grids(gP)%xAxis(xP+1) + grids(gP)%xAxis(xP)) / 2.0d0
+                        else
+                           R_in_c = dble(grids(gP)%xAxis(grids(gP)%nx) + grids(gP)%xAxis(grids(gP)%nx-1)) / 2.0d0
+                           R_out_c = dble(grids(gP)%xAxis(grids(gP)%nx))
+                        end if
+
+                        if (zP == 1) then
+                           Z_in_c = dble(grids(gP)%zAxis(1))
+                           Z_out_c = dble(grids(gP)%zAxis(2) + grids(gP)%zAxis(1)) / 2.0d0
+                        else if (zP < grids(gP)%nz) then
+                           Z_in_c = dble(grids(gP)%zAxis(zP) + grids(gP)%zAxis(zP-1)) / 2.0d0
+                           Z_out_c = dble(grids(gP)%zAxis(zP+1) + grids(gP)%zAxis(zP)) / 2.0d0
+                        else
+                           Z_in_c = dble(grids(gP)%zAxis(grids(gP)%nz) + grids(gP)%zAxis(grids(gP)%nz-1)) / 2.0d0
+                           Z_out_c = dble(grids(gP)%zAxis(grids(gP)%nz))
+                        end if
+
+                        if (uHat%z > 1.e-10) then
+                           dSz = real(max(0.0d0, (Z_out_c - dble(rVec%z)) / dble(uHat%z)))
+                        else if (uHat%z < -1.e-10) then
+                           dSz = real((Z_in_c - dble(rVec%z)) / dble(uHat%z))
+                           if (zP == 1 .and. dSz <= 1.e-10) then
+                              if (lgSymmetricXYZ) then
+                                 rVec%z = grids(gP)%zAxis(1)
+                                 uHat%z = -uHat%z
+                                 dSz = real(max(0.0d0, (Z_out_c - dble(rVec%z)) / dble(uHat%z)))
+                              else
+                                 dSz = 0.0
+                              end if
+                           else if (dSz < 0.0) then
+                              dSz = 0.0
+                           end if
+                        else
+                           dSz = 1.e35
+                        end if
+
+                        A_cyl = dble(uHat%x)**2 + dble(uHat%y)**2
+                        B_cyl = 2.0d0 * (dble(rVec%x) * dble(uHat%x) + dble(rVec%y) * dble(uHat%y))
+                        R2_cyl = dble(rVec%x)**2 + dble(rVec%y)**2
+
+                        if (A_cyl < 1.d-20) then
+                           dSx = 1.e35
+                        else
+                           C_out = R2_cyl - R_out_c**2
+                           delta_out = max(0.0d0, B_cyl**2 - 4.0d0 * A_cyl * C_out)
+                           ds_out = max(0.0d0, (-B_cyl + sqrt(delta_out)) / (2.0d0 * A_cyl))
+
+                           ds_in = 1.d35
+                           if (xP > 1 .and. B_cyl < -1.d-10) then
+                              C_in = R2_cyl - R_in_c**2
+                              if (C_in < 0.0d0) then
+                                 ds_in = 0.0d0
+                              else
+                                 delta_in = B_cyl**2 - 4.0d0 * A_cyl * C_in
+                                 if (delta_in >= 0.0d0) then
+                                    s_cand = (-B_cyl - sqrt(delta_in)) / (2.0d0 * A_cyl)
+                                    if (s_cand >= 0.0d0) ds_in = s_cand
+                                 end if
+                              end if
+                           end if
+
+                           if (ds_in < ds_out) then
+                              dSx = real(ds_in)
+                              lgTargetInner = .true.
+                           else
+                              dSx = real(ds_out)
+                              lgTargetInner = .false.
+                           end if
+                        end if
+
+                        dSx = max(0.0, dSx)
+                        dSz = max(0.0, dSz)
+                        dS = min(dSx, dSz)
+
+                     else
+
+                     if (lg2D .and. perpAxis2D == "X") then
+                        xP = 1
+                        if (uHat%x > 1.e-10) then
+                           dSx = max(0.0, (perpMaxLoc - rVec%x) / uHat%x)
+                        else if (uHat%x < -1.e-10) then
+                           dSx = (perpMinLoc - rVec%x) / uHat%x
+                           if (dSx <= 1.e-10 .and. lgSymmetricXYZ) then
+                              rVec%x = minPerp2D
+                              uHat%x = -uHat%x
+                              dSx = (perpMaxLoc - minPerp2D) / abs(uHat%x)
+                           else if (dSx < 0.0) then
+                              dSx = 0.0
+                           end if
+                        else
+                           dSx = 1.e35
+                        end if
+                     else if (uHat%x>0.) then
                         if (xP<grids(gP)%nx) then
                            dSx = ( (grids(gP)%xAxis(xP+1)+grids(gP)%xAxis(xP))/2.-rVec%x)/uHat%x
                            if (abs(dSx)<1.e-10) then
@@ -2040,7 +2170,23 @@ module emission_mod
                      end if
 
                      if (.not.lg1D) then
-                        if (uHat%y>0.) then
+                        if (lg2D .and. perpAxis2D == "Y") then
+                           yP = 1
+                           if (uHat%y > 1.e-10) then
+                              dSy = max(0.0, (perpMaxLoc - rVec%y) / uHat%y)
+                           else if (uHat%y < -1.e-10) then
+                              dSy = (perpMinLoc - rVec%y) / uHat%y
+                              if (dSy <= 1.e-10 .and. lgSymmetricXYZ) then
+                                 rVec%y = minPerp2D
+                                 uHat%y = -uHat%y
+                                 dSy = (perpMaxLoc - minPerp2D) / abs(uHat%y)
+                              else if (dSy < 0.0) then
+                                 dSy = 0.0
+                              end if
+                           else
+                              dSy = 1.e35
+                           end if
+                        else if (uHat%y>0.) then
                            if (yP<grids(gP)%ny) then
                               dSy = ( (grids(gP)%yAxis(yP+1)+grids(gP)%yAxis(yP))/2.-rVec%y)/uHat%y
                               if (abs(dSy)<1.e-10) then
@@ -2070,7 +2216,23 @@ module emission_mod
                            dSy = grids(gP)%yAxis(grids(gP)%ny)
                         end if
 
-                        if (uHat%z>0.) then
+                        if (lg2D .and. perpAxis2D == "Z") then
+                           zP = 1
+                           if (uHat%z > 1.e-10) then
+                              dSz = max(0.0, (perpMaxLoc - rVec%z) / uHat%z)
+                           else if (uHat%z < -1.e-10) then
+                              dSz = (perpMinLoc - rVec%z) / uHat%z
+                              if (dSz <= 1.e-10 .and. lgSymmetricXYZ) then
+                                 rVec%z = minPerp2D
+                                 uHat%z = -uHat%z
+                                 dSz = (perpMaxLoc - minPerp2D) / abs(uHat%z)
+                              else if (dSz < 0.0) then
+                                 dSz = 0.0
+                              end if
+                           else
+                              dSz = 1.e35
+                           end if
+                        else if (uHat%z>0.) then
                            if (zP<grids(gP)%nz) then
                               dSz = ( (grids(gP)%zAxis(zP+1)+grids(gP)%zAxis(zP))/2.-rVec%z)/uHat%z
                               if (abs(dSz)<1.e-10) then
@@ -2109,32 +2271,39 @@ module emission_mod
 
 
                      ! cater for cells on cell wall
-                     if ( abs(dSx)<1.e-10 ) dSx = grids(gP)%xAxis(grids(gP)%nx)
-                     if ( abs(dSy)<1.e-10 ) dSy = grids(gP)%yAxis(grids(gP)%ny)
-                     if ( abs(dSz)<1.e-10 ) dSz = grids(gP)%zAxis(grids(gP)%nz)
+                     if ( (.not.(lg2D .and. perpAxis2D == "X")) .and. abs(dSx)<1.e-10 ) dSx = grids(gP)%xAxis(grids(gP)%nx)
+                     if ( (.not.(lg2D .and. perpAxis2D == "Y")) .and. abs(dSy)<1.e-10 ) dSy = grids(gP)%yAxis(grids(gP)%ny)
+                     if ( (.not.(lg2D .and. perpAxis2D == "Z")) .and. abs(dSz)<1.e-10 ) dSz = grids(gP)%zAxis(grids(gP)%nz)
 
                      ! find the nearest wall
                      dSx = abs(dSx)
                      dSy = abs(dSy)
                      dSz = abs(dSz)
 
-                     if (dSx<=0.) then
-                        print*, '! setResLineEscapeProb: [warning] dSx <= 0.'
-                        dS = min(dSy, dSz)
-                     else if (dSy<=0.) then
-                        print*, '! setResLineEscapeProb: [warning] dSy <= 0.'
-                        dS = min(dSx, dSz)
-                     else if (dSz<=0.) then
-                        print*, '! setResLineEscapeProb: [warning] dSz <= 0.'
-                        dS = min(dSx, dSy)
+                     if (lg2D) then
+                        dS = min(dSx, dSy, dSz)
+                        if (dS < 0.) dS = 0.
                      else
-                        dS = min(dSx,dSy,dSz)
+                        if (dSx<=0.) then
+                           print*, '! setResLineEscapeProb: [warning] dSx <= 0.'
+                           dS = min(dSy, dSz)
+                        else if (dSy<=0.) then
+                           print*, '! setResLineEscapeProb: [warning] dSy <= 0.'
+                           dS = min(dSx, dSz)
+                        else if (dSz<=0.) then
+                           print*, '! setResLineEscapeProb: [warning] dSz <= 0.'
+                           dS = min(dSx, dSy)
+                        else
+                           dS = min(dSx,dSy,dSz)
+                        end if
+
+                        ! this should now never ever happen
+                        if (dS <= 0.) then
+                           print*, 'setResLineEscapeProb: dS <= 0'
+                           stop
+                        end if
                      end if
 
-                     ! this should now never ever happen
-                     if (dS <= 0.) then
-                        print*, 'setResLineEscapeProb: dS <= 0'
-                        stop
                      end if
 
                      ! update optical depth
@@ -2237,19 +2406,99 @@ module emission_mod
                      end if
 
                      ! and update current grid indeces
-                     if (.not.lg1D) then
-                        if ( (dS == dSx) .and. (uHat%x > 0.)  ) then
-                           xP = xP+1
-                        else if ( (dS == dSx) .and. (uHat%x < 0.) ) then
-                           xP = xP-1
-                        else if ( (dS == dSy) .and. (uHat%y > 0.) ) then
-                           yP = yP+1
-                        else if ( (dS == dSy) .and. (uHat%y < 0.) ) then
-                           yP = yP-1
-                        else if ( (dS == dSz) .and. (uHat%z > 0.) ) then
-                           zP = zP+1
-                        else if ( (dS == dSz) .and. (uHat%z < 0.) ) then
-                           zP = zP-1
+                     if (lg2D .and. lgCylinder2D) then
+                        if (dS == dSz) then
+                           if (uHat%z > 0.) then
+                              zP = zP + 1
+                           else if (uHat%z < 0.) then
+                              if (zP > 1) then
+                                 zP = zP - 1
+                              else if (lgSymmetricXYZ) then
+                                 rVec%z = grids(gP)%zAxis(1)
+                                 uHat%z = -uHat%z
+                                 zP = 1
+                              else
+                                 zP = 0
+                              end if
+                           end if
+                        else if (dS == dSx) then
+                           if (lgTargetInner) then
+                              xP = xP - 1
+                           else
+                              xP = xP + 1
+                           end if
+                        end if
+                        yP = 1
+                     else if (.not.lg1D) then
+                        if (dS == dSx) then
+                           if (lg2D .and. perpAxis2D == "X") then
+                              if (uHat%x > 0.) then
+                                 if (lgSpecular2D) then
+                                    rVec%x = maxPerp2D
+                                    uHat%x = -uHat%x
+                                    xP = 1
+                                 else
+                                    xP = grids(gP)%nx + 1
+                                 end if
+                              else if (uHat%x < 0.) then
+                                 if (lgSymmetricXYZ .or. lgSpecular2D) then
+                                    rVec%x = minPerp2D
+                                    uHat%x = -uHat%x
+                                    xP = 1
+                                 else
+                                    xP = 0
+                                 end if
+                              end if
+                           else
+                              if (uHat%x > 0.) xP = xP+1
+                              if (uHat%x < 0.) xP = xP-1
+                           end if
+                        else if (dS == dSy) then
+                           if (lg2D .and. perpAxis2D == "Y") then
+                              if (uHat%y > 0.) then
+                                 if (lgSpecular2D) then
+                                    rVec%y = maxPerp2D
+                                    uHat%y = -uHat%y
+                                    yP = 1
+                                 else
+                                    yP = grids(gP)%ny + 1
+                                 end if
+                              else if (uHat%y < 0.) then
+                                 if (lgSymmetricXYZ .or. lgSpecular2D) then
+                                    rVec%y = minPerp2D
+                                    uHat%y = -uHat%y
+                                    yP = 1
+                                 else
+                                    yP = 0
+                                 end if
+                              end if
+                           else
+                              if (uHat%y > 0.) yP = yP+1
+                              if (uHat%y < 0.) yP = yP-1
+                           end if
+                        else if (dS == dSz) then
+                           if (lg2D .and. perpAxis2D == "Z") then
+                              if (uHat%z > 0.) then
+                                 if (lgSpecular2D) then
+                                    rVec%z = maxPerp2D
+                                    uHat%z = -uHat%z
+                                    zP = 1
+                                 else
+                                    zP = grids(gP)%nz + 1
+                                 end if
+                              else if (uHat%z < 0.) then
+                                 if (lgSymmetricXYZ .or. lgSpecular2D) then
+                                    rVec%z = minPerp2D
+                                    uHat%z = -uHat%z
+                                    zP = 1
+                                 else
+                                    zP = 0
+                                 end if
+                              end if
+                           else
+                              if (uHat%z > 0.) zP = zP+1
+                              if (uHat%z < 0.) zP = zP-1
+                           end if
                         end if
                      else
 
@@ -2387,6 +2636,20 @@ module emission_mod
                           & (rVec%y/1.e10)*(rVec%y/1.e10) + &
                           & (rVec%z/1.e10)*(rVec%z/1.e10))
 
+                     if (lg2D .and. lgCylinder2D) then
+                        if ( (radius >= R_out .and. R_out >= 0.) .or. &
+                             & xP > grids(gP)%nx .or. xP < 1 .or. &
+                             & zP > grids(gP)%nz .or. zP < 1 .or. &
+                             & sqrt(dble(rVec%x)**2 + dble(rVec%y)**2) >= dble(grids(gP)%xAxis(grids(gP)%nx)) + dble(grids(gP)%geoCorrX) .or. &
+                             & rVec%z >= grids(gP)%zAxis(grids(gP)%nz) + grids(gP)%geoCorrZ .or. &
+                             & (.not. lgSymmetricXYZ .and. rVec%z <= grids(gP)%zAxis(1) - grids(gP)%geoCorrZ) ) then
+                           if (xP > grids(gP)%nx) xP = grids(gP)%nx
+                           if (xP < 1) xP = 1
+                           if (zP > grids(gP)%nz) zP = grids(gP)%nz
+                           if (zP < 1) zP = 1
+                           exit
+                        end if
+                     else
                      if ( radius >= R_out .and. R_out >= 0. ) exit
 
                      if (lgSymmetricXYZ .and. gP == 1) then
@@ -2394,17 +2657,17 @@ module emission_mod
                            print*, '! setResLineEscapeProb: lgSymmetric and lgPlaneionization flags both raised'
                            stop
                         end if
-                        if ( rVec%x <= grids(gP)%xAxis(1) .or. xP<1) then
+                        if ( (.not. (lg2D .and. perpAxis2D == "X")) .and. (rVec%x <= grids(gP)%xAxis(1) .or. xP<1) ) then
                            if (uHat%x<0.) uHat%x = -uHat%x
                            xP = 1
                            rVec%x = grids(gP)%xAxis(1)
                         end if
-                        if ( rVec%y <= grids(gP)%yAxis(1) .or. yP<1) then
+                        if ( (.not. (lg2D .and. perpAxis2D == "Y")) .and. (rVec%y <= grids(gP)%yAxis(1) .or. yP<1) ) then
                            if (uHat%y<0.) uHat%y = -uHat%y
                            yP = 1
                            rVec%y = grids(gP)%yAxis(1)
                         end if
-                        if ( rVec%z <= grids(gP)%zAxis(1) .or. zP<1) then
+                        if ( (.not. (lg2D .and. perpAxis2D == "Z")) .and. (rVec%z <= grids(gP)%zAxis(1) .or. zP<1) ) then
                            if (uHat%z<0.) uHat%z = -uHat%z
                            zP=1
                            rVec%z = grids(gP)%zAxis(1)
@@ -2414,9 +2677,9 @@ module emission_mod
 
                      if (.not.lgPlaneIonization) then
 
-                        if ( (abs(rVec%x) >= grids(gP)%xAxis(grids(gP)%nx)+grids(gP)%geoCorrX) .or.&
-                             &(abs(rVec%y) >= grids(gP)%yAxis(grids(gP)%ny)+grids(gP)%geoCorrY) .or.&
-                             &(abs(rVec%z) >= grids(gP)%zAxis(grids(gP)%nz)+grids(gP)%geoCorrZ) .or. &
+                        if ( ((.not.(lg2D .and. perpAxis2D == "X")) .and. (abs(rVec%x) >= grids(gP)%xAxis(grids(gP)%nx)+grids(gP)%geoCorrX)) .or.&
+                             &((.not.(lg2D .and. perpAxis2D == "Y")) .and. (abs(rVec%y) >= grids(gP)%yAxis(grids(gP)%ny)+grids(gP)%geoCorrY)) .or.&
+                             &((.not.(lg2D .and. perpAxis2D == "Z")) .and. (abs(rVec%z) >= grids(gP)%zAxis(grids(gP)%nz)+grids(gP)%geoCorrZ)) .or. &
                              & xP>grids(gP)%nx .or. yP>grids(gP)%ny .or. zP>grids(gP)%nz  ) then
 
 
@@ -2436,9 +2699,10 @@ module emission_mod
                            end if
 
                         end if
-                        if ( .not. lgSymmetricXYZ .and. ( rVec%x < grids(gP)%xAxis(1) .or.&
-                             & rVec%y < grids(gP)%yAxis(1) .or.&
-                             & rVec%z < grids(gP)%zAxis(1) .or. &
+                        if ( .not. lgSymmetricXYZ .and. ( &
+                             & ((.not.(lg2D .and. perpAxis2D == "X")) .and. rVec%x < grids(gP)%xAxis(1)) .or.&
+                             & ((.not.(lg2D .and. perpAxis2D == "Y")) .and. rVec%y < grids(gP)%yAxis(1)) .or.&
+                             & ((.not.(lg2D .and. perpAxis2D == "Z")) .and. rVec%z < grids(gP)%zAxis(1)) .or. &
                              & xP<1.or. yP<1 .or. zP<1 )) then
 
                            if (gP==1) then
@@ -2458,6 +2722,7 @@ module emission_mod
 
                         end if
                      end if
+                     end if
 
 
                      if (gP>1) then
@@ -2476,6 +2741,7 @@ module emission_mod
 
                      end if
                   end do
+                  if (lg2D) uHat = uHatOrig
 
                   if (iCount>=10000) then
                      print*, '! setResLineEscapeProb: safeLimit exceeded in tau loop', icount, safelimit
