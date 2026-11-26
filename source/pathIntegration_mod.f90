@@ -33,7 +33,7 @@ module pathIntegration_mod
            yP = 1
 
            call locate(grid(1)%zAxis, aVec%z, zP)
-           if (zP == 0 .and. lgSymmetricXYZ .and. aVec%z >= grid(1)%zAxis(1)) zP = 1
+           if (zP == 0 .and. aVec%z >= grid(1)%zAxis(1)) zP = 1
            if (zP < grid(1)%nz) then
               if (aVec%z >= (grid(1)%zAxis(zP) + grid(1)%zAxis(zP+1))/2.) zP = zP + 1
            end if

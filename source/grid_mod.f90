@@ -598,17 +598,31 @@ module grid_mod
                        dPerp = 2.0 * Rnx / real(grid(1)%nx - 1)
                     end if
                  case ("Y")
-                    if (mod(grid(1)%nx,2) == 0 .or. mod(grid(1)%nz,2) == 0) then
-                       print*, "! fillGrid: automatic grid requires odd integer nx and nz"
-                       stop
+                    if (lgCylinder2D) then
+                       if (mod(grid(1)%nz,2) == 0) then
+                          print*, "! fillGrid: automatic cylindrical grid without symmetricXYZ requires odd integer nz"
+                          stop
+                       end if
+                       do i = 1, grid(1)%nx
+                          grid(1)%xAxis(i) = real(i-1)/real(grid(1)%nx-1) * Rnx
+                       end do
+                       grid(1)%yAxis(1) = 0.
+                       do i = 1, grid(1)%nz
+                          grid(1)%zAxis(i) = (2.*real(i-1)/real(grid(1)%nz-1) - 1.) * Rnz
+                       end do
+                    else
+                       if (mod(grid(1)%nx,2) == 0 .or. mod(grid(1)%nz,2) == 0) then
+                          print*, "! fillGrid: automatic grid requires odd integer nx and nz"
+                          stop
+                       end if
+                       do i = 1, grid(1)%nx
+                          grid(1)%xAxis(i) = (2.*real(i-1)/real(grid(1)%nx-1) - 1.) * Rnx
+                       end do
+                       grid(1)%yAxis(1) = 0.
+                       do i = 1, grid(1)%nz
+                          grid(1)%zAxis(i) = (2.*real(i-1)/real(grid(1)%nz-1) - 1.) * Rnz
+                       end do
                     end if
-                    do i = 1, grid(1)%nx
-                       grid(1)%xAxis(i) = (2.*real(i-1)/real(grid(1)%nx-1) - 1.) * Rnx
-                    end do
-                    grid(1)%yAxis(1) = 0.
-                    do i = 1, grid(1)%nz
-                       grid(1)%zAxis(i) = (2.*real(i-1)/real(grid(1)%nz-1) - 1.) * Rnz
-                    end do
                     if (nyIn3D(1) > 1) then
                        dPerp = 2.0 * Rny / real(nyIn3D(1) - 1)
                     else
@@ -1107,6 +1121,10 @@ module grid_mod
         integer                        :: nu0P         !
 
         integer                        :: yTop, xPmap  ! 2D indeces
+        integer                        :: iRadStart, nxNew
+        real, allocatable              :: tmpAxis1D(:)
+        real, allocatable              :: tmpArr3D(:,:,:)
+        integer, allocatable           :: tmpInt3D(:,:,:)
 
                                                        ! with one of the axes
         character(len=40)              :: keyword      ! character string readers
@@ -1505,6 +1523,94 @@ module grid_mod
 
               end if
 
+           end if
+
+           ! For axisymmetric 2D cylinder runs, xAxis represents radius R >= 0.
+           ! If initialized from a 3D [-R, +R] densityFile, slice to the R >= 0 half-plane.
+           if (lg2D .and. lgCylinder2D) then
+              if (grid%xAxis(1) < -1.e-10) then
+                 iRadStart = 0
+                 do i = 1, grid%nx
+                    if (grid%xAxis(i) >= -1.e-10) then
+                       iRadStart = i
+                       exit
+                    end if
+                 end do
+                 if (iRadStart <= 0 .or. grid%nx - iRadStart + 1 < 2) then
+                    print*, "! setMotherGrid: 2D cylinder requires at least 2 non-negative radial R=x points."
+                    stop
+                 end if
+                 nxNew = grid%nx - iRadStart + 1
+
+                 allocate(tmpAxis1D(1:nxNew), stat=err)
+                 if (err /= 0) stop "! setMotherGrid: allocation failed for tmpAxis1D"
+                 tmpAxis1D(1:nxNew) = grid%xAxis(iRadStart:grid%nx)
+                 deallocate(grid%xAxis)
+                 allocate(grid%xAxis(1:nxNew), stat=err)
+                 if (err /= 0) stop "! setMotherGrid: allocation failed for sliced xAxis"
+                 grid%xAxis = tmpAxis1D
+                 deallocate(tmpAxis1D)
+
+                 allocate(tmpInt3D(1:nxNew, 1:grid%ny, 1:grid%nz), stat=err)
+                 if (err /= 0) stop "! setMotherGrid: allocation failed for tmpInt3D(active)"
+                 tmpInt3D(1:nxNew,:,:) = grid%active(iRadStart:grid%nx,:,:)
+                 deallocate(grid%active)
+                 allocate(grid%active(1:nxNew, 1:grid%ny, 1:grid%nz), stat=err)
+                 if (err /= 0) stop "! setMotherGrid: allocation failed for sliced active"
+                 grid%active = tmpInt3D
+
+                 if (allocated(grid%abFileIndex)) then
+                    tmpInt3D(1:nxNew,:,:) = grid%abFileIndex(iRadStart:grid%nx,:,:)
+                    deallocate(grid%abFileIndex)
+                    allocate(grid%abFileIndex(1:nxNew, 1:grid%ny, 1:grid%nz), stat=err)
+                    if (err /= 0) stop "! setMotherGrid: allocation failed for sliced abFileIndex"
+                    grid%abFileIndex = tmpInt3D
+                 end if
+                 deallocate(tmpInt3D)
+
+                 allocate(tmpArr3D(1:nxNew, 1:grid%ny, 1:grid%nz), stat=err)
+                 if (err /= 0) stop "! setMotherGrid: allocation failed for tmpArr3D"
+                 tmpArr3D(1:nxNew,:,:) = grid%echoVol(iRadStart:grid%nx,:,:)
+                 deallocate(grid%echoVol)
+                 allocate(grid%echoVol(1:nxNew, 1:grid%ny, 1:grid%nz), stat=err)
+                 if (err /= 0) stop "! setMotherGrid: allocation failed for sliced echoVol"
+                 grid%echoVol = tmpArr3D
+
+                 if (allocated(HdenTemp)) then
+                    tmpArr3D(1:nxNew,:,:) = HdenTemp(iRadStart:grid%nx,:,:)
+                    deallocate(HdenTemp)
+                    allocate(HdenTemp(1:nxNew, 1:grid%ny, 1:grid%nz), stat=err)
+                    if (err /= 0) stop "! setMotherGrid: allocation failed for sliced HdenTemp"
+                    HdenTemp = tmpArr3D
+                 end if
+                 if (allocated(NdustTemp)) then
+                    tmpArr3D(1:nxNew,:,:) = NdustTemp(iRadStart:grid%nx,:,:)
+                    deallocate(NdustTemp)
+                    allocate(NdustTemp(1:nxNew, 1:grid%ny, 1:grid%nz), stat=err)
+                    if (err /= 0) stop "! setMotherGrid: allocation failed for sliced NdustTemp"
+                    NdustTemp = tmpArr3D
+                 end if
+                 if (allocated(MdMg)) then
+                    tmpArr3D(1:nxNew,:,:) = MdMg(iRadStart:grid%nx,:,:)
+                    deallocate(MdMg)
+                    allocate(MdMg(1:nxNew, 1:grid%ny, 1:grid%nz), stat=err)
+                    if (err /= 0) stop "! setMotherGrid: allocation failed for sliced MdMg"
+                    MdMg = tmpArr3D
+                 end if
+                 if (allocated(dustAbunIndexTemp)) then
+                    tmpArr3D(1:nxNew,:,:) = dustAbunIndexTemp(iRadStart:grid%nx,:,:)
+                    deallocate(dustAbunIndexTemp)
+                    allocate(dustAbunIndexTemp(1:nxNew, 1:grid%ny, 1:grid%nz), stat=err)
+                    if (err /= 0) stop "! setMotherGrid: allocation failed for sliced dustAbunIndexTemp"
+                    dustAbunIndexTemp = tmpArr3D
+                 end if
+                 deallocate(tmpArr3D)
+
+                 grid%nx = nxNew
+                 nxIn(1) = nxNew
+                 if (taskid == 0) print*, "! setMotherGrid: sliced R>=0 half-plane for 2D cylinder; nx =", grid%nx
+              end if
+              if (abs(grid%xAxis(1)) <= 1.e-10) grid%xAxis(1) = 0.0
            end if
 
 
