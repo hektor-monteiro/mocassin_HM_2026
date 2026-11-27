@@ -2815,6 +2815,7 @@ endif
       SED=0.
       sSED=0.
       Luminosity=0.
+      SEDratio=1.0
   
       ! --- Write Header to Output File ---
       write(16,*) 'Spectral energy distribution at the surface of the nebula: '
@@ -2877,6 +2878,15 @@ endif
               enddo ! k
             enddo ! j
           enddo ! i
+
+          ! Include unabsorbed source packets escaping directly from central cavity / inactive origin (ijk == 0)
+          do imu = 0, nAngleBins
+            Luminosity(freq,imu) = Luminosity(freq,imu) + grid(iG)%escapedPackets(0,freq,imu)
+            sSED(freq,imu) = sSED(freq,imu) + grid(iG)%escapedPackets(0,freq,imu)
+            if (.not. lgEcho .and. .not. lgNosource) then
+               SED(freq,imu) = SED(freq,imu) + grid(iG)%escapedPackets(0,freq,imu)
+            end if
+          end do
         end do ! freq
       end do ! iG
       
@@ -2919,8 +2929,16 @@ endif
             phi1 = int(viewPointPhi(imu)/dPhi)*dPhi
             phi2 = phi1+dPhi
             
-            ! --- check ratio of IR luminosities ---
-            SEDratio = SUM(Luminosity(1:farIR_ind(1), imu))/SUM(Luminosity(1:farIR_ind(1), 0))
+            ! --- check ratio of IR (or total) luminosities with zero-division guard ---
+            if (SUM(Luminosity(1:farIR_ind(1), 0)) > 0. .and. SUM(Luminosity(1:farIR_ind(1), imu)) > 0.) then
+               SEDratio = SUM(Luminosity(1:farIR_ind(1), imu)) / SUM(Luminosity(1:farIR_ind(1), 0))
+            else if (SUM(Luminosity(1:nbins, 0)) > 0. .and. SUM(Luminosity(1:nbins, imu)) > 0.) then
+               SEDratio = SUM(Luminosity(1:nbins, imu)) / SUM(Luminosity(1:nbins, 0))
+            else
+               SEDratio = 1.0
+               SED(freq, imu) = 0.0
+               sSED(freq, imu) = 0.0
+            end if
                        
             ! for whole simulated grid
             SED(freq, imu) = SED(freq, imu)/(3.086*3.086)/(SEDratio*4*PI)
