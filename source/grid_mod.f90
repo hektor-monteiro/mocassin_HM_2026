@@ -3602,6 +3602,79 @@ function getWeight2D(grid, i, j, k) result(weight2D)
   end if
 
 end function getWeight2D
+
+!> Returns the geometric aperture transmission weight (in [0, 1]) of a cell
+!! inside the rectangular spectrograph slit defined by slitAxis, d1Slit, d2Slit.
+!! In 2D cylindrical mode (R, Z), weights each active ring by the exact fraction
+!! of its azimuthal circle intersecting the projected rectangular aperture.
+function getSlitWeight2D(grid, i, j, k) result(slitWeight)
+  implicit none
+
+  type(grid_type), intent(in) :: grid
+  integer, intent(in)         :: i, j, k
+  real                        :: slitWeight
+
+  real             :: rCyl
+  double precision :: rD, zAbs, half1, half2, phiMin, phiMax, halfPi
+  logical          :: inBox
+
+  slitWeight = 1.0
+  if (d1Slit <= 0.0 .and. d2Slit <= 0.0) return
+  if (slitAxis == 'N' .or. slitAxis == 'n') return
+
+  if (.not. (lg2D .and. lgCylinder2D)) then
+     if (slitAxis == 'z' .or. slitAxis == 'Z') then
+        inBox = (abs(grid%xAxis(i)) <= d1Slit/2.0) .and. (abs(grid%yAxis(j)) <= d2Slit/2.0)
+     else if (slitAxis == 'y' .or. slitAxis == 'Y') then
+        inBox = (abs(grid%xAxis(i)) <= d1Slit/2.0) .and. (abs(grid%zAxis(k)) <= d2Slit/2.0)
+     else if (slitAxis == 'x' .or. slitAxis == 'X') then
+        inBox = (abs(grid%yAxis(j)) <= d1Slit/2.0) .and. (abs(grid%zAxis(k)) <= d2Slit/2.0)
+     else
+        inBox = .true.
+     end if
+     if (.not. inBox) slitWeight = 0.0
+     return
+  end if
+
+  rCyl = grid%xAxis(i)
+  if (i == 1 .and. grid%xAxis(1) == 0.0 .and. grid%nx > 1) then
+     rCyl = (grid%xAxis(2) - grid%xAxis(1)) / 4.0
+  end if
+  rD     = dble(abs(rCyl))
+  zAbs   = dble(abs(grid%zAxis(k)))
+  half1  = dble(d1Slit) / 2.0d0
+  half2  = dble(d2Slit) / 2.0d0
+  halfPi = dble(Pi) / 2.0d0
+
+  if (slitAxis == 'z' .or. slitAxis == 'Z') then
+     if (rD <= 0.0d0) then
+        slitWeight = 1.0
+        return
+     end if
+     if (rD <= half1) then
+        phiMin = 0.0d0
+     else
+        phiMin = acos(max(0.0d0, min(1.0d0, half1 / rD)))
+     end if
+     if (rD <= half2) then
+        phiMax = halfPi
+     else
+        phiMax = asin(max(0.0d0, min(1.0d0, half2 / rD)))
+     end if
+     slitWeight = real(max(0.0d0, phiMax - phiMin) / halfPi)
+  else if (slitAxis == 'y' .or. slitAxis == 'Y' .or. slitAxis == 'x' .or. slitAxis == 'X') then
+     if (zAbs > half2) then
+        slitWeight = 0.0
+     else if (rD <= half1) then
+        slitWeight = 1.0
+     else if (half1 <= 0.0d0) then
+        slitWeight = 0.0
+     else
+        slitWeight = real(asin(max(0.0d0, min(1.0d0, half1 / rD))) / halfPi)
+     end if
+  end if
+
+end function getSlitWeight2D
     
 
     subroutine resetGrid(grid)

@@ -38,6 +38,7 @@ module output_mod
         real, allocatable               :: flam(:)           ! f(lambda) value from file
 
         real                        :: dV       ! volume of this cell
+        real                        :: slitWeight ! geometric aperture fraction inside slit
         real                        :: factor1  ! calculations factor
         real                        :: factor2  ! calculations factor
         real                        :: g        ! alpha*h*nu (used to calculate line intensities)
@@ -315,19 +316,10 @@ module output_mod
 
                     ! slit condition
                     if (isSlitPass) then
-                       if (slitAxis == 'z' .or. slitAxis == 'Z') then
-                          lgInSlit = (abs(grid(iG)%xAxis(i)) <= d1Slit/2.) .and. &
-                                     (abs(grid(iG)%yAxis(j)) <= d2Slit/2.)
-                       else if (slitAxis == 'y' .or. slitAxis == 'Y') then
-                          lgInSlit = (abs(grid(iG)%xAxis(i)) <= d1Slit/2.) .and. &
-                                     (abs(grid(iG)%zAxis(k)) <= d2Slit/2.)
-                       else if (slitAxis == 'x' .or. slitAxis == 'X') then
-                          lgInSlit = (abs(grid(iG)%yAxis(j)) <= d1Slit/2.) .and. &
-                                     (abs(grid(iG)%zAxis(k)) <= d2Slit/2.)
-                       else
-                          lgInSlit = .True.
-                       end if
+                       slitWeight = getSlitWeight2D(grid(iG), i, j, k)
+                       lgInSlit = (slitWeight > 0.0)
                     else
+                       slitWeight = 1.0
                        lgInSlit = .True.
                     end if
 
@@ -435,7 +427,7 @@ module output_mod
 
                        end if
 
-                        dV = getVolume(grid(iG), i, j, k) * getWeight2D(grid(iG), i, j, k)
+                        dV = getVolume(grid(iG), i, j, k) * getWeight2D(grid(iG), i, j, k) * slitWeight
 
 
 

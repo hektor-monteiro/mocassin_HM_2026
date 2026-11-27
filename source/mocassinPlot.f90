@@ -31,6 +31,7 @@ program MoCaSSiNplot
     Real, allocatable   :: coeff(:)
 
     real            :: dV                     ! volume of local cell [e45 cm^3]
+    real            :: slitWeight             ! geometric aperture fraction inside slit
     real            :: freq1,freq2
     real            :: log10TeLoc
 
@@ -174,20 +175,8 @@ program MoCaSSiNplot
                 if (taskid ==0) write(29, *) grid3D(iG)%xAxis(i),grid3D(iG)%yAxis(j),grid3D(iG)%zAxis(k),dV
 
                 ! slit condition
-                if (d1Slit == 0. .and. d2Slit == 0.) then
-                   lgInSlit = .true.
-                else if (slitAxis == 'z' .or. slitAxis == 'Z') then
-                   lgInSlit = (abs(grid3D(iG)%xAxis(i)) <= d1Slit/2.) .and. &
-                              (abs(grid3D(iG)%yAxis(j)) <= d2Slit/2.)
-                else if (slitAxis == 'y' .or. slitAxis == 'Y') then
-                   lgInSlit = (abs(grid3D(iG)%xAxis(i)) <= d1Slit/2.) .and. &
-                              (abs(grid3D(iG)%zAxis(k)) <= d2Slit/2.)
-                else if (slitAxis == 'x' .or. slitAxis == 'X') then
-                   lgInSlit = (abs(grid3D(iG)%yAxis(j)) <= d1Slit/2.) .and. &
-                              (abs(grid3D(iG)%zAxis(k)) <= d2Slit/2.)
-                else
-                   lgInSlit = .true.
-                end if
+                slitWeight = getSlitWeight2D(grid3D(iG), i, j, k)
+                lgInSlit = (slitWeight > 0.0)
 
                 ! check this cell is in the ionized region
                 if (grid3D(iG)%active(i,j,k) >0) then
@@ -210,7 +199,7 @@ program MoCaSSiNplot
                    call forLines()
 
                    ! find the volume of this cell
-                   dV = getVolume(grid3D(iG), i,j,k) * getWeight2D(grid3D(iG), i,j,k)
+                   dV = getVolume(grid3D(iG), i,j,k) * getWeight2D(grid3D(iG), i,j,k) * slitWeight
 
                    do plotNum = 1, plot%nPlots
 
@@ -437,18 +426,7 @@ program MoCaSSiNplot
              do k = 1, grid3D(iG)%nz
 
                 if (d1Slit /= 0. .or. d2Slit /= 0.) then
-                   if (slitAxis == 'z' .or. slitAxis == 'Z') then
-                      lgInSlit = (abs(grid3D(iG)%xAxis(i)) <= d1Slit/2.) .and. &
-                                 (abs(grid3D(iG)%yAxis(j)) <= d2Slit/2.)
-                   else if (slitAxis == 'y' .or. slitAxis == 'Y') then
-                      lgInSlit = (abs(grid3D(iG)%xAxis(i)) <= d1Slit/2.) .and. &
-                                 (abs(grid3D(iG)%zAxis(k)) <= d2Slit/2.)
-                   else if (slitAxis == 'x' .or. slitAxis == 'X') then
-                      lgInSlit = (abs(grid3D(iG)%yAxis(j)) <= d1Slit/2.) .and. &
-                                 (abs(grid3D(iG)%zAxis(k)) <= d2Slit/2.)
-                   else
-                      lgInSlit = .true.
-                   end if
+                   lgInSlit = (getSlitWeight2D(grid3D(iG), i, j, k) > 0.0)
 
                    if (lgInSlit) then
                       write(30, *) 1
