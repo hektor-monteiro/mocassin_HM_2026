@@ -158,9 +158,13 @@ module photon_mod
               inY(igp) = cellLoc(2)
               inZ(igp) = cellLoc(3)
 
-              posDiff%x = grid(gpLoc)%xAxis(cellLoc(1))
-              posDiff%y = grid(gpLoc)%yAxis(cellLoc(2))
-              posDiff%z = grid(gpLoc)%zAxis(cellLoc(2))
+              if (lg2D .and. lgCylinder2D) then
+                 call sampleCellPositionCyl2D(grid(gpLoc), cellLoc(1), cellLoc(3), posDiff)
+              else
+                 posDiff%x = grid(gpLoc)%xAxis(cellLoc(1))
+                 posDiff%y = grid(gpLoc)%yAxis(cellLoc(2))
+                 posDiff%z = grid(gpLoc)%zAxis(cellLoc(3))
+              end if
 
               chTypeIn = chTypeD
               positionIn = posDiff
@@ -221,9 +225,13 @@ module photon_mod
                              do iPhot = 1, grid(igrid)%resLinePackets(grid(igrid)%active(ix,iy,iz))
 
                                 chTypeD = "diffuse"
-                                posVector%x = grid(igrid)%xAxis(ix)
-                                posVector%y = grid(igrid)%yAxis(iy)
-                                posVector%z = grid(igrid)%zAxis(iz)
+                                if (lg2D .and. lgCylinder2D) then
+                                   call sampleCellPositionCyl2D(grid(igrid), ix, iz, posVector)
+                                else
+                                   posVector%x = grid(igrid)%xAxis(ix)
+                                   posVector%y = grid(igrid)%yAxis(iy)
+                                   posVector%z = grid(igrid)%zAxis(iz)
+                                end if
 
                                 inX=-1
                                 inY=-1
@@ -900,9 +908,13 @@ module photon_mod
                    stop
                 end if
 
-                positionLoc%x = grid(gP)%xAxis(difSource(1))
-                positionLoc%y = grid(gP)%yAxis(difSource(2))
-                positionLoc%z = grid(gP)%zAxis(difSource(3))
+                if (lg2D .and. lgCylinder2D) then
+                   call sampleCellPositionCyl2D(grid(gP), difSource(1), difSource(3), positionLoc)
+                else
+                   positionLoc%x = grid(gP)%xAxis(difSource(1))
+                   positionLoc%y = grid(gP)%yAxis(difSource(2))
+                   positionLoc%z = grid(gP)%zAxis(difSource(3))
+                end if
 
                 ! initialize the new photon packet
                 orX(igPn) = difSource(1)
@@ -4034,6 +4046,81 @@ end subroutine energyPacketDriver
             volumes_initialized = .true.
         end if
     end subroutine initCellVolumes
+
+    !> Sample a uniformly weighted cylindrical volume position (R, phi, Z) inside
+    !! active 2D cylinder cell (ix, 1, iz), matching the cell faces in getVolume/pathSegment.
+    subroutine sampleCellPositionCyl2D(g, ix, iz, posVec)
+        implicit none
+
+        type(grid_type), intent(in) :: g
+        integer, intent(in)         :: ix, iz
+        type(vector), intent(out)   :: posVec
+
+        real             :: u(3)
+        double precision :: rCellIn, rCellOut, zCellIn, zCellOut
+        double precision :: uR, uZ, uPhi, rSample, zSample, phiSample, rSph
+
+        if (g%nx < 2 .or. g%nz < 2) then
+           posVec%x = g%xAxis(ix)
+           posVec%y = 0.0
+           posVec%z = g%zAxis(iz)
+           return
+        end if
+
+        if (ix == 1) then
+           rCellIn  = 0.0d0
+           rCellOut = dble(g%xAxis(2) + g%xAxis(1)) / 2.0d0
+        else if (ix < g%nx) then
+           rCellIn  = dble(g%xAxis(ix) + g%xAxis(ix-1)) / 2.0d0
+           rCellOut = dble(g%xAxis(ix+1) + g%xAxis(ix)) / 2.0d0
+        else
+           rCellIn  = dble(g%xAxis(g%nx) + g%xAxis(g%nx-1)) / 2.0d0
+           rCellOut = dble(g%xAxis(g%nx))
+        end if
+
+        if (iz == 1) then
+           zCellIn  = dble(g%zAxis(1))
+           zCellOut = dble(g%zAxis(2) + g%zAxis(1)) / 2.0d0
+        else if (iz < g%nz) then
+           zCellIn  = dble(g%zAxis(iz) + g%zAxis(iz-1)) / 2.0d0
+           zCellOut = dble(g%zAxis(iz+1) + g%zAxis(iz)) / 2.0d0
+        else
+           zCellIn  = dble(g%zAxis(g%nz) + g%zAxis(g%nz-1)) / 2.0d0
+           zCellOut = dble(g%zAxis(g%nz))
+        end if
+
+        if (R_in > 0.0 .and. rCellOut > dble(R_in) .and. abs(g%zAxis(iz)) < dble(R_in)) then
+           rCellIn = min(rCellOut, max(rCellIn, sqrt(max(0.0d0, dble(R_in)**2 - dble(g%zAxis(iz))**2))))
+        end if
+
+        call random_number(u)
+        uR   = 1.0d-4 + (1.0d0 - 2.0d-4) * dble(u(1))
+        uZ   = 1.0d-4 + (1.0d0 - 2.0d-4) * dble(u(2))
+        uPhi = dble(u(3))
+
+        if (rCellOut > rCellIn) then
+           rSample = sqrt(rCellIn**2 + uR * (rCellOut**2 - rCellIn**2))
+        else
+           rSample = dble(g%xAxis(ix))
+        end if
+        zSample = zCellIn + uZ * (zCellOut - zCellIn)
+        if (lgSymmetricXYZ) then
+           phiSample = (dble(Pi) / 2.0d0) * uPhi
+        else
+           phiSample = 2.0d0 * dble(Pi) * uPhi
+        end if
+
+        rSph = sqrt(rSample**2 + zSample**2)
+        if ((R_out > 0.0 .and. rSph >= dble(R_out)) .or. (R_in > 0.0 .and. rSph <= dble(R_in))) then
+           posVec%x = g%xAxis(ix)
+           posVec%y = 0.0
+           posVec%z = g%zAxis(iz)
+        else
+           posVec%x = real(rSample * cos(phiSample))
+           posVec%y = real(rSample * sin(phiSample))
+           posVec%z = real(zSample)
+        end if
+    end subroutine sampleCellPositionCyl2D
 
 
  end module photon_mod
