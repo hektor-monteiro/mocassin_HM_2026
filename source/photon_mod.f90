@@ -1321,23 +1321,32 @@ module photon_mod
                 case ("Z")
                    zP = 1
                    enPacket%zP(1) = 1
-                   if (lgSymmetricXYZ .and. rVec%z <= minPerp2D .and. vHat%z < 0.) then
+                   if (rVec%z <= minPerp2D) then
                       rVec%z = minPerp2D
-                      vHat%z = -vHat%z
+                      if (vHat%z < 0. .and. (lgSymmetricXYZ .or. (lgSpecular2D .and. .not. enPacket%lgStellar))) vHat%z = -vHat%z
+                   else if (rVec%z >= maxPerp2D) then
+                      rVec%z = maxPerp2D
+                      if (vHat%z > 0. .and. (lgSpecular2D .and. .not. enPacket%lgStellar)) vHat%z = -vHat%z
                    end if
                 case ("Y")
                    yP = 1
                    enPacket%yP(1) = 1
-                   if (lgSymmetricXYZ .and. rVec%y <= minPerp2D .and. vHat%y < 0.) then
+                   if (rVec%y <= minPerp2D) then
                       rVec%y = minPerp2D
-                      vHat%y = -vHat%y
+                      if (vHat%y < 0. .and. (lgSymmetricXYZ .or. (lgSpecular2D .and. .not. enPacket%lgStellar))) vHat%y = -vHat%y
+                   else if (rVec%y >= maxPerp2D) then
+                      rVec%y = maxPerp2D
+                      if (vHat%y > 0. .and. (lgSpecular2D .and. .not. enPacket%lgStellar)) vHat%y = -vHat%y
                    end if
                 case ("X")
                    xP = 1
                    enPacket%xP(1) = 1
-                   if (lgSymmetricXYZ .and. rVec%x <= minPerp2D .and. vHat%x < 0.) then
+                   if (rVec%x <= minPerp2D) then
                       rVec%x = minPerp2D
-                      vHat%x = -vHat%x
+                      if (vHat%x < 0. .and. (lgSymmetricXYZ .or. (lgSpecular2D .and. .not. enPacket%lgStellar))) vHat%x = -vHat%x
+                   else if (rVec%x >= maxPerp2D) then
+                      rVec%x = maxPerp2D
+                      if (vHat%x > 0. .and. (lgSpecular2D .and. .not. enPacket%lgStellar)) vHat%x = -vHat%x
                    end if
                 end select
                 enPacket%position = rVec
@@ -1554,17 +1563,26 @@ module photon_mod
                    xP = 1
                    if (vHat%x > 1.e-10) then
                       dSx = (maxPerp2D - rVec%x) / vHat%x
-                      if (dSx <= 1.e-10) dSx = 0.0
+                      if (dSx <= 1.e-10) then
+                         if (lgSpecular2D .and. .not. enPacket%lgStellar) then
+                            rVec%x = maxPerp2D
+                            vHat%x = -vHat%x
+                            enPacket%direction%x = vHat%x
+                            dSx = deltaPerp2D / abs(vHat%x)
+                         else
+                            dSx = 1.e-9
+                         end if
+                      end if
                    else if (vHat%x < -1.e-10) then
                       dSx = (minPerp2D - rVec%x) / vHat%x
                       if (dSx <= 1.e-10) then
-                         if (lgSymmetricXYZ) then
+                         if (lgSymmetricXYZ .or. (lgSpecular2D .and. .not. enPacket%lgStellar)) then
                             rVec%x = minPerp2D
                             vHat%x = -vHat%x
                             enPacket%direction%x = vHat%x
                             dSx = deltaPerp2D / abs(vHat%x)
                          else
-                            dSx = 0.0
+                            dSx = 1.e-9
                          end if
                       end if
                    else
@@ -1617,17 +1635,26 @@ module photon_mod
                       yP = 1
                       if (vHat%y > 1.e-10) then
                          dSy = (maxPerp2D - rVec%y) / vHat%y
-                         if (dSy <= 1.e-10) dSy = 0.0
+                         if (dSy <= 1.e-10) then
+                            if (lgSpecular2D .and. .not. enPacket%lgStellar) then
+                               rVec%y = maxPerp2D
+                               vHat%y = -vHat%y
+                               enPacket%direction%y = vHat%y
+                               dSy = deltaPerp2D / abs(vHat%y)
+                            else
+                               dSy = 1.e-9
+                            end if
+                         end if
                       else if (vHat%y < -1.e-10) then
                          dSy = (minPerp2D - rVec%y) / vHat%y
                          if (dSy <= 1.e-10) then
-                            if (lgSymmetricXYZ) then
+                            if (lgSymmetricXYZ .or. (lgSpecular2D .and. .not. enPacket%lgStellar)) then
                                rVec%y = minPerp2D
                                vHat%y = -vHat%y
                                enPacket%direction%y = vHat%y
                                dSy = deltaPerp2D / abs(vHat%y)
                             else
-                               dSy = 0.0
+                               dSy = 1.e-9
                             end if
                          end if
                       else
@@ -1677,17 +1704,26 @@ module photon_mod
                       zP = 1
                       if (vHat%z > 1.e-10) then
                          dSz = (maxPerp2D - rVec%z) / vHat%z
-                         if (dSz <= 1.e-10) dSz = 0.0
+                         if (dSz <= 1.e-10) then
+                            if (lgSpecular2D .and. .not. enPacket%lgStellar) then
+                               rVec%z = maxPerp2D
+                               vHat%z = -vHat%z
+                               enPacket%direction%z = vHat%z
+                               dSz = deltaPerp2D / abs(vHat%z)
+                            else
+                               dSz = 1.e-9
+                            end if
+                         end if
                       else if (vHat%z < -1.e-10) then
                          dSz = (minPerp2D - rVec%z) / vHat%z
                          if (dSz <= 1.e-10) then
-                            if (lgSymmetricXYZ) then
+                            if (lgSymmetricXYZ .or. (lgSpecular2D .and. .not. enPacket%lgStellar)) then
                                rVec%z = minPerp2D
                                vHat%z = -vHat%z
                                enPacket%direction%z = vHat%z
                                dSz = deltaPerp2D / abs(vHat%z)
                             else
-                               dSz = 0.0
+                               dSz = 1.e-9
                             end if
                          end if
                       else
@@ -1881,19 +1917,28 @@ module photon_mod
                    else
                       select case (perpAxis2D)
                       case ("Z")
-                         if (lgSymmetricXYZ .and. rVec%z <= minPerp2D .and. vHat%z < 0.) then
+                         if (rVec%z <= minPerp2D) then
                             rVec%z = minPerp2D
-                            vHat%z = -vHat%z
+                            if (vHat%z < 0. .and. (lgSymmetricXYZ .or. (lgSpecular2D .and. .not. enPacket%lgStellar))) vHat%z = -vHat%z
+                         else if (rVec%z >= maxPerp2D) then
+                            rVec%z = maxPerp2D
+                            if (vHat%z > 0. .and. (lgSpecular2D .and. .not. enPacket%lgStellar)) vHat%z = -vHat%z
                          end if
                       case ("Y")
-                         if (lgSymmetricXYZ .and. rVec%y <= minPerp2D .and. vHat%y < 0.) then
+                         if (rVec%y <= minPerp2D) then
                             rVec%y = minPerp2D
-                            vHat%y = -vHat%y
+                            if (vHat%y < 0. .and. (lgSymmetricXYZ .or. (lgSpecular2D .and. .not. enPacket%lgStellar))) vHat%y = -vHat%y
+                         else if (rVec%y >= maxPerp2D) then
+                            rVec%y = maxPerp2D
+                            if (vHat%y > 0. .and. (lgSpecular2D .and. .not. enPacket%lgStellar)) vHat%y = -vHat%y
                          end if
                       case ("X")
-                         if (lgSymmetricXYZ .and. rVec%x <= minPerp2D .and. vHat%x < 0.) then
+                         if (rVec%x <= minPerp2D) then
                             rVec%x = minPerp2D
-                            vHat%x = -vHat%x
+                            if (vHat%x < 0. .and. (lgSymmetricXYZ .or. (lgSpecular2D .and. .not. enPacket%lgStellar))) vHat%x = -vHat%x
+                         else if (rVec%x >= maxPerp2D) then
+                            rVec%x = maxPerp2D
+                            if (vHat%x > 0. .and. (lgSpecular2D .and. .not. enPacket%lgStellar)) vHat%x = -vHat%x
                          end if
                       end select
                       enPacket%direction = vHat
@@ -2129,11 +2174,14 @@ module photon_mod
                          else
                             select case (perpAxis2D)
                             case ("Z")
-                               if (lgSymmetricXYZ .and. rVec%z <= minPerp2D .and. vHat%z < 0.) vHat%z = -vHat%z
+                               if (rVec%z <= minPerp2D .and. vHat%z < 0. .and. (lgSymmetricXYZ .or. lgSpecular2D)) vHat%z = -vHat%z
+                               if (rVec%z >= maxPerp2D .and. vHat%z > 0. .and. lgSpecular2D) vHat%z = -vHat%z
                             case ("Y")
-                               if (lgSymmetricXYZ .and. rVec%y <= minPerp2D .and. vHat%y < 0.) vHat%y = -vHat%y
+                               if (rVec%y <= minPerp2D .and. vHat%y < 0. .and. (lgSymmetricXYZ .or. lgSpecular2D)) vHat%y = -vHat%y
+                               if (rVec%y >= maxPerp2D .and. vHat%y > 0. .and. lgSpecular2D) vHat%y = -vHat%y
                             case ("X")
-                               if (lgSymmetricXYZ .and. rVec%x <= minPerp2D .and. vHat%x < 0.) vHat%x = -vHat%x
+                               if (rVec%x <= minPerp2D .and. vHat%x < 0. .and. (lgSymmetricXYZ .or. lgSpecular2D)) vHat%x = -vHat%x
+                               if (rVec%x >= maxPerp2D .and. vHat%x > 0. .and. lgSpecular2D) vHat%x = -vHat%x
                             end select
                          end if
                          enPacket%direction = vHat
@@ -2584,7 +2632,7 @@ module photon_mod
                 if(.not.lgPlaneIonization.and..not.lgSymmetricXYZ.and..not.(lg2D .and. lgCylinder2D)) then
                    lgReturn=.false.
 
-                   if ( rVec%y <= grid(gP)%yAxis(1)-grid(gP)%geoCorrY .or. yP<1) then
+                   if ( ((.not.(lg2D .and. perpAxis2D == "Y")) .and. rVec%y <= grid(gP)%yAxis(1)-grid(gP)%geoCorrY) .or. yP<1) then
 
                          ! the energy packet escapes this grid
                          if (gP==1) then
@@ -2602,7 +2650,7 @@ module photon_mod
 
                       end if
 
-                      if (rVec%y > grid(gP)%yAxis(grid(gP)%ny)+grid(gP)%geoCorrY .or. yP>grid(gP)%ny) then
+                      if ( ((.not.(lg2D .and. perpAxis2D == "Y")) .and. rVec%y > grid(gP)%yAxis(grid(gP)%ny)+grid(gP)%geoCorrY) .or. yP>grid(gP)%ny) then
 
                          if (gP==1) then
                             ! the energy packet escapes
@@ -2620,14 +2668,14 @@ module photon_mod
 
                       end if
 
-                   if ( (rVec%x <= grid(gP)%xAxis(1)-grid(gP)%geoCorrX .or. xP<1) .and. gP==1) then
+                   if ( ( ((.not.(lg2D .and. perpAxis2D == "X")) .and. rVec%x <= grid(gP)%xAxis(1)-grid(gP)%geoCorrX) .or. xP<1) .and. gP==1) then
                          xP=1
                          lgReturn=.true.
 
                       end if
 
 
-                      if ( (rVec%x <= grid(gP)%xAxis(1)-grid(gP)%geoCorrX .or. xP<1) &
+                      if ( ( ((.not.(lg2D .and. perpAxis2D == "X")) .and. rVec%x <= grid(gP)%xAxis(1)-grid(gP)%geoCorrX) .or. xP<1) &
                        & .and. gP>1) then
 
                          xP = enPacket%xP(grid(gP)%motherP)
@@ -2638,14 +2686,14 @@ module photon_mod
                       end if
 
 
-                      if ( (rVec%x >=  grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX &
+                      if ( ( ((.not.(lg2D .and. perpAxis2D == "X")) .and. rVec%x >=  grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX) &
                            & .or. xP>grid(gP)%nx) .and. gP==1 )then
                          xP = grid(gP)%nx
                          lgReturn=.true.
 
                       end if
 
-                      if ( (rVec%x >=  grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX&
+                      if ( ( ((.not.(lg2D .and. perpAxis2D == "X")) .and. rVec%x >=  grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX) &
                            & .or. xP>grid(gP)%nx) .and.  gP>1) then
 
                          xP = enPacket%xP(grid(gP)%motherP)
@@ -2654,14 +2702,14 @@ module photon_mod
                          gP = grid(gP)%motherP
                       end if
 
-                   if ( (rVec%z <= grid(gP)%zAxis(1)-grid(gP)%geoCorrZ .or.zP<1) &
+                   if ( ( ((.not.(lg2D .and. perpAxis2D == "Z")) .and. rVec%z <= grid(gP)%zAxis(1)-grid(gP)%geoCorrZ) .or.zP<1) &
                            & .and. gP==1) then
                          zP=1
                          lgReturn=.true.
 
                       end if
 
-                      if ( (rVec%z <= grid(gP)%zAxis(1)-grid(gP)%geoCorrZ &
+                      if ( ( ((.not.(lg2D .and. perpAxis2D == "Z")) .and. rVec%z <= grid(gP)%zAxis(1)-grid(gP)%geoCorrZ) &
                            & .or.zP<1) .and. gP>1) then
 
                          xP = enPacket%xP(grid(gP)%motherP)
@@ -2671,7 +2719,7 @@ module photon_mod
 
                       end if
 
-                      if ( (rVec%z >=  grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ &
+                      if ( ( ((.not.(lg2D .and. perpAxis2D == "Z")) .and. rVec%z >=  grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ) &
                            & .or. zP>grid(gP)%nz) &
                            & .and. gP==1) then
 
@@ -2680,7 +2728,7 @@ module photon_mod
 
                       end if
 
-                      if ((rVec%z >=  grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ &
+                      if (( ((.not.(lg2D .and. perpAxis2D == "Z")) .and. rVec%z >=  grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ) &
                            & .or. zP>grid(gP)%nz) .and. gP>1) then
 
                          xP = enPacket%xP(grid(gP)%motherP)
@@ -3024,12 +3072,14 @@ module photon_mod
                         (.not.lgSymmetricXYZ .and. rVec%z <= grid(gP)%zAxis(1) - grid(gP)%geoCorrZ) .or. &
                         (radius >= R_out .and. R_out > 0.) )) .or. &
                         ((.not.(lg2D .and. lgCylinder2D)) .and. ( &
-                        (.not.lgSymmetricXYZ .and. (rVec%x<=grid(1)%xAxis(1)-grid(1)%geoCorrX .or.&
-                        & rVec%y<=grid(1)%yAxis(1)-grid(1)%geoCorrY .or. rVec%z<=grid(1)%zAxis(1)-&
-                        & grid(1)%geoCorrZ)) .or.&
-                        & (rVec%x >= grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX) .or.&
-                        &(rVec%y >= grid(gP)%yAxis(grid(gP)%ny)+grid(gP)%geoCorrY) .or.&
-                        &(rVec%z >= grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ) .or. &
+                        (.not.lgSymmetricXYZ .and. ( &
+                        & ((.not.(lg2D .and. perpAxis2D == "X")) .and. rVec%x<=grid(1)%xAxis(1)-grid(1)%geoCorrX) .or. &
+                        & ((.not.(lg2D .and. perpAxis2D == "Y")) .and. rVec%y<=grid(1)%yAxis(1)-grid(1)%geoCorrY) .or. &
+                        & ((.not.(lg2D .and. perpAxis2D == "Z")) .and. rVec%z<=grid(1)%zAxis(1)-grid(1)%geoCorrZ) .or. &
+                        & xP<1 .or. yP<1 .or. zP<1 )) .or. &
+                        & ((.not.(lg2D .and. perpAxis2D == "X")) .and. rVec%x >= grid(gP)%xAxis(grid(gP)%nx)+grid(gP)%geoCorrX) .or. &
+                        & ((.not.(lg2D .and. perpAxis2D == "Y")) .and. rVec%y >= grid(gP)%yAxis(grid(gP)%ny)+grid(gP)%geoCorrY) .or. &
+                        & ((.not.(lg2D .and. perpAxis2D == "Z")) .and. rVec%z >= grid(gP)%zAxis(grid(gP)%nz)+grid(gP)%geoCorrZ) .or. &
                         & xP>grid(gP)%nx .or. yP>grid(gP)%ny .or. zP>grid(gP)%nz ))) then
 
                   if (gP==1) then
@@ -3166,12 +3216,15 @@ module photon_mod
                      end if
 
                      if ( (radius >= R_out .and. R_out >= 0.) .or.&
-                          & (rVec%x >= grid(1)%xAxis(grid(1)%nx)+grid(1)%geoCorrX) .or.&
-                          &(rVec%y >= grid(1)%yAxis(grid(1)%ny)+grid(1)%geoCorrY) .or.&
-                          &(rVec%z >= grid(1)%zAxis(grid(1)%nz)+grid(1)%geoCorrZ) .or. &
-                          & (.not.lgSymmetricXYZ .and.  (rVec%x<=grid(1)%xAxis(1)-grid(1)%geoCorrX .or.&
-                          & rVec%y<=grid(1)%yAxis(1)-grid(1)%geoCorrY .or. rVec%z<=grid(1)%zAxis(1)-&
-                          & grid(1)%geoCorrZ))) then
+                          & ((.not.(lg2D .and. perpAxis2D == "X")) .and. rVec%x >= grid(1)%xAxis(grid(1)%nx)+grid(1)%geoCorrX) .or.&
+                          & ((.not.(lg2D .and. perpAxis2D == "Y")) .and. rVec%y >= grid(1)%yAxis(grid(1)%ny)+grid(1)%geoCorrY) .or.&
+                          & ((.not.(lg2D .and. perpAxis2D == "Z")) .and. rVec%z >= grid(1)%zAxis(grid(1)%nz)+grid(1)%geoCorrZ) .or. &
+                          & (.not.lgSymmetricXYZ .and. ( &
+                          & ((.not.(lg2D .and. perpAxis2D == "X")) .and. rVec%x<=grid(1)%xAxis(1)-grid(1)%geoCorrX) .or.&
+                          & ((.not.(lg2D .and. perpAxis2D == "Y")) .and. rVec%y<=grid(1)%yAxis(1)-grid(1)%geoCorrY) .or.&
+                          & ((.not.(lg2D .and. perpAxis2D == "Z")) .and. rVec%z<=grid(1)%zAxis(1)-grid(1)%geoCorrZ) .or.&
+                          & xP<1 .or. yP<1 .or. zP<1 )) .or. &
+                          & xP>grid(1)%nx .or. yP>grid(1)%ny .or. zP>grid(1)%nz ) then
 
 
                         if (xP > grid(gP)%nx) xP = grid(gP)%nx
