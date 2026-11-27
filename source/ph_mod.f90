@@ -1215,7 +1215,16 @@ module xSec_mod
                  do i = 1, 2
                     read(20,*) textString
                  end do
-                 read(20,*) nRadii
+                 do
+                    read(20, '(A)', iostat=ios) speciesLine
+                    if (ios /= 0) then
+                       print*, "! makeDustXsec: unexpected EOF reading nRadii in ", trim(extinctionFile)
+                       stop
+                    end if
+                    speciesLine = adjustl(speciesLine)
+                    if (len_trim(speciesLine) > 0 .and. speciesLine(1:1) /= '#') exit
+                 end do
+                 read(speciesLine, *) nRadii
                  read(20,*) nwav
                  read(20,*) textString
 
@@ -1255,8 +1264,8 @@ module xSec_mod
                     allocate (gCos(1:nSpecies,0:nSizes,1:nbins), stat=err)
                     allocate (Csca(1:nSpecies,0:nSizes,1:nbins), stat=err)
                     allocate (Cabs(1:nSpecies,0:nSizes,1:nbins), stat=err)
-                    allocate (CTsca(1:nbins), stat=err)
-                    allocate (CTabs(1:nbins), stat=err)
+                    if (.not. allocated(CTsca)) allocate (CTsca(1:nbins), stat=err)
+                    if (.not. allocated(CTabs)) allocate (CTabs(1:nbins), stat=err)
                     if (err/=0) then
                        print*, "! makeDustXsec (1230): error allocation memory for array"
                        stop

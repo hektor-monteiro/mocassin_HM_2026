@@ -919,6 +919,19 @@ module set_input_mod
            end select
         end if
 
+        if (lgEcho .and. lg2D) then
+           print*, "! readInput: light echo (echo) mode is not supported in 2D mode; use a 3D grid."
+           stop
+        end if
+        if (lgFluorescence .and. lg2D .and. lgCylinder2D) then
+           print*, "! readInput: fluorescence mode is not supported with 2D cylinder geometry."
+           stop
+        end if
+        if (nGrids > 1 .and. lg2D .and. lgCylinder2D) then
+           print*, "! readInput: nested subgrids (multiGrids / nGrids > 1) are not supported with 2D cylinder geometry."
+           stop
+        end if
+
         if (lgPlaneIonization .and. lg2d) then
            print*, "! readInput: planeIonization and 2D options are not compatible"
            stop

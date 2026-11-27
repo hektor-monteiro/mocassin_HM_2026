@@ -742,6 +742,10 @@ module grid_mod
 !           end if
 
            ! set the subGrids
+           if (nGrids > 1 .and. lg2D .and. lgCylinder2D) then
+              print*, "! fillGrid: nested subgrids (multiGrids / nGrids > 1) are not supported with 2D cylinder geometry."
+              stop
+           end if
            if (nGrids>1) call setSubGrids(grid(1:nGrids))
 
 !BEKS 2011: scale the gas mass here to gasMass keyword
@@ -3867,6 +3871,15 @@ end function getSlitWeight2D
       read(77, *) lgEcho, echot1, echot2, echoTemp
       read(77,*) lgNosource
 
+      if (lgFluorescence .and. lg2D .and. lgCylinder2D) then
+         print*, "! resetGrid: fluorescence mode is not supported with 2D cylinder geometry."
+         stop
+      end if
+      if (nGrids > 1 .and. lg2D .and. lgCylinder2D) then
+         print*, "! resetGrid: nested subgrids (multiGrids / nGrids > 1) are not supported with 2D cylinder geometry."
+         stop
+      end if
+
       if (taskid == 0) then
          print*,  nGrids,'nGrids'
          print*,  convWriteGrid, ' convWriteGrid'
@@ -4394,6 +4407,14 @@ end function getSlitWeight2D
          starPosition(i)%y = starPosition(i)%y*yA(nyA)
          starPosition(i)%z = starPosition(i)%z*zA(nzA)
 
+         if (lg2D .and. lgCylinder2D) then
+            if (abs(starPosition(i)%x) > 1.e-10 .or. abs(starPosition(i)%y) > 1.e-10) then
+               print*, "! setStarPosition: off-axis ionizing sources (x /= 0 or y /= 0) break axisymmetry and are not supported in 2D cylinder mode.", &
+                    & i, starPosition(i)%x, starPosition(i)%y
+               stop
+            end if
+         end if
+
          if (lg2D) then
             select case (perpAxis2D)
             case ("Z")
@@ -4513,7 +4534,9 @@ end function getSlitWeight2D
       t1=dble(t1i)/tfac
       t2=dble(t2i)/tfac
 
-      if ( (xP>1) .and. (xP<grid%nx) ) then
+      if (grid%nx == 1) then
+         odx = deltaPerp2D
+      else if ( (xP>1) .and. (xP<grid%nx) ) then
          odx = abs(grid%xAxis(xP+1)-grid%xAxis(xP-1))/2.
       else if ( xP==1 ) then
          if (lgSymmetricXYZ) then
@@ -4525,7 +4548,9 @@ end function getSlitWeight2D
          odx = abs(grid%xAxis(xP)  -grid%xAxis(xP-1))
       end if
 
-      if ( (yP>1) .and. (yP<grid%ny) ) then
+      if (grid%ny == 1) then
+         ody = deltaPerp2D
+      else if ( (yP>1) .and. (yP<grid%ny) ) then
          ody = abs(grid%yAxis(yP+1)-grid%yAxis(yP-1))/2.
       else if ( yP==1 ) then
          if (lgSymmetricXYZ) then
@@ -4537,7 +4562,9 @@ end function getSlitWeight2D
          ody = abs(grid%yAxis(yP)  -grid%yAxis(yP-1))
       end if
 
-      if ( (zP>1) .and. (zP<grid%nz) ) then
+      if (grid%nz == 1) then
+         odz = deltaPerp2D
+      else if ( (zP>1) .and. (zP<grid%nz) ) then
          odz = abs(grid%zAxis(zP+1)-grid%zAxis(zP-1))/2.
       else if ( zP==1 ) then
          if (lgSymmetricXYZ) then
