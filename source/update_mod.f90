@@ -2449,6 +2449,7 @@ end subroutine iterateT
             real                   :: dustAbsIntegral   ! dust absorption integral
             real                   :: dabs
             real                   :: resLineHeat       ! resonance line heating
+            real                   :: dV_budget         ! volume weighting factor [e45 cm^3]
             real, dimension(nbins) :: radField          ! radiation field
             real                   :: binAbunSum, speciesWeightSum, totalWeightSum
 
@@ -2469,6 +2470,8 @@ end subroutine iterateT
                grid%Tdust(:,:,cellP) = forceTDust
                return
             endif
+
+            dV_budget = getVolume(grid, xP, yP, zP) * getWeight2D(grid, xP, yP, zP)
 
             ! calculate absorption integrals for each species
             do nS = 1, nSpeciesPart(nspU)
@@ -2497,9 +2500,9 @@ end subroutine iterateT
                      if (lgGas .and. convPercent>=resLinesTransfer .and. (.not.lgResLinesFirst) .and. &
                           & (.not.nIterateMC==1) ) then
                         dustHeatingBudget(grid%abFileIndex(xp,yp,zp),0) = dustHeatingBudget(grid%abFileIndex(xp,yp,zp),0)+&
-                             & dustAbsIntegral*grainWeight(ai)*grainAbun(nspU,nS)*grid%Ndust(cellP)
+                             & dustAbsIntegral*grainWeight(ai)*grainAbun(nspU,nS)*grid%Ndust(cellP)*dV_budget
                         dustHeatingBudget(0,0) = dustHeatingBudget(0,0)+&
-                             & dustAbsIntegral*grainWeight(ai)*grainAbun(nspU,nS)*grid%Ndust(cellP)
+                             & dustAbsIntegral*grainWeight(ai)*grainAbun(nspU,nS)*grid%Ndust(cellP)*dV_budget
                         resLineHeat = resLineHeating(ai,ns,nspU)
                         dustAbsIntegral = dustAbsIntegral+resLineHeat
                      end if
@@ -2623,6 +2626,7 @@ end subroutine iterateT
 
             real                :: Gline   ! energy is the line [erg sec^-1]
             real                :: heat    ! sub calculation var
+            real                :: dV_budget ! volume weighting factor [e45 cm^3]
 
             integer, intent(in) :: sizeP   ! size pointer
             integer, intent(in) :: speciesP! species pointer
@@ -2635,6 +2639,8 @@ end subroutine iterateT
 
             ! Calculate the correct global index for the species
             global_speciesP = dustComPoint(icompP) + speciesP - 1
+
+            dV_budget = getVolume(grid, xP, yP, zP) * getWeight2D(grid, xP, yP, zP)
 
             resLineHeating = 0.
             do iL = 1, nResLines
@@ -2691,9 +2697,9 @@ end subroutine iterateT
 
                dustHeatingBudget(grid%abFileIndex(xP,yP,zP),iL) = &
                     & dustHeatingBudget(grid%abFileIndex(xP,yP,zP),iL) + &
-                    & heat*grainWeight(sizeP)*grainAbun(icompP,speciesP)*grid%Ndust(cellP)
+                    & heat*grainWeight(sizeP)*grainAbun(icompP,speciesP)*grid%Ndust(cellP)*dV_budget
                dustHeatingBudget(0,iL) = dustHeatingBudget(0,iL) + &
-                    & heat*grainWeight(sizeP)*grainAbun(icompP,speciesP)*grid%Ndust(cellP)
+                    & heat*grainWeight(sizeP)*grainAbun(icompP,speciesP)*grid%Ndust(cellP)*dV_budget
 
 
             end do
